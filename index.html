@@ -22,8 +22,18 @@ body{font-family:"Be Vietnam Pro",sans-serif;background:var(--bg);color:var(--te
 .hd::before{content:"";position:absolute;top:-40px;right:-40px;width:160px;height:160px;border-radius:50%;background:rgba(201,168,76,.13);pointer-events:none;}
 .hd-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;position:relative;z-index:2;min-height:62px;}
 .hd-logo{width:52px;height:52px;flex-shrink:0;object-fit:contain;filter:drop-shadow(0 2px 5px rgba(0,0,0,.4));}
-.hd-text{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:1;padding:0 80px;}
-.hd-title{font-size:clamp(1.1rem,5vw,1.6rem);font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:#fff;text-align:center;white-space:nowrap;}
+.hd-text{
+  position:absolute;
+  left:0;right:0;top:0;bottom:0;
+  display:flex;align-items:center;justify-content:center;
+  pointer-events:none;z-index:1;
+}
+.hd-title{
+  font-size:clamp(1.1rem,5.5vw,1.6rem);
+  font-weight:800;letter-spacing:1.2px;
+  text-transform:uppercase;color:#fff;
+  text-align:center;white-space:nowrap;
+}
 .hd-short{display:inline;}.hd-long{display:none;}
 @media(min-width:600px){
   .hd{padding:14px 28px;}
