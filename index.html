@@ -1752,7 +1752,7 @@ async function openDetail(id){
 }
 function fileList(files){
   if(!files||!files.length)return'<div class="empty">Chưa có tài liệu.</div>';
-  return files.map(f=>`<div class="file-row"><div><b>${esc(f.fileName)}</b><br><span class="muted" style="font-size:.78rem">${esc(f.fileType)} · V${esc(f.version)} · ${esc(f.uploadedBy)} · ${esc(f.uploadedAt)}</span></div><a class="btn sm primary" href="${esc(f.fileUrl)}" target="_blank">↗ Mở</a></div>`).join('')
+  return files.map(f=>`<div class="file-row"><div><b>${esc(f.fileName)}</b><br><span class="muted" style="font-size:.78rem">${esc(f.fileType)} · V${esc(f.version)} · ${esc(f.uploadedBy)} · ${esc(dateVNShort(f.uploadedAt))}</span></div><a class="btn sm primary" href="${esc(f.fileUrl)}" target="_blank">↗ Mở</a></div>`).join('')
 }
 function uploadBox(id){return`<div style="margin-top:12px"><div class="field"><label>Loại tài liệu</label><select id="upType">${fileTypeOptions('TAI_LIEU_HOP')}</select></div><div id="drop" class="drop">Kéo thả file vào đây hoặc bấm để chọn file<br><span class="muted" style="font-size:.76rem">PDF, Word, Excel, PowerPoint, ảnh, zip...</span><input id="fileInput" type="file" multiple class="hide"></div><div id="upMsg"></div></div>`}
 function setupDrop(id){
