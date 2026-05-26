@@ -1211,8 +1211,7 @@ function renderDashboard(){
   LEADERS.forEach(l=>{ leaderMap[l.name]={...l,week:0,month:0,year:0}; });
   meetings.forEach(m=>{
     const raw=[m.chuTri,m.lanhDaoLienQuan].join(',');
-    const parts=raw.split(/[,;/
-]+/).map(x=>x.trim()).filter(x=>x.length>1);
+    const parts=raw.split(/[,;\/ ]+/).map(x=>x.trim()).filter(x=>x.length>1);
     parts.forEach(part=>{
       const pn=normName(part);
       LEADERS.forEach(l=>{
