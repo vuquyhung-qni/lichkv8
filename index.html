@@ -144,15 +144,23 @@
       line-height: 1.35;
     }
     .login-banner .line3 {
-      font-size: 1.15rem;
+      font-size: 1.18rem;
       font-weight: 900;
-      color: #fff;
+      color: #f5d060;
       text-transform: uppercase;
-      letter-spacing: 2px;
-      text-shadow: 0 2px 12px rgba(0,0,0,.4), 0 0 30px rgba(212,160,23,.5);
+      letter-spacing: 3px;
       position: relative;
       z-index: 1;
       margin: 0;
+      -webkit-text-stroke: 1.5px #b8860b;
+      text-shadow:
+        1px 1px 0 #8B6008,
+        2px 2px 0 #7a5206,
+        3px 3px 0 #6a4504,
+        4px 4px 0 #5a3802,
+        5px 5px 0 #4a2c00,
+        6px 6px 8px rgba(0,0,0,.6),
+        0 0 20px rgba(255,200,50,.35);
     }
     .login-divider {
       height: 3px;
@@ -756,6 +764,10 @@
     .sidebar-overlay { display: none; }
 
     /* ===== RESPONSIVE ===== */
+    @media (min-width: 769px) {
+      .cal-filter-row { display: none !important; }
+      .desktop-filters { display: flex !important; gap: 9px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+    }
     @media (max-width: 1024px) {
       .stats-grid { grid-template-columns: repeat(2, 1fr); }
       .form-grid { grid-template-columns: 1fr 1fr; }
@@ -847,6 +859,30 @@
         background: var(--blue);
         border-radius: 0 0 3px 3px;
       }
+      .bn-item.bn-logout { color: #dc2626; }
+      .bn-item.bn-logout:active { background: #fee2e2; }
+      /* Mobile calendar filter */
+      .cal-search-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+      .cal-filter-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:7px; margin-bottom:10px; }
+      .cycle-btn {
+        border: 1.5px solid var(--border);
+        border-radius: var(--r-sm);
+        padding: 9px 6px;
+        font-size: .78rem;
+        font-weight: 700;
+        background: #fff;
+        color: var(--text2);
+        text-align: center;
+        transition: all .18s;
+        letter-spacing: .3px;
+      }
+      .cycle-btn.active {
+        background: linear-gradient(135deg,var(--blue),var(--blue2));
+        color: #fff;
+        border-color: transparent;
+        box-shadow: 0 4px 12px rgba(21,86,200,.25);
+      }
+      .cycle-btn:active { filter: brightness(.92); }
       .stats-grid { grid-template-columns: 1fr 1fr; }
       .form-grid { grid-template-columns: 1fr; }
       .filterbar { gap: 7px; }
@@ -927,7 +963,7 @@
         <span class="nav-icon">👥</span>
         <span class="nav-label">Người dùng</span>
       </button>
-      <button class="nav-btn" data-screen="settings" onclick="go('settings')">
+      <button class="nav-btn" data-screen="settings" id="navSettings" onclick="go('settings')">
         <span class="nav-icon">⚙️</span>
         <span class="nav-label">Danh mục</span>
       </button>
@@ -982,13 +1018,17 @@
     <span class="bn-icon">📝</span>
     <span>Quản lý</span>
   </button>
-  <button class="bn-item" data-screen="users" id="bnUsers" onclick="go('users')">
+  <button class="bn-item" id="bnUsers" data-screen="users" onclick="go('users')">
     <span class="bn-icon">👥</span>
     <span>Users</span>
   </button>
-  <button class="bn-item" data-screen="settings" onclick="go('settings')">
+  <button class="bn-item" id="bnSettings" data-screen="settings" onclick="go('settings')">
     <span class="bn-icon">⚙️</span>
     <span>Danh mục</span>
+  </button>
+  <button class="bn-item bn-logout" onclick="logout()">
+    <span class="bn-icon">⏻</span>
+    <span>Đăng xuất</span>
   </button>
 </nav>
 
@@ -1087,10 +1127,16 @@ function showApp(){
   $('uName').textContent=APP.user.fullname||APP.user.username;
   $('uRole').textContent=ROLE_EDIT_LABEL[APP.user.role]||APP.user.role;
   $('avatar').textContent=initials(APP.user.fullname||APP.user.username);
+  // Quản lý người dùng: chỉ Admin/SuperAdmin
   if(!hasRole(ROLE_ADMIN)){
-    $('navUsers').style.display='none';
-    $('navAdminSection').style.display='none';
-    $('bnUsers').style.display='none';
+    const nu=$('navUsers'); if(nu)nu.style.display='none';
+    const bu=$('bnUsers'); if(bu)bu.style.display='none';
+  }
+  // Danh mục: chỉ Admin/SuperAdmin
+  if(!hasRole(ROLE_ADMIN)){
+    const ns=$('navSettings'); if(ns)ns.style.display='none';
+    const nas=$('navAdminSection'); if(nas)nas.style.display='none';
+    const bs=$('bnSettings'); if(bs)bs.style.display='none';
   }
 }
 function showLogin(){
@@ -1149,21 +1195,43 @@ function renderDashboard(){
   const countWeek=meetings.filter(m=>{const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;return s&&e&&s<=wEnd&&e>=wStart;}).length;
   const countMonth=meetings.filter(m=>{const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;return s&&e&&s<=mEnd&&e>=mStart;}).length;
   const countYear=meetings.filter(m=>{const s=parseIsoDate(m.ngayBatDau);return s&&s.getFullYear()===now.getFullYear();}).length;
-  // Thống kê lãnh đạo từ meetings
+  // Danh sách 4 lãnh đạo cố định theo thứ tự ưu tiên
+  const LEADERS = [
+    { name: 'Phạm Quốc Hưng',    display: 'Đ/c Phạm Quốc Hưng – Chi cục trưởng' },
+    { name: 'Ngô Tùng Dương',    display: 'Đ/c Ngô Tùng Dương' },
+    { name: 'Bùi Ngọc Lợi',      display: 'Đ/c Bùi Ngọc Lợi' },
+    { name: 'Nguyễn Cảnh Thắng', display: 'Đ/c Nguyễn Cảnh Thắng' },
+  ];
+  // Hàm chuẩn hoá: bỏ dấu, bỏ prefix "đ/c", "c ", chữ thường
+  function normName(s){
+    return String(s||'').toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g,'')
+      .replace(/đ/g,'d')
+      .replace(/^(d\/c|c)\s+/,'')
+      .replace(/\s*[-–]\s*.*/,'')   // bỏ phần sau gạch ngang (chức danh)
+      .replace(/\s+/g,' ').trim();
+  }
   const leaderMap={};
+  LEADERS.forEach(l=>{ leaderMap[l.name]={...l,week:0,month:0,year:0}; });
   meetings.forEach(m=>{
-    const leaders=[m.chuTri,m.lanhDaoLienQuan].join(',');
-    const names=leaders.split(/[,;/]+/).map(x=>x.trim()).filter(x=>x&&x.length>1);
-    names.forEach(n=>{
-      if(!leaderMap[n])leaderMap[n]={name:n,week:0,month:0,year:0};
-      const s=parseIsoDate(m.ngayBatDau);
-      if(!s)return;
-      if(s>=wStart&&s<=wEnd)leaderMap[n].week++;
-      if(s>=mStart&&s<=mEnd)leaderMap[n].month++;
-      if(s.getFullYear()===now.getFullYear())leaderMap[n].year++;
+    const raw=[m.chuTri,m.lanhDaoLienQuan].join(',');
+    const parts=raw.split(/[,;/
+]+/).map(x=>x.trim()).filter(x=>x.length>1);
+    parts.forEach(part=>{
+      const pn=normName(part);
+      LEADERS.forEach(l=>{
+        if(pn===normName(l.name)||pn.includes(normName(l.name))||normName(l.name).includes(pn)){
+          const s=parseIsoDate(m.ngayBatDau);
+          if(!s)return;
+          if(s>=wStart&&s<=wEnd)leaderMap[l.name].week++;
+          if(s>=mStart&&s<=mEnd)leaderMap[l.name].month++;
+          if(s.getFullYear()===now.getFullYear())leaderMap[l.name].year++;
+        }
+      });
     });
   });
-  const leaderRows=Object.values(leaderMap).filter(x=>x.year>0).sort((a,b)=>b.year-a.year).slice(0,10);
+  // Giữ đúng thứ tự 4 lãnh đạo, luôn hiển thị dù = 0
+  const leaderRows=LEADERS.map(l=>leaderMap[l.name]);
   const maxYear=Math.max(1,...leaderRows.map(x=>x.year));
   $('screen-dashboard').innerHTML=`
     <div class="stats-grid">
@@ -1187,12 +1255,12 @@ function renderDashboard(){
           <table class="tbl leader-table">
             <thead><tr><th>Lãnh đạo</th><th>Tuần</th><th>Tháng</th><th>Năm</th><th style="text-align:left;min-width:100px">Tỷ trọng năm</th></tr></thead>
             <tbody>
-              ${leaderRows.length?leaderRows.map(x=>`<tr>
-                <td><b>${esc(x.name)}</b></td>
+              ${leaderRows.map(x=>`<tr>
+                <td><b>${esc(x.display)}</b></td>
                 <td>${x.week}</td><td>${x.month}</td>
                 <td><b>${x.year}</b></td>
                 <td><div class="barline"><span style="width:${Math.min(100,Math.round(x.year*100/maxYear))}%"></span></div></td>
-              </tr>`).join(''):'<tr><td colspan="5" class="muted" style="text-align:center;padding:20px">Chưa có dữ liệu lãnh đạo.</td></tr>'}
+              </tr>`).join('')}
             </tbody>
           </table>
         </div>
@@ -1218,14 +1286,57 @@ function miniCountTable(obj,labelFn){
 }
 
 // ===== CALENDAR =====
+// Trạng thái các nút lọc tuần tự mobile
+const LEADER_CYCLE = ['all','Hưng','Dương','Lợi','Thắng'];
+const SCOPE_CYCLE  = ['CURRENT','WEEK','MONTH','YEAR'];
+const KIND_CYCLE   = ['HOP','GIAO_BAN'];
+const LEADER_LABELS = {all:'LĐCC', Hưng:'Đ/c Hưng', Dương:'Đ/c Dương', Lợi:'Đ/c Lợi', Thắng:'Đ/c Thắng'};
+const SCOPE_LABELS  = {CURRENT:'THỜI GIAN', WEEK:'TUẦN', MONTH:'THÁNG', YEAR:'NĂM'};
+const KIND_LABELS   = {HOP:'LỊCH HỌP', GIAO_BAN:'TRỰC BAN'};
+
+function cycleLeader(){
+  const idx=LEADER_CYCLE.indexOf(APP.filters.leader);
+  APP.filters.leader=LEADER_CYCLE[(idx+1)%LEADER_CYCLE.length];
+  updateCycleButtons(); applyCalendarFilters(false);
+}
+function cycleScope(){
+  const idx=SCOPE_CYCLE.indexOf(APP.filters.scope);
+  const next=SCOPE_CYCLE[(idx+1)%SCOPE_CYCLE.length];
+  if(next==='YEAR'){APP.filters.scope='YEAR';updateCycleButtons();applyCalendarFilters(false);}
+  else changeScope(next).then(()=>{updateCycleButtons();});
+}
+function cycleKind(){
+  const idx=KIND_CYCLE.indexOf(APP.filters.kind);
+  APP.filters.kind=KIND_CYCLE[(idx+1)%KIND_CYCLE.length];
+  updateCycleButtons(); applyCalendarFilters(false);
+}
+function updateCycleButtons(){
+  const bl=$('btnLeader'),bs=$('btnScope'),bk=$('btnKind');
+  if(bl)bl.textContent=LEADER_LABELS[APP.filters.leader]||APP.filters.leader;
+  if(bs)bs.textContent=SCOPE_LABELS[APP.filters.scope]||APP.filters.scope;
+  if(bk)bk.textContent=KIND_LABELS[APP.filters.kind]||APP.filters.kind;
+  // highlight active
+  if(bl)bl.classList.toggle('active',APP.filters.leader!=='all');
+  if(bs)bs.classList.toggle('active',APP.filters.scope!=='CURRENT');
+  if(bk)bk.classList.toggle('active',APP.filters.kind!=='HOP');
+}
+
 function renderCalendar(){
   const f=APP.filters;
   $('screen-calendar').innerHTML=`
-    <div class="filterbar">
-      <div class="search-wrap">
-        <input id="calKw" placeholder="Tìm nội dung, địa điểm, chủ trì, số văn bản..." value="${esc(f.kw)}" onkeydown="if(event.key==='Enter')applyCalendarFilters()">
-        <button onclick="applyCalendarFilters()">🔍 Tìm</button>
+    <div class="cal-search-row">
+      <div class="search-wrap" style="flex:1">
+        <input id="calKw" placeholder="Tìm nội dung, địa điểm, chủ trì..." value="${esc(f.kw)}" onkeydown="if(event.key==='Enter')applyCalendarFilters()">
+        <button onclick="applyCalendarFilters()">🔍</button>
       </div>
+      ${hasRole(ROLE_EDIT)?'<button class="btn primary sm" onclick="openMeetingForm()" style="white-space:nowrap">＋ Thêm</button>':''}
+    </div>
+    <div class="cal-filter-row">
+      <button id="btnLeader" class="cycle-btn" onclick="cycleLeader()">${LEADER_LABELS[f.leader]||f.leader}</button>
+      <button id="btnScope"  class="cycle-btn" onclick="cycleScope()">${SCOPE_LABELS[f.scope]||f.scope}</button>
+      <button id="btnKind"   class="cycle-btn ${f.kind!=='HOP'?'active':''}" onclick="cycleKind()">${KIND_LABELS[f.kind]||f.kind}</button>
+    </div>
+    <div class="desktop-filters" style="display:none">
       <select id="calLeader" class="select-field" onchange="applyCalendarFilters()">
         <option value="all">👤 Tất cả lãnh đạo</option>
         ${leaderOptions(f.leader)}
@@ -1236,14 +1347,13 @@ function renderCalendar(){
         <option value="MONTH" ${f.scope==='MONTH'?'selected':''}>🗓 Tháng này</option>
         <option value="ALL" ${f.scope==='ALL'?'selected':''}>📂 Toàn bộ</option>
       </select>
-    </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
       <div class="seg">
         <button class="seg-btn ${f.kind==='HOP'?'active':''}" onclick="setCalendarKind('HOP')">🏛 Lịch Họp</button>
         <button class="seg-btn ${f.kind==='GIAO_BAN'?'active':''}" onclick="setCalendarKind('GIAO_BAN')">📋 Giao Ban</button>
       </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:6px">
       <span id="calCount" class="filter-note"></span>
-      ${hasRole(ROLE_EDIT)?'<button class="btn primary sm" onclick="openMeetingForm()">＋ Thêm lịch</button>':''}
     </div>
     <div id="calList"></div>`;
   applyCalendarFilters(false);
@@ -1263,6 +1373,7 @@ function weekRange(d){
 function parseIsoDate(v){if(!v)return null;const[y,m,d]=String(v).split('-').map(Number);if(!y||!m||!d)return null;return new Date(y,m-1,d)}
 async function changeScope(scope){
   APP.filters.scope=scope;
+  if(scope==='YEAR'){applyCalendarFilters(false);return;}
   if(scope==='ALL'&&!APP.loadedAll){
     $('calList').innerHTML='<div class="loading"><div class="spin"></div><span>Đang tải toàn bộ lịch...</span></div>';
     try{const res=await api('getMeetings',{showPast:true,limit:5000});APP.meetings=res.meetings||[];APP.loadedAll=true;$('navMeetCount').textContent=APP.meetings.length;$('bnMeetBadge').textContent=APP.meetings.length;}
@@ -1283,6 +1394,7 @@ function applyCalendarFilters(read=true){
     if(f.scope==='CURRENT'&&e&&e<today)return false;
     if(f.scope==='WEEK'&&(!e||!s||e<wStart||s>wEnd))return false;
     if(f.scope==='MONTH'&&(!e||!s||e<mStart||s>mEnd))return false;
+    if(f.scope==='YEAR'&&(!s||s.getFullYear()!==today.getFullYear()))return false;
     const isGB=isGiaoBanMeeting(m);
     if(f.kind==='GIAO_BAN'&&!isGB)return false;
     if(f.kind==='HOP'&&isGB)return false;
