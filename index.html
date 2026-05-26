@@ -980,6 +980,7 @@
       </div>
       <div class="side-actions">
         <button onclick="refreshAll()">↻ Tải lại</button>
+        <button onclick="openChangePassword()">🔑 Đổi MK</button>
         <button class="logout-btn" onclick="logout()">⏻ Đăng xuất</button>
       </div>
     </div>
@@ -1027,6 +1028,10 @@
   <button class="bn-item" id="bnSettings" data-screen="settings" onclick="go('settings')">
     <span class="bn-icon">⚙️</span>
     <span>Danh mục</span>
+  </button>
+  <button class="bn-item" onclick="openChangePassword()">
+    <span class="bn-icon">🔑</span>
+    <span>Đổi MK</span>
   </button>
   <button class="bn-item bn-logout" onclick="logout()">
     <span class="bn-icon">⏻</span>
@@ -1442,12 +1447,14 @@ function applyCalendarFilters(read=true){
   const[wStart,wEnd]=weekRange(today);
   const mStart=new Date(today.getFullYear(),today.getMonth(),1);
   const mEnd=new Date(today.getFullYear(),today.getMonth()+1,0,23,59,59,999);
+  const yStart=new Date(today.getFullYear(),0,1);
+  const yEnd=new Date(today.getFullYear(),11,31,23,59,59,999);
   let arr=APP.meetings.filter(m=>{
     const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;
     if(f.scope==='CURRENT'&&e&&e<today)return false;
-    if(f.scope==='WEEK'&&(!e||!s||e<wStart||s>wEnd))return false;
-    if(f.scope==='MONTH'&&(!e||!s||e<mStart||s>mEnd))return false;
-    if(f.scope==='YEAR'&&(!s||s.getFullYear()!==today.getFullYear()))return false;
+    if(f.scope==='WEEK'&&(!s||!e||e<wStart||s>wEnd))return false;
+    if(f.scope==='MONTH'&&(!s||!e||s>mEnd||e<mStart))return false;
+    if(f.scope==='YEAR'&&(!s||!e||s>yEnd||e<yStart))return false;
     const isGB=isGiaoBanMeeting(m);
     if(f.kind==='GIAO_BAN'&&!isGB)return false;
     if(f.kind==='HOP'&&isGB)return false;
@@ -1458,7 +1465,7 @@ function applyCalendarFilters(read=true){
   if($('calCount'))$('calCount').textContent=`${arr.length} lịch · ${scopeLabel(f.scope)}`;
   if($('calList'))$('calList').innerHTML=meetingCards(arr);
 }
-function scopeLabel(v){return({CURRENT:'Hiện thời',ALL:'Toàn bộ',WEEK:'Tuần này',MONTH:'Tháng này'}[v]||v)}
+function scopeLabel(v){return({CURRENT:'Từ hôm nay',ALL:'Toàn bộ',WEEK:'Tuần này',MONTH:'Tháng này',YEAR:'Năm nay'}[v]||v)}
 function dateVNShort(iso){if(!iso)return'';var s=String(iso).trim();var m1=s.match(/^([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})/);if(m1)return Number(m1[3])+'/'+(+m1[2])+'/'+m1[1];var m2=s.match(/^([0-9]{1,2})\/([0-9]{1,2})\/([0-9]{4})/);if(m2)return Number(m2[1])+'/'+(+m2[2])+'/'+m2[3];try{var dt=new Date(s);if(!isNaN(dt.getTime()))return dt.getDate()+'/'+(dt.getMonth()+1)+'/'+dt.getFullYear();}catch(e){}return s;}
 function weekdayLabel(m){if(m.thu)return m.thu;const dt=parseIsoDate(m.ngayBatDau);if(!dt)return'';return['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'][dt.getDay()]}
 function timeRange(m){return`${esc(m.gioBatDau||'')}${m.gioKetThuc?'–'+esc(m.gioKetThuc):''}`}
@@ -1494,7 +1501,7 @@ function meetingCards(arr,compact){
         ${m.chuTri?`<div class="m-meta-row"><span class="label">👤 Chủ trì</span><span>${esc(m.chuTri)}</span></div>`:''}
         ${m.thanhPhan&&!compact?`<div class="m-meta-row"><span class="label">👥 Thành phần</span><span>${esc(m.thanhPhan)}</span></div>`:''}
         ${m.ghiChu&&!compact?`<div class="m-meta-row"><span class="label">📝 Ghi chú</span><span>${esc(m.ghiChu)}</span></div>`:''}
-        <div class="m-meta-row"><span class="label">📎 Tài liệu</span><span>${m.fileCount||0} file</span></div>
+        ${m.linkFolder?`<div class="m-meta-row"><span class="label">📎 Tài liệu</span><a href="${esc(m.linkFolder)}" target="_blank" style="color:var(--blue);font-weight:700;text-decoration:none">${m.fileCount||0} file ↗</a></div>`:`<div class="m-meta-row"><span class="label">📎 Tài liệu</span><span>${m.fileCount||0} file</span></div>`}
       </div>
       <div class="m-actions">
         <button class="btn sm" onclick="openDetail('${esc(m.meetingId)}')">👁 Xem chi tiết</button>
@@ -1773,6 +1780,49 @@ function renderSettings(){
 }
 
 // ===== MODAL =====
+function openChangePassword(){
+  showModal('<h3>🔑 Đổi mật khẩu</h3>',`
+    <div class="form-grid" style="grid-template-columns:1fr">
+      <div class="field">
+        <label>Mật khẩu hiện tại</label>
+        <input id="cpOld" type="password" placeholder="Nhập mật khẩu hiện tại">
+      </div>
+      <div class="field">
+        <label>Mật khẩu mới</label>
+        <input id="cpNew" type="password" placeholder="Tối thiểu 6 ký tự">
+      </div>
+      <div class="field">
+        <label>Xác nhận mật khẩu mới</label>
+        <input id="cpNew2" type="password" placeholder="Nhập lại mật khẩu mới">
+      </div>
+      <div id="cpMsg"></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button class="btn" onclick="closeModal()">Đóng</button>
+      <button class="btn primary" onclick="saveChangePassword()">💾 Đổi mật khẩu</button>
+    </div>`);
+  setTimeout(()=>{ const el=document.getElementById('cpOld'); if(el)el.focus(); },100);
+}
+
+async function saveChangePassword(){
+  const oldPw=document.getElementById('cpOld').value;
+  const newPw=document.getElementById('cpNew').value;
+  const newPw2=document.getElementById('cpNew2').value;
+  const msgEl=document.getElementById('cpMsg');
+  if(!oldPw||!newPw||!newPw2){ msg(msgEl,'Vui lòng nhập đầy đủ thông tin.','err'); return; }
+  if(newPw.length<6){ msg(msgEl,'Mật khẩu mới phải có ít nhất 6 ký tự.','err'); return; }
+  if(newPw!==newPw2){ msg(msgEl,'Mật khẩu mới không khớp.','err'); return; }
+  if(oldPw===newPw){ msg(msgEl,'Mật khẩu mới phải khác mật khẩu cũ.','err'); return; }
+  msg(msgEl,'Đang xử lý...');
+  try{
+    await api('changePassword',{oldPassword:oldPw,newPassword:newPw});
+    msg(msgEl,'✅ Đổi mật khẩu thành công!','ok');
+    setTimeout(()=>closeModal(),1500);
+  }catch(e){
+    msg(msgEl,e.message,'err');
+  }
+}
+
 function showModal(title,body){
   $('modal').innerHTML=`<div class="modal-card"><div class="modal-h">${title}<button class="modal-close" onclick="closeModal()">✕</button></div><div id="modalBody" class="modal-b">${body}</div></div>`;
   $('modal').classList.remove('hide');
