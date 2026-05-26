@@ -411,6 +411,8 @@
       transition: transform .18s, box-shadow .18s;
     }
     .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+    .stat-active { box-shadow: 0 0 0 2.5px var(--blue2), var(--shadow) !important; transform: translateY(-2px); }
+    .th-active,.td-active { background: #eff6ff !important; color: var(--blue) !important; font-weight:800; }
     .stat-card::after {
       content: '';
       position: absolute;
@@ -853,6 +855,13 @@
         border-radius: 0 0 3px 3px;
       }
       .bn-item.bn-logout { color: #dc2626; }
+      /* Mobile: ẩn pill loại lịch, trạng thái, Hôm nay */
+      @media (max-width: 768px) {
+        .pill.type-HOP,.pill.type-TRUC_BAN,.pill.type-CONG_TAC,
+        .pill[class*="type-"],
+        .pill[class*="status-"],
+        .pill-today { display: none !important; }
+      }
       .bn-item.bn-logout:active { background: #fee2e2; }
       /* Mobile calendar filter */
       .cal-search-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
@@ -1031,7 +1040,7 @@
 <script>
 const APP = {
   token:'', user:null, setup:{}, depts:[], usersLite:[], meetings:[],
-  dashboard:null, currentScreen:'calendar',
+  dashboard:null, currentScreen:'calendar', dashPeriod:'week',
   filters:{kw:'', leader:'all', scope:'CURRENT', kind:'HOP'},
   loadedAll:false, pendingFormFiles:[]
 };
@@ -1047,19 +1056,43 @@ const ROLE_EDIT_LABEL = {
 
 function $(id){return document.getElementById(id)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
-function hasRole(list){return APP.user && list.includes(APP.user.role)}
+function hasRole(list){
+  if(!APP.user)return false;
+  if(list.includes(APP.user.role))return true;
+  // Fallback: khớp không phân biệt hoa thường
+  const r=APP.user.role.toLowerCase();
+  return list.some(x=>x.toLowerCase()===r);
+}
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 
 function api(action, payload={}) {
   payload.action = action;
   payload.token = APP.token;
+
+  // Upload file (base64 lớn) → dùng fetch POST để tránh giới hạn URL
+  if (action === 'uploadMeetingFile') {
+    return fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload),
+      redirect: 'follow'
+    })
+    .then(r => r.text())
+    .then(text => {
+      // GAS POST trả JSON trực tiếp
+      try { const res = JSON.parse(text); if (!res || res.ok === false) throw new Error((res && res.msg) || 'Lỗi upload'); return res; }
+      catch(e) { throw new Error('Lỗi parse response: ' + text.slice(0,100)); }
+    });
+  }
+
+  // Các action thông thường → dùng JSONP (GET)
   return new Promise((resolve, reject) => {
     const cbName = '_cb_' + Date.now() + Math.random().toString(36).slice(2);
     const script = document.createElement('script');
     const timer = setTimeout(() => {
       cleanup();
-      console.error('GAS timeout'); reject(new Error('Timeout — GAS không phản hồi. Kiểm tra Access=Anyone'));
+      reject(new Error('Timeout — GAS không phản hồi'));
     }, 25000);
     function cleanup() {
       clearTimeout(timer);
@@ -1068,21 +1101,15 @@ function api(action, payload={}) {
     }
     window[cbName] = function(res) {
       cleanup();
-      if (!res || res.ok === false) {
-        reject(new Error((res && res.msg) || 'Lỗi không xác định'));
-      } else {
-        resolve(res);
-      }
+      if (!res || res.ok === false) reject(new Error((res && res.msg) || 'Lỗi không xác định'));
+      else resolve(res);
     };
-    const qs = new URLSearchParams({
-      data: JSON.stringify(payload),
-      callback: cbName
-    });
+    const qs = new URLSearchParams({ data: JSON.stringify(payload), callback: cbName });
     script.src = GAS_URL + '?' + qs.toString();
     script.async = true;
-    script.onerror = function(e) {
+    script.onerror = function() {
       cleanup();
-      console.error('GAS script error',e); reject(new Error('Script GAS lỗi — kiểm tra Access=Anyone'));
+      reject(new Error('Không kết nối được GAS — kiểm tra Access=Anyone'));
     };
     (document.head || document.body).appendChild(script);
   });
@@ -1190,7 +1217,8 @@ function renderDashboard(){
   const meetings=APP.meetings||[];
   const countWeek=meetings.filter(m=>{const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;return s&&e&&s<=wEnd&&e>=wStart;}).length;
   const countMonth=meetings.filter(m=>{const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;return s&&e&&s<=mEnd&&e>=mStart;}).length;
-  const countYear=meetings.filter(m=>{const s=parseIsoDate(m.ngayBatDau);return s&&s.getFullYear()===now.getFullYear();}).length;
+  const yStart=new Date(now.getFullYear(),0,1); const yEnd=new Date(now.getFullYear(),11,31,23,59,59,999);
+  const countYear=meetings.filter(m=>{const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;return s&&e&&s<=yEnd&&e>=yStart;}).length;
   // Danh sách 4 lãnh đạo cố định theo thứ tự ưu tiên
   const LEADERS = [
     { name: 'Phạm Quốc Hưng',    display: 'Đ/c Phạm Quốc Hưng – Chi cục trưởng' },
@@ -1210,17 +1238,23 @@ function renderDashboard(){
   const leaderMap={};
   LEADERS.forEach(l=>{ leaderMap[l.name]={...l,week:0,month:0,year:0}; });
   meetings.forEach(m=>{
+    const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;
+    if(!s)return;
     const raw=[m.chuTri,m.lanhDaoLienQuan].join(',');
-    const parts=raw.split(/[,;\/ ]+/).map(x=>x.trim()).filter(x=>x.length>1);
+    const parts=raw.split(/[,;]+/).map(x=>x.trim()).filter(x=>x.length>1);
+    const matched=new Set();
     parts.forEach(part=>{
       const pn=normName(part);
       LEADERS.forEach(l=>{
+        if(matched.has(l.name))return;
         if(pn===normName(l.name)||pn.includes(normName(l.name))||normName(l.name).includes(pn)){
-          const s=parseIsoDate(m.ngayBatDau);
-          if(!s)return;
-          if(s>=wStart&&s<=wEnd)leaderMap[l.name].week++;
-          if(s>=mStart&&s<=mEnd)leaderMap[l.name].month++;
-          if(s.getFullYear()===now.getFullYear())leaderMap[l.name].year++;
+          matched.add(l.name);
+          const inWeek=s<=wEnd&&e>=wStart;
+          const inMonth=s<=mEnd&&e>=mStart;
+          const inYear=s<=yEnd&&e>=yStart;
+          if(inWeek)leaderMap[l.name].week++;
+          if(inMonth)leaderMap[l.name].month++;
+          if(inYear)leaderMap[l.name].year++;
         }
       });
     });
@@ -1230,10 +1264,10 @@ function renderDashboard(){
   const maxYear=Math.max(1,...leaderRows.map(x=>x.year));
   $('screen-dashboard').innerHTML=`
     <div class="stats-grid">
-      ${statCard('Hôm nay',d.today||0,'Lịch diễn ra hôm nay')}
-      ${statCard('Trong tuần',countWeek,'Từ thứ Hai đến Chủ nhật')}
-      ${statCard('Trong tháng',countMonth,'Tháng '+String(now.getMonth()+1)+'/'+now.getFullYear())}
-      ${statCard('Trong năm',countYear,'Năm '+now.getFullYear())}
+      ${statCard('Hôm nay',d.today||0,'Lịch diễn ra hôm nay','','today')}
+      ${statCard('Trong tuần',countWeek,'Từ thứ Hai đến Chủ nhật','','week')}
+      ${statCard('Trong tháng',countMonth,'Tháng '+String(now.getMonth()+1)+'/'+now.getFullYear(),'','month')}
+      ${statCard('Trong năm',countYear,'Năm '+now.getFullYear(),'','year')}
     </div>
     <div class="sp"></div>
     <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
@@ -1248,7 +1282,7 @@ function renderDashboard(){
       <div class="panel-b">
         <div class="table-wrap">
           <table class="tbl leader-table">
-            <thead><tr><th>Lãnh đạo</th><th>Tuần</th><th>Tháng</th><th>Năm</th><th style="text-align:left;min-width:100px">Tỷ trọng năm</th></tr></thead>
+            <thead><tr><th>Lãnh đạo</th><th class="${APP.dashPeriod==='week'?'th-active':''}">Tuần</th><th class="${APP.dashPeriod==='month'?'th-active':''}">Tháng</th><th class="${APP.dashPeriod==='year'||APP.dashPeriod==='today'?'th-active':''}">Năm</th><th style="text-align:left;min-width:100px">Tỷ trọng</th></tr></thead>
             <tbody>
               ${leaderRows.map(x=>`<tr>
                 <td><b>${esc(x.display)}</b></td>
@@ -1267,12 +1301,17 @@ function renderDashboard(){
       <div class="panel"><div class="panel-h"><h3>Theo trạng thái</h3></div><div class="panel-b">${miniCountTable(d.byStatus||{},statusLabel)}</div></div>
     </div>`;
 }
-function statCard(k,v,sub){
-  return `<div class="stat-card">
+function statCard(k,v,sub,cls,period){
+  const isActive=period&&APP.dashPeriod===period;
+  return `<div class="stat-card${isActive?' stat-active':''}" ${period?`onclick="setDashPeriod('${period}')" style="cursor:pointer"`:''}>
     <div class="stat-k">${esc(k)}</div>
     <div class="stat-v">${esc(v)}</div>
     <div class="stat-sub">${esc(sub)}</div>
   </div>`;
+}
+function setDashPeriod(p){
+  APP.dashPeriod=p;
+  renderDashboard();
 }
 function miniCountTable(obj,labelFn){
   const rows=Object.keys(obj||{}).sort((a,b)=>(obj[b]||0)-(obj[a]||0));
@@ -1424,7 +1463,7 @@ function meetingCards(arr,compact){
           <span class="pill mono">${esc(m.meetingId)}</span>
           <span class="pill type-${esc(m.loaiLich)}">${esc(typeLabel(m.loaiLich))}</span>
           <span class="pill status-${esc(m.trangThai)}">${esc(statusLabel(m.trangThai))}</span>
-          ${isTd?'<span class="pill" style="background:#dcfce7;color:#166534">Hôm nay</span>':''}
+          ${isTd?'<span class="pill pill-today" style="background:#dcfce7;color:#166534">Hôm nay</span>':''}
         </div>
         <div class="m-dateline">
           <span class="date-pill${isWE?' weekend':''}${isTd?' today':''}">${esc(dateText)}</span>
