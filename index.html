@@ -1054,34 +1054,37 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH
 function api(action, payload={}) {
   payload.action = action;
   payload.token = APP.token;
-  // Gọi GAS qua fetch POST với Content-Type text/plain (tránh CORS preflight)
-  return fetch(GAS_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(payload),
-    redirect: 'follow'
-  })
-  .then(r => {
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    return r.json();
-  })
-  .then(res => {
-    if (!res || res.ok === false) throw new Error((res && res.msg) || 'Lỗi không xác định');
-    return res;
-  })
-  .catch(async err => {
-    // Fallback: thử GET với params (JSONP-like nhưng parse thủ công)
-    const params = new URLSearchParams({ data: JSON.stringify(payload), callback: 'cb' });
-    const r2 = await fetch(GAS_URL + '?' + params, { method: 'GET', redirect: 'follow' });
-    const text = await r2.text();
-    // Parse callback({...})
-    const m = text.match(/cb\((.+)\)\s*;?\s*$/s);
-    if (m) {
-      const res = JSON.parse(m[1]);
-      if (!res || res.ok === false) throw new Error((res && res.msg) || 'Lỗi không xác định');
-      return res;
+  return new Promise((resolve, reject) => {
+    const cbName = '_cb_' + Date.now() + Math.random().toString(36).slice(2);
+    const script = document.createElement('script');
+    const timer = setTimeout(() => {
+      cleanup();
+      console.error('GAS timeout'); reject(new Error('Timeout — GAS không phản hồi. Kiểm tra Access=Anyone'));
+    }, 25000);
+    function cleanup() {
+      clearTimeout(timer);
+      try { delete window[cbName]; } catch(e) {}
+      if (script && script.parentNode) script.parentNode.removeChild(script);
     }
-    throw new Error('Không kết nối được GAS. ' + err.message);
+    window[cbName] = function(res) {
+      cleanup();
+      if (!res || res.ok === false) {
+        reject(new Error((res && res.msg) || 'Lỗi không xác định'));
+      } else {
+        resolve(res);
+      }
+    };
+    const qs = new URLSearchParams({
+      data: JSON.stringify(payload),
+      callback: cbName
+    });
+    script.src = GAS_URL + '?' + qs.toString();
+    script.async = true;
+    script.onerror = function(e) {
+      cleanup();
+      console.error('GAS script error',e); reject(new Error('Script GAS lỗi — kiểm tra Access=Anyone'));
+    };
+    (document.head || document.body).appendChild(script);
   });
 }
 
@@ -1111,7 +1114,7 @@ async function login(){
     localStorage.setItem('lct_user',JSON.stringify(APP.user));
     showApp();await refreshAll();
     if(res.user.isDefaultPass)alert('Tài khoản đang dùng mật khẩu mặc định. Vui lòng đổi mật khẩu.')
-  }catch(e){msg($('loginMsg'),e.message,'err')}
+  }catch(e){msg($('loginMsg'),e.message+' (F12→Console để xem chi tiết)','err')}
 }
 
 function showApp(){
