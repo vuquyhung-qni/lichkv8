@@ -1093,7 +1093,7 @@ function setupItems(keys){for(const k of keys){if(APP.setup[k]&&APP.setup[k].len
 function typeLabel(v){const a=setupItems(['MEETING_TYPE','LOAI_LICH']).find(x=>x.value===v);return a?a.label:v}
 function statusLabel(v){const a=setupItems(['MEETING_STATUS','TRANG_THAI_LICH']).find(x=>x.value===v);return a?a.label:v}
 function optionsAny(keys,selected){return setupItems(keys).map(x=>`<option value="${esc(x.value)}"${x.value===selected?' selected':''}>${esc(x.label)}</option>`).join('')}
-function normText(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'d').replace(/[^a-z0-9]+/g,' ').trim()}
+function normText(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/[^a-z0-9]+/g,' ').trim()}
 function initials(name){return(name||'U').split(/\s+/).slice(-2).map(x=>x[0]).join('').toUpperCase()||'U'}
 
 // ===== INIT =====
@@ -1201,7 +1201,7 @@ function renderDashboard(){
   // Hàm chuẩn hoá: bỏ dấu, bỏ prefix "đ/c", "c ", chữ thường
   function normName(s){
     return String(s||'').toLowerCase()
-      .normalize('NFD').replace(/[̀-ͯ]/g,'')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
       .replace(/đ/g,'d')
       .replace(/^(d\/c|c)\s+/,'')
       .replace(/\s*[-–]\s*.*/,'')   // bỏ phần sau gạch ngang (chức danh)
