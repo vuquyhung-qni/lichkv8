@@ -736,6 +736,7 @@
 
     /* ===== BOTTOM NAV (mobile only) ===== */
     .bottom-nav { display: none; }
+    .app-ready .bottom-nav { display: none; }
 
     /* ===== SIDEBAR OVERLAY ===== */
     .sidebar-overlay { display: none; }
@@ -939,10 +940,7 @@
         <h1 id="pageTitle">LỊCH CÔNG TÁC</h1>
         <p id="pageSub">Chi cục Hải quan khu vực VIII</p>
       </div>
-      <div class="topbar-actions">
-        <button class="btn sm" onclick="refreshAll()">↻ Tải lại</button>
-        <button class="btn danger sm" onclick="logout()">Đăng xuất</button>
-      </div>
+
     </div>
     <div class="content">
       <section id="screen-dashboard" class="hide"></section>
@@ -1048,7 +1046,6 @@ async function login(){
 function showApp(){
   $('login').classList.add('hide');
   $('app').classList.remove('hide');
-  $('bottomNav').style.display='';
   $('uName').textContent=APP.user.fullname||APP.user.username;
   $('uRole').textContent=ROLE_EDIT_LABEL[APP.user.role]||APP.user.role;
   $('avatar').textContent=initials(APP.user.fullname||APP.user.username);
@@ -1060,7 +1057,6 @@ function showApp(){
 }
 function showLogin(){
   $('app').classList.add('hide');
-  $('bottomNav').style.display='none';
   $('login').classList.remove('hide');
   localStorage.removeItem('lct_token');
   localStorage.removeItem('lct_user');
@@ -1094,7 +1090,7 @@ async function refreshAll(){
   APP.usersLite=res.usersLite||[];APP.dashboard=res.dashboard;
   APP.meetings=res.meetings||[];APP.loadedAll=false;
   $('navMeetCount').textContent=APP.meetings.length;
-  $('bnMeetBadge').textContent=APP.meetings.length;
+  const bnBadge=$('bnMeetBadge');if(bnBadge)bnBadge.textContent=APP.meetings.length;
   render();
 }
 function setLoading(){
@@ -1106,28 +1102,58 @@ function render(){renderDashboard();renderCalendar();renderManage();renderUsers(
 // ===== DASHBOARD =====
 function renderDashboard(){
   const d=APP.dashboard||{};
-  const leaderRows=d.leaderStats||[];
-  const maxYear=Math.max(1,...leaderRows.map(x=>Number(x.year)||0));
+  // Tính thống kê tuần/tháng/năm từ danh sách meetings đã tải
+  const now=new Date(); now.setHours(0,0,0,0);
+  const[wStart,wEnd]=weekRange(now);
+  const mStart=new Date(now.getFullYear(),now.getMonth(),1);
+  const mEnd=new Date(now.getFullYear(),now.getMonth()+1,0,23,59,59,999);
+  const meetings=APP.meetings||[];
+  const countWeek=meetings.filter(m=>{const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;return s&&e&&s<=wEnd&&e>=wStart;}).length;
+  const countMonth=meetings.filter(m=>{const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;return s&&e&&s<=mEnd&&e>=mStart;}).length;
+  const countYear=meetings.filter(m=>{const s=parseIsoDate(m.ngayBatDau);return s&&s.getFullYear()===now.getFullYear();}).length;
+  // Thống kê lãnh đạo từ meetings
+  const leaderMap={};
+  meetings.forEach(m=>{
+    const leaders=[m.chuTri,m.lanhDaoLienQuan].join(',');
+    const names=leaders.split(/[,;/]+/).map(x=>x.trim()).filter(x=>x&&x.length>1);
+    names.forEach(n=>{
+      if(!leaderMap[n])leaderMap[n]={name:n,week:0,month:0,year:0};
+      const s=parseIsoDate(m.ngayBatDau);
+      if(!s)return;
+      if(s>=wStart&&s<=wEnd)leaderMap[n].week++;
+      if(s>=mStart&&s<=mEnd)leaderMap[n].month++;
+      if(s.getFullYear()===now.getFullYear())leaderMap[n].year++;
+    });
+  });
+  const leaderRows=Object.values(leaderMap).filter(x=>x.year>0).sort((a,b)=>b.year-a.year).slice(0,10);
+  const maxYear=Math.max(1,...leaderRows.map(x=>x.year));
   $('screen-dashboard').innerHTML=`
     <div class="stats-grid">
-      ${statCard('Hôm nay',d.today||0,'Lịch diễn ra hôm nay','blue')}
-      ${statCard('Trong tuần',d.week||0,'Thứ Hai – Chủ nhật','purple')}
-      ${statCard('Trong tháng',d.month||0,'Tháng hiện tại','green')}
-      ${statCard('Trong năm',d.year||0,'Năm hiện tại','gold')}
+      ${statCard('Hôm nay',d.today||0,'Lịch diễn ra hôm nay')}
+      ${statCard('Trong tuần',countWeek,'Từ thứ Hai đến Chủ nhật')}
+      ${statCard('Trong tháng',countMonth,'Tháng '+String(now.getMonth()+1)+'/'+now.getFullYear())}
+      ${statCard('Trong năm',countYear,'Năm '+now.getFullYear())}
+    </div>
+    <div class="sp"></div>
+    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
+      ${statCard('Tổng',d.total||0,'Tất cả lịch')}
+      ${statCard('Đã duyệt',d.published||0,'Trạng thái PUBLISHED')}
+      ${statCard('Nháp',d.draft||0,'Trạng thái DRAFT')}
+      ${statCard('Đã hủy',d.cancelled||0,'Trạng thái CANCELLED')}
     </div>
     <div class="sp"></div>
     <div class="panel">
-      <div class="panel-h"><h3>📊 Thống kê lãnh đạo tham dự / chủ trì</h3><span class="muted" style="font-size:.78rem">Theo tuần · tháng · năm hiện tại</span></div>
+      <div class="panel-h"><h3>📊 Thống kê lãnh đạo tham dự / chủ trì</h3><span class="muted" style="font-size:.78rem">Tuần · Tháng · Năm hiện tại (tính từ dữ liệu hiện có)</span></div>
       <div class="panel-b">
         <div class="table-wrap">
           <table class="tbl leader-table">
             <thead><tr><th>Lãnh đạo</th><th>Tuần</th><th>Tháng</th><th>Năm</th><th style="text-align:left;min-width:100px">Tỷ trọng năm</th></tr></thead>
             <tbody>
               ${leaderRows.length?leaderRows.map(x=>`<tr>
-                <td><b>Đ/c ${esc(x.leader)}</b></td>
-                <td>${x.week||0}</td><td>${x.month||0}</td>
-                <td><b>${x.year||0}</b></td>
-                <td><div class="barline"><span style="width:${Math.min(100,Math.round((Number(x.year)||0)*100/maxYear))}%"></span></div></td>
+                <td><b>${esc(x.name)}</b></td>
+                <td>${x.week}</td><td>${x.month}</td>
+                <td><b>${x.year}</b></td>
+                <td><div class="barline"><span style="width:${Math.min(100,Math.round(x.year*100/maxYear))}%"></span></div></td>
               </tr>`).join(''):'<tr><td colspan="5" class="muted" style="text-align:center;padding:20px">Chưa có dữ liệu lãnh đạo.</td></tr>'}
             </tbody>
           </table>
@@ -1136,7 +1162,7 @@ function renderDashboard(){
     </div>
     <div class="sp"></div>
     <div class="two-col">
-      <div class="panel"><div class="panel-h"><h3>Theo loại lịch</h3></div><div class="panel-b">${miniCountTable(d.byTypeYear||{},typeLabel)}</div></div>
+      <div class="panel"><div class="panel-h"><h3>Theo loại lịch</h3></div><div class="panel-b">${miniCountTable(d.byType||{},typeLabel)}</div></div>
       <div class="panel"><div class="panel-h"><h3>Theo trạng thái</h3></div><div class="panel-b">${miniCountTable(d.byStatus||{},statusLabel)}</div></div>
     </div>`;
 }
