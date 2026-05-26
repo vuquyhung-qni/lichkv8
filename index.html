@@ -1431,8 +1431,9 @@ function cycleLeader(){
 function cycleScope(){
   const idx=SCOPE_CYCLE.indexOf(APP.filters.scope);
   const next=SCOPE_CYCLE[(idx+1)%SCOPE_CYCLE.length];
-  if(next==='YEAR'){APP.filters.scope='YEAR';updateCycleButtons();applyCalendarFilters(false);}
-  else changeScope(next).then(()=>{updateCycleButtons();});
+  APP.filters.scope=next;
+  updateCycleButtons();
+  changeScope(next);
 }
 function cycleKind(){
   const idx=KIND_CYCLE.indexOf(APP.filters.kind);
@@ -1502,7 +1503,18 @@ function weekRange(d){
 function parseIsoDate(v){if(!v)return null;const[y,m,d]=String(v).split('-').map(Number);if(!y||!m||!d)return null;return new Date(y,m-1,d)}
 async function changeScope(scope){
   APP.filters.scope=scope;
-  if(scope==='YEAR'){applyCalendarFilters(false);return;}
+  if(scope==='YEAR'||scope==='WEEK'||scope==='MONTH'){
+    if(!APP.allMeetings&&!APP._loadingAll){
+      APP._loadingAll=true;
+      if($('calList'))$('calList').innerHTML='<div class="loading"><div class="spin"></div><span>Đang tải lịch...</span></div>';
+      try{
+        const res=await api('getMeetings',{showPast:true,limit:5000});
+        APP.allMeetings=res.meetings||[];
+        APP._loadingAll=false;
+      }catch(e){APP._loadingAll=false;}
+    }
+    applyCalendarFilters(false);return;
+  }
   if(scope==='ALL'&&!APP.loadedAll){
     $('calList').innerHTML='<div class="loading"><div class="spin"></div><span>Đang tải toàn bộ lịch...</span></div>';
     try{const res=await api('getMeetings',{showPast:true,limit:5000});APP.meetings=res.meetings||[];APP.loadedAll=true;$('navMeetCount').textContent=APP.meetings.length;$('bnMeetBadge').textContent=APP.meetings.length;}
@@ -1520,7 +1532,19 @@ function applyCalendarFilters(read=true){
   const mEnd=new Date(today.getFullYear(),today.getMonth()+1,0,23,59,59,999);
   const yStart=new Date(today.getFullYear(),0,1);
   const yEnd=new Date(today.getFullYear(),11,31,23,59,59,999);
-  let arr=APP.meetings.filter(m=>{
+  // Dùng allMeetings cho tuần/tháng/năm/toàn bộ (cần lịch đã qua)
+  const srcMeetings = (f.scope==='CURRENT') ? APP.meetings : (APP.allMeetings||APP.meetings);
+  // Nếu chưa có allMeetings và cần lịch đã qua, load ngầm
+  if(f.scope!=='CURRENT' && !APP.allMeetings && !APP._loadingAll){
+    APP._loadingAll=true;
+    api('getMeetings',{showPast:true,limit:5000}).then(res=>{
+      APP.allMeetings=res.meetings||[];
+      APP._loadingAll=false;
+      applyCalendarFilters(false);
+    }).catch(()=>{APP._loadingAll=false;});
+    if($('calCount'))$('calCount').textContent='Đang tải...';
+  }
+  let arr=srcMeetings.filter(m=>{
     const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;
     if(f.scope==='CURRENT'&&e&&e<today)return false;
     if(f.scope==='WEEK'&&(!s||!e||e<wStart||s>wEnd))return false;
