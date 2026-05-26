@@ -1001,17 +1001,73 @@ function $(id){return document.getElementById(id)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
 function hasRole(list){return APP.user && list.includes(APP.user.role)}
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
+// URL Web App Apps Script dùng khi chạy file trên GitHub Pages.
+// Đã cấu hình theo đường dẫn anh cung cấp.
+const GAS_WEB_APP_URL = localStorage.getItem('LCT_GAS_WEB_APP_URL') || 'https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec';
+
 function api(action,payload={}){
-  payload.action=action; payload.token=APP.token;
+  payload = Object.assign({}, payload || {});
+  payload.action = action;
+  if (payload.token === undefined) payload.token = APP.token || '';
+
+  // Khi chạy trực tiếp trong Google Apps Script HtmlService thì dùng google.script.run.
+  if (window.google && google.script && google.script.run) {
+    return new Promise((resolve,reject)=>{
+      google.script.run
+        .withSuccessHandler(res=>{
+          if(!res||res.ok===false){reject(new Error((res&&res.msg)||'Lỗi không xác định'));return}
+          resolve(res)
+        })
+        .withFailureHandler(err=>reject(new Error(err.message||err)))
+        .api(payload)
+    })
+  }
+
+  // Khi chạy trên GitHub Pages thì không có google.script.run,
+  // dùng JSONP để gọi Apps Script Web App, tránh lỗi CORS.
+  return apiJsonp_(payload);
+}
+
+function apiJsonp_(payload){
+  const url = String(GAS_WEB_APP_URL || '').trim();
+  if (!url) {
+    return Promise.reject(new Error('File đang chạy trên GitHub nên cần cấu hình GAS_WEB_APP_URL bằng link Web App Apps Script dạng /exec.'));
+  }
+
   return new Promise((resolve,reject)=>{
-    google.script.run
-      .withSuccessHandler(res=>{
-        if(!res||res.ok===false){reject(new Error((res&&res.msg)||'Lỗi không xác định'));return}
-        resolve(res)
-      })
-      .withFailureHandler(err=>reject(new Error(err.message||err)))
-      .api(payload)
-  })
+    const cb = 'LCT_CB_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    const qs = 'callback=' + encodeURIComponent(cb) + '&payload=' + encodeURIComponent(JSON.stringify(payload));
+    const sep = url.includes('?') ? '&' : '?';
+    const script = document.createElement('script');
+    let done = false;
+
+    window[cb] = function(res){
+      done = true;
+      try { delete window[cb]; script.remove(); } catch(e) {}
+      if(!res || res.ok === false) {
+        reject(new Error((res && res.msg) || 'Lỗi không xác định'));
+      } else {
+        resolve(res);
+      }
+    };
+
+    script.onerror = function(){
+      if(done) return;
+      done = true;
+      try { delete window[cb]; script.remove(); } catch(e) {}
+      reject(new Error('Không gọi được Apps Script Web App. Kiểm tra lại link /exec, quyền deploy Anyone và backend Code.gs có hỗ trợ JSONP.'));
+    };
+
+    script.src = url + sep + qs + '&_=' + Date.now();
+    document.body.appendChild(script);
+
+    setTimeout(()=>{
+      if(done) return;
+      done = true;
+      try { delete window[cb]; script.remove(); } catch(e) {}
+      reject(new Error('Quá thời gian kết nối Apps Script. Kiểm tra link Web App /exec hoặc deploy lại Apps Script.'));
+    }, 30000);
+  });
 }
 
 function dateVN(iso){if(!iso)return'';const[y,m,d]=String(iso).split('-');return d&&m&&y?`${d}/${m}/${y}`:iso}
