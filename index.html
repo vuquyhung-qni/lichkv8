@@ -1116,7 +1116,14 @@ function api(action, payload={}) {
   });
 }
 
-function dateVN(iso){if(!iso)return'';const[y,m,d]=String(iso).split('-');return d&&m&&y?`${d}/${m}/${y}`:iso}
+function dateVN(iso){
+  if(!iso)return'';
+  const s=String(iso).trim();
+  const m1=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m1)return`${m1[3].padStart(2,'0')}/${m1[2].padStart(2,'0')}/${m1[1]}`;
+  try{const dt=new Date(s);if(!isNaN(dt.getTime()))return`${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`;}catch(e){}
+  return iso;
+}
 function setupItems(keys){for(const k of keys){if(APP.setup[k]&&APP.setup[k].length)return APP.setup[k];}return[]}
 function typeLabel(v){const a=setupItems(['MEETING_TYPE','LOAI_LICH']).find(x=>x.value===v);return a?a.label:v}
 function statusLabel(v){const a=setupItems(['MEETING_STATUS','TRANG_THAI_LICH']).find(x=>x.value===v);return a?a.label:v}
@@ -1210,16 +1217,27 @@ function render(){renderDashboard();renderCalendar();renderManage();renderUsers(
 // ===== DASHBOARD =====
 function renderDashboard(){
   const d=APP.dashboard||{};
-  // Tính thống kê tuần/tháng/năm từ danh sách meetings đã tải
   const now=new Date(); now.setHours(0,0,0,0);
   const[wStart,wEnd]=weekRange(now);
   const mStart=new Date(now.getFullYear(),now.getMonth(),1);
   const mEnd=new Date(now.getFullYear(),now.getMonth()+1,0,23,59,59,999);
-  const meetings=APP.meetings||[];
-  const countWeek=meetings.filter(m=>{const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;return s&&e&&s<=wEnd&&e>=wStart;}).length;
-  const countMonth=meetings.filter(m=>{const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;return s&&e&&s<=mEnd&&e>=mStart;}).length;
+  // Luôn dùng toàn bộ lịch cho dashboard (load ngầm nếu chưa có)
+  const meetings=APP.allMeetings||APP.meetings||[];
+  if(!APP.allMeetings && !APP._loadingAll){
+    APP._loadingAll=true;
+    api('getMeetings',{showPast:true,limit:5000}).then(res=>{
+      APP.allMeetings=res.meetings||[];
+      APP._loadingAll=false;
+      renderDashboard();
+    }).catch(()=>{APP._loadingAll=false;});
+    // Hiển thị chú thích đang tải
+  }
+  const isFullData=!!APP.allMeetings;
+  const nonTrucBan=meetings.filter(m=>m.loaiLich!=='TRUC_BAN'&&!String(m.noiDung||'').toLowerCase().includes('trực ban')&&!String(m.noiDung||'').toLowerCase().includes('giao ban'));
+  const countWeek=nonTrucBan.filter(m=>{const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;return s&&e&&s<=wEnd&&e>=wStart;}).length;
+  const countMonth=nonTrucBan.filter(m=>{const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;return s&&e&&s<=mEnd&&e>=mStart;}).length;
   const yStart=new Date(now.getFullYear(),0,1); const yEnd=new Date(now.getFullYear(),11,31,23,59,59,999);
-  const countYear=meetings.filter(m=>{const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;return s&&e&&s<=yEnd&&e>=yStart;}).length;
+  const countYear=nonTrucBan.filter(m=>{const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;return s&&e&&s<=yEnd&&e>=yStart;}).length;
   // Danh sách 4 lãnh đạo cố định theo thứ tự ưu tiên
   const LEADERS = [
     { name: 'Phạm Quốc Hưng',    display: 'Đ/c Phạm Quốc Hưng – Chi cục trưởng' },
@@ -1238,7 +1256,7 @@ function renderDashboard(){
   }
   const leaderMap={};
   LEADERS.forEach(l=>{ leaderMap[l.name]={...l,week:0,month:0,year:0}; });
-  meetings.forEach(m=>{
+  nonTrucBan.forEach(m=>{
     const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;
     if(!s)return;
     const raw=[m.chuTri,m.lanhDaoLienQuan].join(',');
@@ -1266,9 +1284,9 @@ function renderDashboard(){
   $('screen-dashboard').innerHTML=`
     <div class="stats-grid">
       ${statCard('Hôm nay',d.today||0,'Lịch diễn ra hôm nay','','today')}
-      ${statCard('Trong tuần',countWeek,'Từ thứ Hai đến Chủ nhật','','week')}
-      ${statCard('Trong tháng',countMonth,'Tháng '+String(now.getMonth()+1)+'/'+now.getFullYear(),'','month')}
-      ${statCard('Trong năm',countYear,'Năm '+now.getFullYear(),'','year')}
+      ${statCard('Trong tuần',countWeek,'Lịch họp tuần này','','week')}
+      ${statCard('Trong tháng',countMonth,'Lịch họp tháng '+String(now.getMonth()+1)+'/' +now.getFullYear(),'','month')}
+      ${statCard('Trong năm',countYear,(isFullData?'':'⏳ ')+'Năm '+now.getFullYear(),'','year')}
     </div>
     <div class="sp"></div>
     <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
@@ -1279,7 +1297,7 @@ function renderDashboard(){
     </div>
     <div class="sp"></div>
     <div class="panel">
-      <div class="panel-h"><h3>📊 Thống kê lãnh đạo tham dự / chủ trì</h3><span class="muted" style="font-size:.78rem">Tuần · Tháng · Năm hiện tại (tính từ dữ liệu hiện có)</span></div>
+      <div class="panel-h"><h3>📊 Thống kê lãnh đạo tham dự / chủ trì</h3><span class="muted" style="font-size:.78rem">Tổng lượt tham dự (1 lịch có thể tính cho nhiều lãnh đạo)</span></div>
       <div class="panel-b">
         <div class="table-wrap">
           <table class="tbl leader-table">
@@ -1441,7 +1459,7 @@ function applyCalendarFilters(read=true){
   if($('calList'))$('calList').innerHTML=meetingCards(arr);
 }
 function scopeLabel(v){return({CURRENT:'Hiện thời',ALL:'Toàn bộ',WEEK:'Tuần này',MONTH:'Tháng này'}[v]||v)}
-function dateVNShort(iso){if(!iso)return'';const[y,m,d]=String(iso).split('-');return(d&&m&&y)?`${Number(d)}/${Number(m)}/${y}`:String(iso).replace(/0(\d)/g,'$1')}
+function dateVNShort(iso){if(!iso)return'';var s=String(iso).trim();var m1=s.match(/^([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})/);if(m1)return Number(m1[3])+'/'+(+m1[2])+'/'+m1[1];var m2=s.match(/^([0-9]{1,2})\/([0-9]{1,2})\/([0-9]{4})/);if(m2)return Number(m2[1])+'/'+(+m2[2])+'/'+m2[3];try{var dt=new Date(s);if(!isNaN(dt.getTime()))return dt.getDate()+'/'+(dt.getMonth()+1)+'/'+dt.getFullYear();}catch(e){}return s;}
 function weekdayLabel(m){if(m.thu)return m.thu;const dt=parseIsoDate(m.ngayBatDau);if(!dt)return'';return['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'][dt.getDay()]}
 function timeRange(m){return`${esc(m.gioBatDau||'')}${m.gioKetThuc?'–'+esc(m.gioKetThuc):''}`}
 function isGiaoBanMeeting(m){return m.loaiLich==='TRUC_BAN'||normText(m.noiDung).includes('giao ban')||normText(m.noiDung).includes('truc ban')}
@@ -1457,14 +1475,12 @@ function meetingCards(arr,compact){
     const thu=weekdayLabel(m);
     const isWE=(thu==='Thứ Bảy'||thu==='Chủ Nhật');
     const isTd=isToday(m);
-    const dateText=m.ngayHienThi||dateVNShort(m.ngayBatDau);
+    const dateText=dateVNShort(m.ngayHienThi||m.ngayBatDau);
     return`<div class="meeting-card${isGiaoBanMeeting(m)?' truc':''}">
       <div class="m-top">
         <div class="m-badges">
           <span class="pill mono">${esc(m.meetingId)}</span>
           <span class="pill type-${esc(m.loaiLich)}">${esc(typeLabel(m.loaiLich))}</span>
-          <span class="pill status-${esc(m.trangThai)}">${esc(statusLabel(m.trangThai))}</span>
-          ${isTd?'<span class="pill pill-today" style="background:#dcfce7;color:#166534">Hôm nay</span>':''}
         </div>
         <div class="m-dateline">
           <span class="date-pill${isWE?' weekend':''}${isTd?' today':''}">${esc(dateText)}</span>
@@ -1517,10 +1533,10 @@ function renderManageTable(){
     <thead><tr><th>ID</th><th>Ngày / Giờ</th><th>Nội dung</th><th>Chủ trì</th><th>Trạng thái</th><th></th></tr></thead>
     <tbody>${arr.map(m=>`<tr>
       <td class="mono">${esc(m.meetingId)}</td>
-      <td class="nowrap">${esc(m.ngayHienThi)}<br><span class="muted" style="font-size:.78rem">${esc(m.gioBatDau)}–${esc(m.gioKetThuc)}</span></td>
+      <td class="nowrap">${esc(dateVNShort(m.ngayHienThi||m.ngayBatDau))}<br><span class="muted" style="font-size:.78rem">${esc(m.gioBatDau)}–${esc(m.gioKetThuc)}</span></td>
       <td><b>${esc(m.noiDung)}</b><br><span class="muted" style="font-size:.8rem">📍 ${esc(m.diaDiem)}</span></td>
       <td>${esc(m.chuTri)}</td>
-      <td><span class="pill status-${esc(m.trangThai)}">${esc(statusLabel(m.trangThai))}</span></td>
+      <td></td>
       <td class="nowrap">
         <button class="btn xs" onclick="openDetail('${esc(m.meetingId)}')">Xem</button>
         ${hasRole(ROLE_EDIT)?`<button class="btn primary xs" onclick="openMeetingForm('${esc(m.meetingId)}')">Sửa</button>`:''}
@@ -1622,12 +1638,12 @@ async function openDetail(id){
       <div style="display:grid;gap:6px;margin-bottom:16px">
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           <span class="pill mono">${esc(m.meetingId)}</span>
-          <span class="pill status-${esc(m.trangThai)}">${esc(statusLabel(m.trangThai))}</span>
+          
           <span class="pill">${esc(typeLabel(m.loaiLich))}</span>
         </div>
         <h2 style="font-size:1.1rem;color:var(--navy);line-height:1.35">${esc(m.noiDung)}</h2>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <span class="date-pill">${esc(m.ngayHienThi||dateVNShort(m.ngayBatDau))}</span>
+          <span class="date-pill">${esc(dateVNShort(m.ngayHienThi||m.ngayBatDau))}</span>
           <span class="date-pill">${esc(weekdayLabel(m))}</span>
           <span class="date-pill time">⏰ ${timeRange(m)}</span>
         </div>
