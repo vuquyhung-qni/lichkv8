@@ -1374,7 +1374,7 @@ function toggleSide(){
 }
 function closeSide(){$('sidebar').classList.remove('open');$('sidebarOverlay').classList.remove('show')}
 
-function go(screen){
+async function go(screen){
   APP.currentScreen=screen;
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.screen===screen));
   document.querySelectorAll('.bn-item').forEach(b=>b.classList.toggle('active',b.dataset.screen===screen));
@@ -1383,7 +1383,7 @@ function go(screen){
   const titles={dashboard:'TỔNG QUAN',calendar:'LỊCH CÔNG TÁC',manage:'QUẢN LÝ LỊCH',users:'NGƯỜI DÙNG',settings:'DANH MỤC'};
   $('pageTitle').textContent=titles[screen]||'';
   if(window.innerWidth<768)closeSide();
-  render();
+  await render();
 }
 
 async function refreshAll(){
@@ -1402,7 +1402,7 @@ function setLoading(){
   ['screen-dashboard','screen-calendar','screen-manage','screen-users','screen-settings']
     .forEach(id=>$(id).innerHTML='<div class="loading"><div class="spin"></div><span>Đang tải...</span></div>');
 }
-function render(){renderDashboard();renderCalendar();renderManage();renderUsers();renderSettings();}
+async function render(){renderDashboard();renderCalendar();renderManage();await renderUsers();renderSettings();}
 
 // ===== DASHBOARD =====
 function renderDashboard(){
