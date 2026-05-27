@@ -1832,7 +1832,7 @@ function meetingCards(arr,compact){
         ${m.chuTri?`<div class="m-meta-row"><span class="label">👤 Chủ trì</span><span>${esc(m.chuTri)}</span></div>`:''}
         ${m.thanhPhan&&!compact?`<div class="m-meta-row"><span class="label">👥 Thành phần</span><span>${esc(m.thanhPhan)}</span></div>`:''}
         ${m.ghiChu&&!compact?`<div class="m-meta-row"><span class="label">📝 Ghi chú</span><span>${esc(m.ghiChu)}</span></div>`:''}
-        ${m.fileCount>0 ? (m.linkFolder ? `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><a href="${esc(m.linkFolder)}" target="_blank" style="color:var(--blue);font-weight:700;text-decoration:none">${m.fileCount} file ↗</a></div>` : `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><span style="font-weight:700">${m.fileCount} file</span><span class="muted" style="font-size:.76rem;margin-left:4px">(chưa có link Drive)</span></div>`) : `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><span class="muted">0 file</span></div>`}
+        ${m.fileCount>0 ? (m.fileCount===1 && m.firstFileUrl ? `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><a href="${esc(m.firstFileUrl)}" target="_blank" style="color:var(--blue);font-weight:700;text-decoration:none">1 file ↗</a></div>` : (m.linkFolder ? `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><a href="${esc(m.linkFolder)}" target="_blank" style="color:var(--blue);font-weight:700;text-decoration:none">${m.fileCount} file ↗</a></div>` : `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><span style="font-weight:700">${m.fileCount} file</span><span class="muted" style="font-size:.76rem;margin-left:4px">(chưa có link Drive)</span></div>`)) : `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><span class="muted">0 file</span></div>`}
       </div>
       <div class="m-actions">
         <button class="btn sm" onclick="openDetail('${esc(m.meetingId)}')">👁 Xem chi tiết</button>
@@ -1883,7 +1883,24 @@ function renderManageTable(){
   </table></div>`;
 }
 function options(key,selected){return optionsAny([key],selected)}
-function deptDatalist(){return`<datalist id="deptList">${APP.depts.map(d=>`<option value="${esc(d.code)}">${esc(d.name)}</option>`).join('')}</datalist>`}
+const DEPT_LIST = [
+  'Văn phòng',
+  'Phòng Nghiệp vụ',
+  'Phòng Tổ chức cán bộ',
+  'Phòng Công nghệ thông tin',
+  'Phòng Quản lý rủi ro',
+  'Đội Kiểm soát Hải quan',
+  'Chi cục Kiểm tra sau thông quan',
+  'Tổ tham mưu công tác Đảng',
+  'Ủy ban Kiểm tra Đảng ủy',
+  'HQCK quốc tế Móng Cái',
+  'HQCK Cảng Hòn Gai',
+  'HQCK Cảng Cẩm Phả',
+  'HQCK Cảng Vạn Gia',
+  'HQCK Hoành Mô',
+  'HQCK Bắc Phong Sinh'
+];
+function deptDatalist(){return`<datalist id="deptList">${DEPT_LIST.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('')}</datalist>`}
 function userDatalist(id='userList',users=APP.usersLite){return`<datalist id="${esc(id)}">${users.map(u=>`<option value="${esc(u.username)}">${esc(u.fullname)} · ${esc(u.donVi)} · ${esc(u.role)}</option>`).join('')}</datalist>`}
 function fileTypeOptions(selected){return optionsAny(['FILE_TYPE','LOAI_TAI_LIEU'],selected)}
 function deptLabel(v){const d=APP.depts.find(x=>x.code===v||x.name===v);return d?d.name:v}
@@ -1908,7 +1925,7 @@ function openMeetingForm(id){
     <div class="field"><label>Chủ trì</label><input id="fChair" value="${esc(m.chuTri||'')}"></div>
     <div class="field"><label>Lãnh đạo liên quan</label><input id="fLeader" list="leaderList" value="${esc(m.lanhDaoLienQuan||'')}">${leaderDatalist()}</div>
     <div class="field full"><label>Thành phần tham dự</label><textarea id="fPart">${esc(m.thanhPhan||'')}</textarea></div>
-    <div class="field"><label>Đơn vị chuẩn bị</label><input id="fUnit" list="deptList" value="${esc(unitVal)}" oninput="onDeptChange()">${deptDatalist()}<div class="hint">Mã đơn vị: VP, CNTT, NV, TVQT...</div></div>
+    <div class="field"><label>Đơn vị chuẩn bị</label><select id="fUnit" onchange="onDeptChange()"><option value="">-- Chọn đơn vị --</option>${DEPT_LIST.map(d=>`<option value="${esc(d)}"${esc(unitVal)===esc(d)?' selected':''}>${esc(d)}</option>`).join('')}</select></div>
     <div class="field"><label>Đầu mối đơn vị</label><input id="fDeptLead" list="deptLeadList" placeholder="Gõ tên / user đầu mối"><span id="deptLeadListWrap">${userDatalist('deptLeadList',usersForDept(unitVal))}</span></div>
     <div class="field"><label>Số văn bản / giấy mời</label><input id="fDoc" value="${esc(m.soVanBan||'')}"></div>
     <div class="field full"><label>Ghi chú</label><textarea id="fNote">${esc(m.ghiChu||'')}</textarea></div>
