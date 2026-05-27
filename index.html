@@ -531,6 +531,109 @@
     }
     .filter-note { font-size: .78rem; color: var(--muted); }
 
+    /* ===== DESKTOP CALENDAR TOOLBAR (1 dòng) ===== */
+    .cal-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-wrap: nowrap;
+    }
+    .cal-toolbar .cal-search {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-sm);
+      background: #fff;
+      overflow: hidden;
+      height: 38px;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .cal-toolbar .cal-search:focus-within {
+      border-color: var(--blue2);
+      box-shadow: 0 0 0 3px rgba(45,120,239,.12);
+    }
+    .cal-toolbar .cal-search input {
+      flex: 1;
+      border: none;
+      padding: 0 12px;
+      background: transparent;
+      outline: none;
+      color: var(--text);
+      font-size: .88rem;
+      min-width: 0;
+    }
+    .cal-toolbar .cal-search button {
+      border: none;
+      background: linear-gradient(135deg, var(--blue), var(--blue2));
+      color: #fff;
+      padding: 0 13px;
+      font-size: .88rem;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .cal-toolbar .cal-select {
+      height: 38px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-sm);
+      padding: 0 10px;
+      background: #fff;
+      color: var(--text);
+      font-weight: 600;
+      font-size: .84rem;
+      outline: none;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: border-color .2s;
+      flex-shrink: 0;
+    }
+    .cal-toolbar .cal-select:focus { border-color: var(--blue2); }
+    .cal-toolbar .kind-seg {
+      display: inline-flex;
+      gap: 3px;
+      background: var(--bg2);
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-sm);
+      padding: 3px;
+      flex-shrink: 0;
+    }
+    .cal-toolbar .kind-btn {
+      border: none;
+      border-radius: var(--r-xs);
+      height: 30px;
+      padding: 0 13px;
+      font-weight: 600;
+      font-size: .82rem;
+      background: transparent;
+      color: var(--text2);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all .18s;
+    }
+    .cal-toolbar .kind-btn:hover { background: rgba(21,86,200,.08); color: var(--blue); }
+    .cal-toolbar .kind-btn.active {
+      background: linear-gradient(135deg, var(--blue), var(--blue2));
+      color: #fff;
+      box-shadow: 0 3px 10px rgba(21,86,200,.28);
+    }
+    .cal-toolbar .btn-add {
+      height: 38px;
+      padding: 0 16px;
+      border: none;
+      border-radius: var(--r-sm);
+      background: linear-gradient(135deg, var(--blue), var(--blue2));
+      color: #fff;
+      font-weight: 700;
+      font-size: .88rem;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      box-shadow: 0 4px 14px rgba(21,86,200,.3);
+      transition: all .18s;
+    }
+    .cal-toolbar .btn-add:hover { box-shadow: 0 6px 18px rgba(21,86,200,.4); transform: translateY(-1px); }
+
     /* ===== MEETING CARDS ===== */
     .cards { display: grid; gap: 11px; }
     .meeting-card {
@@ -774,7 +877,12 @@
     /* ===== RESPONSIVE ===== */
     @media (min-width: 769px) {
       .cal-filter-row { display: none !important; }
-      .desktop-filters { display: flex !important; gap: 9px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+      .cal-search-row  { display: none !important; }
+      .desktop-filters { display: none !important; }
+      .cal-toolbar     { display: flex !important; }
+    }
+    @media (max-width: 768px) {
+      .cal-toolbar { display: none !important; }
     }
     @media (max-width: 1024px) {
       .stats-grid { grid-template-columns: repeat(2, 1fr); }
@@ -1565,9 +1673,10 @@ function updateCycleButtons(){
 function renderCalendar(){
   const f=APP.filters;
   $('screen-calendar').innerHTML=`
+    <!-- MOBILE: search row + 3 cycle buttons -->
     <div class="cal-search-row">
       <div class="search-wrap" style="flex:1">
-        <input id="calKw" placeholder="Tìm nội dung, địa điểm, chủ trì..." value="${esc(f.kw)}" onkeydown="if(event.key==='Enter')applyCalendarFilters()">
+        <input id="calKwM" placeholder="Tìm nội dung, địa điểm, chủ trì..." value="${esc(f.kw)}" onkeydown="if(event.key==='Enter')applyCalendarFilters()">
         <button onclick="applyCalendarFilters()">🔍</button>
       </div>
       ${hasRole(ROLE_EDIT)?'<button class="btn primary sm" onclick="openMeetingForm()" style="white-space:nowrap">＋ Thêm</button>':''}
@@ -1575,25 +1684,33 @@ function renderCalendar(){
     <div class="cal-filter-row">
       <button id="btnLeader" class="cycle-btn" onclick="cycleLeader()">${LEADER_LABELS[f.leader]||f.leader}</button>
       <button id="btnScope"  class="cycle-btn" onclick="cycleScope()">${SCOPE_LABELS[f.scope]||f.scope}</button>
-      <button id="btnKind"   class="cycle-btn ${f.kind!=='HOP'?'active':''}" onclick="cycleKind()">${KIND_LABELS[f.kind]||f.kind}</button>
+      <button id="btnKind"   class="cycle-btn ${f.kind!=='ALL'?'active':''}" onclick="cycleKind()">${KIND_LABELS[f.kind]||f.kind}</button>
     </div>
-    <div class="desktop-filters" style="display:none">
-      <select id="calLeader" class="select-field" onchange="applyCalendarFilters()">
+
+    <!-- DESKTOP: 1-line toolbar -->
+    <div class="cal-toolbar" style="display:none">
+      <div class="cal-search">
+        <input id="calKw" placeholder="Tìm nội dung, địa điểm, chủ trì..." value="${esc(f.kw)}" onkeydown="if(event.key==='Enter')applyCalendarFilters()">
+        <button onclick="applyCalendarFilters()">🔍</button>
+      </div>
+      <select id="calLeader" class="cal-select" onchange="applyCalendarFilters()">
         <option value="all">👤 Tất cả lãnh đạo</option>
         ${leaderOptions(f.leader)}
       </select>
-      <select id="calScope" class="select-field" onchange="changeScope(this.value)">
+      <select id="calScope" class="cal-select" onchange="changeScope(this.value)">
         <option value="CURRENT" ${f.scope==='CURRENT'?'selected':''}>⏳ Hiện thời</option>
         <option value="WEEK" ${f.scope==='WEEK'?'selected':''}>📅 Tuần này</option>
         <option value="MONTH" ${f.scope==='MONTH'?'selected':''}>🗓 Tháng này</option>
         <option value="ALL" ${f.scope==='ALL'?'selected':''}>📂 Toàn bộ</option>
       </select>
-      <div class="seg">
-        <button class="seg-btn ${f.kind==='ALL'?'active':''}" onclick="setCalendarKind('ALL')">📂 Toàn bộ lịch</button>
-        <button class="seg-btn ${f.kind==='HOP'?'active':''}" onclick="setCalendarKind('HOP')">🏛 Lịch Họp</button>
-        <button class="seg-btn ${f.kind==='TRUC_BAN'?'active':''}" onclick="setCalendarKind('TRUC_BAN')">📋 Trực ban</button>
+      <div class="kind-seg">
+        <button class="kind-btn ${f.kind==='ALL'?'active':''}" onclick="setCalendarKind('ALL')">📂 Toàn bộ</button>
+        <button class="kind-btn ${f.kind==='HOP'?'active':''}" onclick="setCalendarKind('HOP')">🏛 Lịch Họp</button>
+        <button class="kind-btn ${f.kind==='TRUC_BAN'?'active':''}" onclick="setCalendarKind('TRUC_BAN')">📋 Trực ban</button>
       </div>
+      ${hasRole(ROLE_EDIT)?'<button class="btn-add" onclick="openMeetingForm()">＋ Thêm</button>':''}
     </div>
+
     <div style="display:flex;justify-content:flex-end;margin-bottom:6px">
       <span id="calCount" class="filter-note"></span>
     </div>
@@ -1640,7 +1757,11 @@ async function changeScope(scope){
 }
 function setCalendarKind(kind){APP.filters.kind=kind;renderCalendar()}
 function applyCalendarFilters(read=true){
-  if(read){APP.filters.kw=($('calKw')?.value||'').trim().toLowerCase();APP.filters.leader=$('calLeader')?.value||'all';APP.filters.scope=$('calScope')?.value||APP.filters.scope;}
+  if(read){
+    APP.filters.kw=($('calKw')?.value||$('calKwM')?.value||'').trim().toLowerCase();
+    APP.filters.leader=$('calLeader')?.value||'all';
+    APP.filters.scope=$('calScope')?.value||APP.filters.scope;
+  }
   const f=APP.filters;
   const today=new Date();today.setHours(0,0,0,0);
   const[wStart,wEnd]=weekRange(today);
