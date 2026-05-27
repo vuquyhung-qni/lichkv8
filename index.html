@@ -1284,8 +1284,10 @@ async function refreshAll(){
   APP.setup=res.setup||{};APP.depts=res.depts||[];
   APP.usersLite=res.usersLite||[];APP.dashboard=res.dashboard;
   APP.meetings=res.meetings||[];APP.loadedAll=false;
-  $('navMeetCount').textContent=APP.meetings.length;
-  const bnBadge=$('bnMeetBadge');if(bnBadge)bnBadge.textContent=APP.meetings.length;
+  const _today=new Date();_today.setHours(0,0,0,0);
+  const _futureMeetings=APP.meetings.filter(m=>{const e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau);return e&&e>=_today;});
+  $('navMeetCount').textContent=_futureMeetings.length;
+  const bnBadge=$('bnMeetBadge');if(bnBadge)bnBadge.textContent=_futureMeetings.length;
   render();
 }
 function setLoading(){
@@ -1385,8 +1387,9 @@ function renderDashboard(){
             <tbody>
               ${leaderRows.map(x=>`<tr>
                 <td><b>${esc(x.short||x.display)}</b></td>
-                <td>${x.week}</td><td>${x.month}</td>
-                <td><b>${x.year}</b></td>
+                <td style="cursor:pointer;color:var(--blue);font-weight:600" onclick="openLeaderStatDetail('${esc(x.name)}','${esc(x.short||x.display)}','week')" title="Bấm để xem danh sách">${x.week}</td>
+                <td style="cursor:pointer;color:var(--blue);font-weight:600" onclick="openLeaderStatDetail('${esc(x.name)}','${esc(x.short||x.display)}','month')" title="Bấm để xem danh sách">${x.month}</td>
+                <td style="cursor:pointer;color:var(--blue);font-weight:700" onclick="openLeaderStatDetail('${esc(x.name)}','${esc(x.short||x.display)}','year')" title="Bấm để xem danh sách"><b>${x.year}</b></td>
                 <td><div class="barline"><span style="width:${Math.min(100,Math.round(x.year*100/maxYear))}%"></span></div></td>
               </tr>`).join('')}
             </tbody>
@@ -1396,8 +1399,8 @@ function renderDashboard(){
     </div>
     <div class="sp"></div>
     <div class="two-col">
-      <div class="panel"><div class="panel-h"><h3>Theo loại lịch</h3></div><div class="panel-b">${miniCountTable(d.byType||{},typeLabel)}</div></div>
-      <div class="panel"><div class="panel-h"><h3>Theo trạng thái</h3></div><div class="panel-b">${miniCountTable(d.byStatus||{},statusLabel)}</div></div>
+      <div class="panel"><div class="panel-h"><h3>Theo loại lịch</h3></div><div class="panel-b">${miniCountTable(d.byType||{},typeLabel,'type')}</div></div>
+      <div class="panel"><div class="panel-h"><h3>Theo trạng thái</h3></div><div class="panel-b">${miniCountTable(d.byStatus||{},statusLabel,'status')}</div></div>
     </div>`;
 }
 function statCard(k,v,sub,cls,period){
@@ -1446,10 +1449,80 @@ function setDashPeriod(p){
   APP.dashPeriod=p;
   renderDashboard();
 }
-function miniCountTable(obj,labelFn){
+function miniCountTable(obj,labelFn,clickType){
   const rows=Object.keys(obj||{}).sort((a,b)=>(obj[b]||0)-(obj[a]||0));
   if(!rows.length)return'<div class="empty">Chưa có dữ liệu.</div>';
-  return`<div class="table-wrap"><table class="tbl"><tbody>${rows.map(k=>`<tr><td>${esc(labelFn?labelFn(k):k)}</td><td style="text-align:right"><b>${obj[k]}</b></td></tr>`).join('')}</tbody></table></div>`;
+  return`<div class="table-wrap"><table class="tbl"><tbody>${rows.map(k=>{
+    const lbl=esc(labelFn?labelFn(k):k);
+    const cnt=obj[k];
+    if(clickType){
+      return`<tr style="cursor:pointer" onclick="openTypeDetail('${esc(k)}','${lbl}','${clickType}')" title="Bấm để xem danh sách">
+        <td>${lbl}</td>
+        <td style="text-align:right;color:var(--blue)"><b>${cnt}</b></td>
+      </tr>`;
+    }
+    return`<tr><td>${lbl}</td><td style="text-align:right"><b>${cnt}</b></td></tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+function openLeaderStatDetail(leaderName, leaderShort, period){
+  const today=new Date(); today.setHours(0,0,0,0);
+  const[wStart,wEnd]=weekRange(today);
+  const mStart=new Date(today.getFullYear(),today.getMonth(),1);
+  const mEnd=new Date(today.getFullYear(),today.getMonth()+1,0,23,59,59,999);
+  const yStart=new Date(today.getFullYear(),0,1);
+  const yEnd=new Date(today.getFullYear(),11,31,23,59,59,999);
+  const meetings=APP.allMeetings||APP.meetings||[];
+  function normLName(s){
+    return String(s||'').toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/\u0111/g,'d')
+      .replace(/^(d\/c|c)\s+/,'')
+      .replace(/\s*[-\u2013]\s*.*/,'')
+      .replace(/\s+/g,' ').trim();
+  }
+  const normTarget=normLName(leaderName);
+  function matchLeader(m){
+    const raw=[m.chuTri,m.lanhDaoLienQuan].join(',');
+    const parts=raw.split(/[,;]+/).map(x=>x.trim()).filter(x=>x.length>1);
+    return parts.some(p=>{
+      const pn=normLName(p);
+      return pn===normTarget||pn.includes(normTarget)||normTarget.includes(pn);
+    });
+  }
+  const nonTrucBan=meetings.filter(m=>m.loaiLich!=='TRUC_BAN'&&
+    !String(m.noiDung||'').toLowerCase().includes('tr\u1ef1c ban')&&
+    !String(m.noiDung||'').toLowerCase().includes('giao ban'));
+  let arr=nonTrucBan.filter(m=>{
+    if(!matchLeader(m))return false;
+    const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;
+    if(!s)return false;
+    if(period==='week')return s<=wEnd&&e>=wStart;
+    if(period==='month')return s<=mEnd&&e>=mStart;
+    if(period==='year')return s<=yEnd&&e>=yStart;
+    return true;
+  });
+  arr.sort((a,b)=>{const sa=parseIsoDate(a.ngayBatDau)||new Date(0),sb=parseIsoDate(b.ngayBatDau)||new Date(0);return sa-sb;});
+  const periodLabel={week:'Tu\u1ea7n n\xe0y',month:'Th\xe1ng n\xe0y',year:'N\u0103m nay'}[period]||period;
+  const cards=arr.length?meetingCards(arr,true):'<div class="empty">Kh\xf4ng c\xf3 l\u1ecbch.</div>';
+  showModal('<h3>\ud83d\udccb '+esc(leaderShort)+' \u2014 '+periodLabel+' \u2014 '+arr.length+' l\u1ecbch</h3>',
+    '<div style="max-height:60vh;overflow:auto">'+cards+'</div>'+
+    '<div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn" onclick="closeModal()">\u0110\xf3ng</button></div>'
+  );
+}
+
+function openTypeDetail(key, label, clickType){
+  const meetings=APP.allMeetings||APP.meetings||[];
+  let arr=[];
+  if(clickType==='type'){
+    arr=meetings.filter(m=>m.loaiLich===key);
+  } else if(clickType==='status'){
+    arr=meetings.filter(m=>m.trangThai===key);
+  }
+  arr.sort((a,b)=>{const sa=parseIsoDate(a.ngayBatDau)||new Date(0),sb=parseIsoDate(b.ngayBatDau)||new Date(0);return sb-sa;});
+  showModal(`<h3>📋 ${label} — ${arr.length} lịch</h3>`,
+    `<div style="max-height:60vh;overflow:auto">${meetingCards(arr,true)||'<div class=\"empty\">Không có lịch.</div>'}</div>
+    <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn" onclick="closeModal()">Đóng</button></div>`
+  );
 }
 
 // ===== CALENDAR =====
@@ -1556,7 +1629,11 @@ async function changeScope(scope){
   }
   if(scope==='ALL'&&!APP.loadedAll){
     $('calList').innerHTML='<div class="loading"><div class="spin"></div><span>Đang tải toàn bộ lịch...</span></div>';
-    try{const res=await api('getMeetings',{showPast:true,limit:5000});APP.meetings=res.meetings||[];APP.loadedAll=true;$('navMeetCount').textContent=APP.meetings.length;$('bnMeetBadge').textContent=APP.meetings.length;}
+    try{const res=await api('getMeetings',{showPast:true,limit:5000});APP.meetings=res.meetings||[];APP.loadedAll=true;
+      const _td2=new Date();_td2.setHours(0,0,0,0);
+      const _fm2=APP.meetings.filter(m=>{const e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau);return e&&e>=_td2;});
+      $('navMeetCount').textContent=_fm2.length;
+      const _bb=$('bnMeetBadge');if(_bb)_bb.textContent=_fm2.length;}
     catch(e){alert(e.message);}
   }
   applyCalendarFilters(false);
