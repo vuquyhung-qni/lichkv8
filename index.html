@@ -765,6 +765,8 @@
     /* ===== BOTTOM NAV (mobile only) ===== */
     .bottom-nav { display: none; }
     .app-ready .bottom-nav { display: none; }
+    /* Hiện bottom-nav chỉ khi đã đăng nhập */
+    body.logged-in .bottom-nav { display: none; }
 
     /* ===== SIDEBAR OVERLAY ===== */
     .sidebar-overlay { display: none; }
@@ -813,7 +815,7 @@
       .topbar-mobile-title { display: flex !important; }
 
       /* Bottom navigation bar */
-      .bottom-nav {
+      body.logged-in .bottom-nav {
         display: flex;
         position: fixed;
         bottom: 0; left: 0; right: 0;
@@ -1108,7 +1110,7 @@
 const APP = {
   token:'', user:null, setup:{}, depts:[], usersLite:[], meetings:[],
   dashboard:null, currentScreen:'calendar', dashPeriod:'week',
-  filters:{kw:'', leader:'all', scope:'CURRENT', kind:'HOP'},
+  filters:{kw:'', leader:'all', scope:'CURRENT', kind:'ALL'},
   loadedAll:false, pendingFormFiles:[]
 };
 
@@ -1220,6 +1222,7 @@ async function login(){
 }
 
 function showApp(){
+  document.body.classList.add('logged-in');
   $('login').classList.add('hide');
   $('app').classList.remove('hide');
   $('uName').textContent=APP.user.fullname||APP.user.username;
@@ -1247,6 +1250,7 @@ function closeUserPopup(){
   const p=$('userPopup'); if(p)p.classList.add('hide');
 }
 function showLogin(){
+  document.body.classList.remove('logged-in');
   $('app').classList.add('hide');
   $('login').classList.remove('hide');
   localStorage.removeItem('lct_token');
@@ -1359,10 +1363,10 @@ function renderDashboard(){
   const maxYear=Math.max(1,...leaderRows.map(x=>x.year));
   $('screen-dashboard').innerHTML=`
     <div class="stats-grid">
-      ${statCard('Hôm nay',d.today||0,'Lịch diễn ra hôm nay','','today')}
-      ${statCard('Trong tuần',countWeek,'Lịch họp tuần này','','week')}
-      ${statCard('Trong tháng',countMonth,'Lịch họp tháng '+String(now.getMonth()+1)+'/' +now.getFullYear(),'','month')}
-      ${statCard('Trong năm',countYear,(isFullData?'':'⏳ ')+'Năm '+now.getFullYear(),'','year')}
+      ${statCardClickable('Hôm nay',d.today||0,'Lịch diễn ra hôm nay','today')}
+      ${statCardClickable('Trong tuần',countWeek,'Lịch họp tuần này','week')}
+      ${statCardClickable('Trong tháng',countMonth,'Lịch họp tháng '+String(now.getMonth()+1)+'/'+now.getFullYear(),'month')}
+      ${statCardClickable('Trong năm',countYear,(isFullData?'':'⏳ ')+'Năm '+now.getFullYear(),'year')}
     </div>
     <div class="sp"></div>
     <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
@@ -1404,6 +1408,40 @@ function statCard(k,v,sub,cls,period){
     <div class="stat-sub">${esc(sub)}</div>
   </div>`;
 }
+function statCardClickable(k,v,sub,period){
+  const isActive=period&&APP.dashPeriod===period;
+  return `<div class="stat-card${isActive?' stat-active':''}" onclick="openStatDetail('${period}','${k.replace(/'/g,"&apos;")}')" style="cursor:pointer">
+    <div class="stat-k">${esc(k)}</div>
+    <div class="stat-v">${esc(v)}</div>
+    <div class="stat-sub">${esc(sub)}</div>
+  </div>`;
+}
+function openStatDetail(period, label){
+  const today=new Date(); today.setHours(0,0,0,0);
+  const[wStart,wEnd]=weekRange(today);
+  const mStart=new Date(today.getFullYear(),today.getMonth(),1);
+  const mEnd=new Date(today.getFullYear(),today.getMonth()+1,0,23,59,59,999);
+  const yStart=new Date(today.getFullYear(),0,1);
+  const yEnd=new Date(today.getFullYear(),11,31,23,59,59,999);
+  const meetings=APP.allMeetings||APP.meetings||[];
+  const nonTrucBan=meetings.filter(m=>m.loaiLich!=='TRUC_BAN'&&!String(m.noiDung||'').toLowerCase().includes('trực ban')&&!String(m.noiDung||'').toLowerCase().includes('giao ban'));
+  let arr=[];
+  if(period==='today'){
+    arr=meetings.filter(m=>isToday(m));
+  } else if(period==='week'){
+    arr=nonTrucBan.filter(m=>{const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;return s&&e&&s<=wEnd&&e>=wStart;});
+  } else if(period==='month'){
+    arr=nonTrucBan.filter(m=>{const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;return s&&e&&s<=mEnd&&e>=mStart;});
+  } else if(period==='year'){
+    arr=nonTrucBan.filter(m=>{const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;return s&&e&&s<=yEnd&&e>=yStart;});
+  }
+  // Sort theo ngày
+  arr.sort((a,b)=>{const sa=parseIsoDate(a.ngayBatDau)||new Date(0),sb=parseIsoDate(b.ngayBatDau)||new Date(0);return sa-sb;});
+  showModal(`<h3>📋 ${esc(label)} — ${arr.length} lịch</h3>`,
+    `<div style="max-height:60vh;overflow:auto">${meetingCards(arr,true)||'<div class="empty">Không có lịch.</div>'}</div>
+    <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn" onclick="closeModal()">Đóng</button></div>`
+  );
+}
 function setDashPeriod(p){
   APP.dashPeriod=p;
   renderDashboard();
@@ -1418,10 +1456,10 @@ function miniCountTable(obj,labelFn){
 // Trạng thái các nút lọc tuần tự mobile
 const LEADER_CYCLE = ['all','Hưng','Dương','Lợi','Thắng'];
 const SCOPE_CYCLE  = ['CURRENT','WEEK','MONTH','YEAR'];
-const KIND_CYCLE   = ['HOP','GIAO_BAN'];
+const KIND_CYCLE   = ['ALL','HOP','TRUC_BAN'];
 const LEADER_LABELS = {all:'LĐCC', Hưng:'Đ/c Hưng', Dương:'Đ/c Dương', Lợi:'Đ/c Lợi', Thắng:'Đ/c Thắng'};
 const SCOPE_LABELS  = {CURRENT:'THỜI GIAN', WEEK:'TUẦN', MONTH:'THÁNG', YEAR:'NĂM'};
-const KIND_LABELS   = {HOP:'LỊCH HỌP', GIAO_BAN:'TRỰC BAN'};
+const KIND_LABELS   = {ALL:'LỊCH HỌP', HOP:'LỊCH HỌP', TRUC_BAN:'TRỰC BAN'};
 
 function cycleLeader(){
   const idx=LEADER_CYCLE.indexOf(APP.filters.leader);
@@ -1448,7 +1486,7 @@ function updateCycleButtons(){
   // highlight active
   if(bl)bl.classList.toggle('active',APP.filters.leader!=='all');
   if(bs)bs.classList.toggle('active',APP.filters.scope!=='CURRENT');
-  if(bk)bk.classList.toggle('active',APP.filters.kind!=='HOP');
+  if(bk)bk.classList.toggle('active',APP.filters.kind!=='ALL');
 }
 
 function renderCalendar(){
@@ -1478,8 +1516,9 @@ function renderCalendar(){
         <option value="ALL" ${f.scope==='ALL'?'selected':''}>📂 Toàn bộ</option>
       </select>
       <div class="seg">
+        <button class="seg-btn ${f.kind==='ALL'?'active':''}" onclick="setCalendarKind('ALL')">📂 Toàn bộ lịch</button>
         <button class="seg-btn ${f.kind==='HOP'?'active':''}" onclick="setCalendarKind('HOP')">🏛 Lịch Họp</button>
-        <button class="seg-btn ${f.kind==='GIAO_BAN'?'active':''}" onclick="setCalendarKind('GIAO_BAN')">📋 Giao Ban</button>
+        <button class="seg-btn ${f.kind==='TRUC_BAN'?'active':''}" onclick="setCalendarKind('TRUC_BAN')">📋 Trực ban</button>
       </div>
     </div>
     <div style="display:flex;justify-content:flex-end;margin-bottom:6px">
@@ -1551,8 +1590,9 @@ function applyCalendarFilters(read=true){
     if(f.scope==='MONTH'&&(!s||!e||s>mEnd||e<mStart))return false;
     if(f.scope==='YEAR'&&(!s||!e||s>yEnd||e<yStart))return false;
     const isGB=isGiaoBanMeeting(m);
-    if(f.kind==='GIAO_BAN'&&!isGB)return false;
+    if(f.kind==='TRUC_BAN'&&!isGB)return false;
     if(f.kind==='HOP'&&isGB)return false;
+    // f.kind==='ALL': hiển thị tất cả
     if(f.leader!=='all'){const hay=normText(`${m.lanhDaoLienQuan} ${m.chuTri} ${m.thanhPhan}`);if(!hay.includes(normText(f.leader)))return false;}
     if(f.kw){const hay=`${m.meetingId} ${m.noiDung} ${m.thanhPhan} ${m.diaDiem} ${m.chuTri} ${m.ghiChu} ${m.soVanBan}`.toLowerCase();if(!hay.includes(f.kw))return false;}
     return true;
@@ -1803,49 +1843,141 @@ async function renderUsers(){
   if(!hasRole(ROLE_ADMIN)){$('screen-users').innerHTML='<div class="empty">Bạn không có quyền quản lý người dùng.</div>';return;}
   $('screen-users').innerHTML='<div class="loading"><div class="spin"></div><span>Đang tải...</span></div>';
   try{
-    const res=await api('getUsers');const users=res.users||[];
-    $('screen-users').innerHTML=`<div class="panel">
-      <div class="panel-h">
-        <h3>👥 Danh sách người dùng</h3>
-        ${APP.user.role==='SuperAdmin'?'<button class="btn primary sm" onclick="openUserForm()">＋ Thêm user</button>':''}
+    const res=await api('getUsers');
+    APP._userList=res.users||[];
+    renderUsersTable();
+  }catch(e){$('screen-users').innerHTML=`<div class="msg err">${esc(e.message)}</div>`}
+}
+
+function renderUsersTable(){
+  const users=APP._userList||[];
+  const kw=(document.getElementById('uKw')?.value||'').toLowerCase();
+  const roleF=document.getElementById('uRoleF')?.value||'all';
+  const statusF=document.getElementById('uStatusF')?.value||'all';
+  const filtered=users.filter(u=>{
+    if(kw&&!`${u.username} ${u.fullname} ${u.donVi} ${u.email}`.toLowerCase().includes(kw))return false;
+    if(roleF!=='all'&&u.role!==roleF)return false;
+    if(statusF!=='all'&&u.status!==statusF)return false;
+    return true;
+  });
+  const isSA=APP.user.role==='SuperAdmin';
+  const roleColors={'SuperAdmin':'#7c3aed','Admin':'#1d4ed8','LanhDaoCucChi':'#0369a1','LanhDaoPhong':'#0891b2','Lanhdaophong':'#0891b2','Thuky':'#059669','Viewer':'#64748b'};
+  $('screen-users').innerHTML=`
+    <div class="panel">
+      <div class="panel-h" style="flex-wrap:wrap;gap:8px">
+        <h3>👥 Người dùng (${filtered.length}/${users.length})</h3>
+        ${isSA?'<button class="btn primary sm" onclick="openUserForm()">＋ Thêm user</button>':''}
       </div>
       <div class="panel-b">
+        <div class="toolbar" style="margin-bottom:12px">
+          <input id="uKw" placeholder="Tìm tên, tài khoản, đơn vị..." oninput="renderUsersTable()" style="min-width:200px">
+          <select id="uRoleF" onchange="renderUsersTable()">
+            <option value="all">Tất cả vai trò</option>
+            <option value="SuperAdmin">SuperAdmin</option>
+            <option value="Admin">Admin</option>
+            <option value="LanhDaoCucChi">Lãnh đạo Chi cục</option>
+            <option value="LanhDaoPhong">Lãnh đạo Phòng</option>
+            <option value="Thuky">Thư ký</option>
+            <option value="Viewer">Viewer</option>
+          </select>
+          <select id="uStatusF" onchange="renderUsersTable()">
+            <option value="all">Tất cả trạng thái</option>
+            <option value="Active">Đang hoạt động</option>
+            <option value="Inactive">Đã khoá</option>
+          </select>
+        </div>
         <div class="table-wrap"><table class="tbl">
-          <thead><tr><th>Tài khoản</th><th>Họ tên</th><th>Vai trò</th><th>Đơn vị</th><th>Trạng thái</th><th></th></tr></thead>
-          <tbody>${users.map(u=>`<tr>
-            <td class="mono">${esc(u.username)}</td>
+          <thead><tr><th>#</th><th>Tài khoản</th><th>Họ tên</th><th>Vai trò</th><th>Đơn vị</th><th>Chức vụ</th><th>Trạng thái</th><th></th></tr></thead>
+          <tbody>${filtered.map((u,i)=>`<tr>
+            <td class="muted" style="font-size:.78rem">${i+1}</td>
+            <td class="mono" style="font-weight:700">${esc(u.username)}</td>
             <td>${esc(u.fullname)}</td>
-            <td><span class="role-badge">${esc(u.role)}</span></td>
-            <td>${esc(u.donVi)}</td>
-            <td><span class="pill ${u.status==='Active'?'status-PUBLISHED':'status-CANCELLED'}">${esc(u.status)}</span></td>
-            <td>${APP.user.role==='SuperAdmin'?`<button class="btn xs" onclick='openUserForm(${JSON.stringify(u).replace(/'/g,"&#39;")})'>Sửa</button>`:''}</td>
+            <td><span class="role-badge" style="background:${roleColors[u.role]||'#64748b'}1a;color:${roleColors[u.role]||'#64748b'}">${esc(u.role)}</span></td>
+            <td style="font-size:.83rem">${esc(u.donVi)}</td>
+            <td style="font-size:.83rem">${esc(u.chucvu||'')}</td>
+            <td><span class="pill ${u.status==='Active'?'status-PUBLISHED':'status-CANCELLED'}">${u.status==='Active'?'Hoạt động':'Đã khoá'}</span></td>
+            <td style="white-space:nowrap">
+              <button class="btn xs" onclick="openUserDetail(${i})">👁</button>
+              ${isSA?`<button class="btn primary xs" onclick="openUserForm(APP._userList[${i}])">✏️</button>`:''}
+              ${isSA&&u.username!==APP.user.username?`<button class="btn xs ${u.status==='Active'?'warn':'ok'}" onclick="toggleUserStatus(${i})">${u.status==='Active'?'🔒':'🔓'}</button>`:''}
+              ${isSA&&u.isDefaultPass?'<span title="Đang dùng MK mặc định" style="font-size:.9rem">⚠️</span>':''}
+            </td>
           </tr>`).join('')}</tbody>
         </table></div>
       </div>
     </div>`;
-  }catch(e){$('screen-users').innerHTML=`<div class="msg err">${esc(e.message)}</div>`}
+}
+
+function openUserDetail(idx){
+  const u=APP._userList[idx];
+  if(!u)return;
+  showModal(`<h3>👤 ${esc(u.fullname||u.username)}</h3>`,`
+    <div class="panel" style="box-shadow:none;border-color:var(--border2)">
+      <div class="panel-b" style="display:grid;gap:8px">
+        <div class="m-meta-row"><span class="label" style="min-width:120px">Tài khoản</span><span class="mono bold">${esc(u.username)}</span></div>
+        <div class="m-meta-row"><span class="label" style="min-width:120px">Họ tên</span><b>${esc(u.fullname)}</b></div>
+        <div class="m-meta-row"><span class="label" style="min-width:120px">Vai trò</span><span class="role-badge">${esc(u.role)}</span></div>
+        <div class="m-meta-row"><span class="label" style="min-width:120px">Chức vụ</span>${esc(u.chucvu||'—')}</div>
+        <div class="m-meta-row"><span class="label" style="min-width:120px">Đơn vị</span>${esc(u.donVi||'—')}</div>
+        <div class="m-meta-row"><span class="label" style="min-width:120px">Email</span>${esc(u.email||'—')}</div>
+        <div class="m-meta-row"><span class="label" style="min-width:120px">Trạng thái</span><span class="pill ${u.status==='Active'?'status-PUBLISHED':'status-CANCELLED'}">${u.status==='Active'?'Hoạt động':'Đã khoá'}</span></div>
+        <div class="m-meta-row"><span class="label" style="min-width:120px">MK mặc định</span>${u.isDefaultPass?'<span style="color:#d97706">⚠️ Chưa đổi</span>':'<span style="color:#16a34a">✓ Đã đổi</span>'}</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button class="btn" onclick="closeModal()">Đóng</button>
+      ${APP.user.role==='SuperAdmin'?`<button class="btn primary" onclick="closeModal();openUserForm(APP._userList[${idx}])">✏️ Sửa</button>`:''}
+    </div>`);
+}
+
+async function toggleUserStatus(idx){
+  const u=APP._userList[idx];
+  if(!u)return;
+  const newStatus=u.status==='Active'?'Inactive':'Active';
+  const label=newStatus==='Active'?'mở khoá':'khoá';
+  if(!confirm(`Xác nhận ${label} tài khoản "${u.username}"?`))return;
+  try{
+    await api('saveUser',{form:{userId:u.userId||u.id,username:u.username,fullname:u.fullname,role:u.role,scope:u.scope,status:newStatus,chucvu:u.chucvu,donVi:u.donVi,email:u.email}});
+    await renderUsers();
+  }catch(e){alert(e.message);}
 }
 function openUserForm(u={}){
-  showModal(`<h3>${u.username?'✏️ Sửa người dùng':'➕ Thêm người dùng'}</h3>`,
+  const isEdit=!!u.username;
+  const ROLES=['SuperAdmin','Admin','LanhDaoCucChi','LanhDaoPhong','Thuky','Viewer'];
+  const roleOpts=ROLES.map(r=>`<option value="${r}"${(u.role||'Viewer')===r?' selected':''}>${r==='LanhDaoCucChi'?'Lãnh đạo Chi cục':r==='LanhDaoPhong'?'Lãnh đạo Phòng':r==='Thuky'?'Thư ký':r}</option>`).join('');
+  showModal(`<h3>${isEdit?'✏️ Sửa: '+esc(u.username):'➕ Thêm người dùng mới'}</h3>`,
   `<div class="form-grid">
-    <div class="field"><label>Username</label><input id="uUsername" value="${esc(u.username||'')}"${u.username?' readonly':''}></div>
-    <div class="field"><label>Họ tên</label><input id="uFull" value="${esc(u.fullname||'')}"></div>
-    <div class="field"><label>Mật khẩu mới</label><input id="uPass" type="password" placeholder="Để trống nếu không đổi"></div>
-    <div class="field"><label>Vai trò</label><select id="uRole2">${options('ROLE_LIST',u.role||'Viewer')}</select></div>
+    <div class="field"><label>Tài khoản ${isEdit?'(không đổi được)':''}</label><input id="uUsername" value="${esc(u.username||'')}" ${isEdit?'readonly style="background:var(--bg2)"':'placeholder="Nhập tên đăng nhập"'}></div>
+    <div class="field"><label>Họ và tên</label><input id="uFull" value="${esc(u.fullname||'')}" placeholder="Nguyễn Văn A"></div>
+    <div class="field"><label>Mật khẩu ${isEdit?'(để trống = không đổi)':'mới'}</label><input id="uPass" type="password" placeholder="${isEdit?'Để trống nếu không đổi':'Nhập mật khẩu'}"></div>
+    <div class="field"><label>Vai trò</label><select id="uRole2">${roleOpts}</select></div>
+    <div class="field"><label>Chức vụ</label><input id="uChucvu" value="${esc(u.chucvu||'')}" placeholder="Chi cục trưởng, Phó CCT..."></div>
+    <div class="field"><label>Đơn vị</label><input id="uDonvi" value="${esc(u.donVi||'')}" placeholder="VP, CNTT, NV..."></div>
+    <div class="field"><label>Email</label><input id="uEmail" type="email" value="${esc(u.email||'')}" placeholder="example@customs.gov.vn"></div>
+    <div class="field"><label>Trạng thái</label><select id="uStatus">
+      <option value="Active"${(u.status||'Active')==='Active'?' selected':''}>✅ Đang hoạt động</option>
+      <option value="Inactive"${u.status==='Inactive'?' selected':''}>🔒 Đã khoá</option>
+    </select></div>
     <div class="field"><label>Scope</label><select id="uScope">${options('SCOPE_LIST',u.scope||'VIEW_ALL')}</select></div>
-    <div class="field"><label>Trạng thái</label><select id="uStatus"><option${u.status==='Active'?' selected':''}>Active</option><option${u.status==='Inactive'?' selected':''}>Inactive</option></select></div>
-    <div class="field"><label>Chức vụ</label><input id="uChucvu" value="${esc(u.chucvu||'')}"></div>
-    <div class="field"><label>Đơn vị</label><input id="uDonvi" value="${esc(u.donVi||'')}"></div>
-    <div class="field"><label>Email</label><input id="uEmail" value="${esc(u.email||'')}"></div>
+    <div id="userFormMsg" class="full"></div>
   </div>
-  <div style="text-align:right;margin-top:14px;display:flex;gap:8px;justify-content:flex-end">
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap">
     <button class="btn" onclick="closeModal()">Đóng</button>
-    <button class="btn primary" onclick="saveUser('${esc(u.userId||'')}')">💾 Lưu</button>
+    <button class="btn primary" onclick="saveUser('${esc(u.userId||u.id||'')}')">💾 ${isEdit?'Cập nhật':'Tạo tài khoản'}</button>
   </div>`);
 }
 async function saveUser(userId){
-  const form={userId,username:$('uUsername').value,fullname:$('uFull').value,password:$('uPass').value,role:$('uRole2').value,scope:$('uScope').value,status:$('uStatus').value,chucvu:$('uChucvu').value,donVi:$('uDonvi').value,email:$('uEmail').value};
-  try{await api('saveUser',{form});closeModal();renderUsers();}catch(e){alert(e.message)}
+  const username=$('uUsername').value.trim();
+  const fullname=$('uFull').value.trim();
+  if(!username){msg($('userFormMsg'),'Vui lòng nhập tài khoản.','err');return;}
+  if(!fullname){msg($('userFormMsg'),'Vui lòng nhập họ tên.','err');return;}
+  const form={userId,username,fullname,password:$('uPass').value,role:$('uRole2').value,scope:$('uScope').value,status:$('uStatus').value,chucvu:$('uChucvu').value,donVi:$('uDonvi').value,email:$('uEmail').value};
+  msg($('userFormMsg'),'Đang lưu...');
+  try{
+    await api('saveUser',{form});
+    closeModal();
+    await renderUsers();
+  }catch(e){msg($('userFormMsg'),e.message,'err');}
 }
 
 // ===== SETTINGS =====
