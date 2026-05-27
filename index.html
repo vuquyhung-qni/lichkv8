@@ -1423,7 +1423,7 @@ function renderDashboard(){
     // Hiển thị chú thích đang tải
   }
   const isFullData=!!APP.allMeetings;
-  const nonTrucBan=meetings.filter(m=>m.loaiLich!=='TRUC_BAN'&&!String(m.noiDung||'').toLowerCase().includes('trực ban')&&!String(m.noiDung||'').toLowerCase().includes('giao ban'));
+  const nonTrucBan=meetings.filter(m=>m.loaiLich!=='TRUC_BAN');
   const countWeek=nonTrucBan.filter(m=>{const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;return s&&e&&s<=wEnd&&e>=wStart;}).length;
   const countMonth=nonTrucBan.filter(m=>{const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;return s&&e&&s<=mEnd&&e>=mStart;}).length;
   const yStart=new Date(now.getFullYear(),0,1); const yEnd=new Date(now.getFullYear(),11,31,23,59,59,999);
@@ -1535,7 +1535,7 @@ function openStatDetail(period, label){
   const yStart=new Date(today.getFullYear(),0,1);
   const yEnd=new Date(today.getFullYear(),11,31,23,59,59,999);
   const meetings=APP.allMeetings||APP.meetings||[];
-  const nonTrucBan=meetings.filter(m=>m.loaiLich!=='TRUC_BAN'&&!String(m.noiDung||'').toLowerCase().includes('trực ban')&&!String(m.noiDung||'').toLowerCase().includes('giao ban'));
+  const nonTrucBan=meetings.filter(m=>m.loaiLich!=='TRUC_BAN');
   let arr=[];
   if(period==='today'){
     arr=meetings.filter(m=>isToday(m));
@@ -1597,9 +1597,7 @@ function openLeaderStatDetail(leaderName, leaderShort, period){
       return pn===normTarget||pn.includes(normTarget)||normTarget.includes(pn);
     });
   }
-  const nonTrucBan=meetings.filter(m=>m.loaiLich!=='TRUC_BAN'&&
-    !String(m.noiDung||'').toLowerCase().includes('tr\u1ef1c ban')&&
-    !String(m.noiDung||'').toLowerCase().includes('giao ban'));
+  const nonTrucBan=meetings.filter(m=>m.loaiLich!=='TRUC_BAN');
   let arr=nonTrucBan.filter(m=>{
     if(!matchLeader(m))return false;
     const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;
@@ -1802,7 +1800,7 @@ function scopeLabel(v){return({CURRENT:'Từ hôm nay',ALL:'Toàn bộ',WEEK:'Tu
 function dateVNShort(iso){if(!iso)return'';var s=String(iso).trim();var m1=s.match(/^([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})/);if(m1)return Number(m1[3])+'/'+(+m1[2])+'/'+m1[1];var m2=s.match(/^([0-9]{1,2})\/([0-9]{1,2})\/([0-9]{4})/);if(m2)return Number(m2[1])+'/'+(+m2[2])+'/'+m2[3];try{var dt=new Date(s);if(!isNaN(dt.getTime()))return dt.getDate()+'/'+(dt.getMonth()+1)+'/'+dt.getFullYear();}catch(e){}return s;}
 function weekdayLabel(m){if(m.thu)return m.thu;const dt=parseIsoDate(m.ngayBatDau);if(!dt)return'';return['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'][dt.getDay()]}
 function timeRange(m){return`${esc(m.gioBatDau||'')}${m.gioKetThuc?'–'+esc(m.gioKetThuc):''}`}
-function isGiaoBanMeeting(m){return m.loaiLich==='TRUC_BAN'||normText(m.noiDung).includes('giao ban')||normText(m.noiDung).includes('truc ban')}
+function isGiaoBanMeeting(m){return m.loaiLich==='TRUC_BAN';}
 function isToday(m){
   const today=new Date();const s=parseIsoDate(m.ngayBatDau);const e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;
   if(!s)return false;
