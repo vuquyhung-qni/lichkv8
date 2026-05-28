@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://*.google.com https://*.googleusercontent.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://drive.google.com https://docs.google.com https://*.googleusercontent.com https://*.gstatic.com; frame-src https://drive.google.com https://docs.google.com https://script.google.com https://script.googleusercontent.com https://*.google.com https://*.googleusercontent.com; object-src 'none'; base-uri 'self'; form-action 'none';">
   <title>Quản lý lịch công tác HQKV8</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -1559,7 +1560,7 @@ function hasRole(list){
   return list.some(x=>x.toLowerCase()===r);
 }
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = "v21-popup-light-crop-20260528";
+const APP_VERSION = "v22-security-hardened-20260528";
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
@@ -1567,6 +1568,28 @@ function driveFolderEmbedUrl(folderId=DRIVE_LIBRARY_FOLDER_ID){
   return `https://drive.google.com/embeddedfolderview?id=${encodeURIComponent(folderId)}&usp=sharing&hl=vi#grid`;
 }
 const DRIVE_LIBRARY_EMBED_URL = driveFolderEmbedUrl(DRIVE_LIBRARY_FOLDER_ID);
+
+// ===== SECURITY: giới hạn upload client-side để tránh file nguy hiểm/quá lớn =====
+const MAX_UPLOAD_SIZE = 50 * 1024 * 1024; // 50MB/file
+const ALLOWED_UPLOAD_EXT = new Set(['pdf','doc','docx','xls','xlsx','ppt','pptx','txt','csv','jpg','jpeg','png','gif','webp','zip','rar','7z']);
+const BLOCKED_UPLOAD_EXT = new Set(['exe','msi','bat','cmd','com','scr','ps1','vbs','js','jar','html','htm','php','asp','aspx','jsp']);
+function getFileExt(name){
+  const s=String(name||'').toLowerCase();
+  const p=s.lastIndexOf('.');
+  return p>=0?s.slice(p+1):'';
+}
+function validateUploadFile(file){
+  if(!file) throw new Error('Không có file để upload.');
+  const ext=getFileExt(file.name);
+  if(file.size > MAX_UPLOAD_SIZE) throw new Error('File "'+file.name+'" vượt quá giới hạn 50MB.');
+  if(BLOCKED_UPLOAD_EXT.has(ext) || !ALLOWED_UPLOAD_EXT.has(ext)) throw new Error('Định dạng file "'+file.name+'" chưa được phép upload. Chỉ nhận PDF, Office, ảnh, text/csv và file nén.');
+  return true;
+}
+function filterValidUploadFiles(files){
+  const arr=Array.from(files||[]);
+  arr.forEach(validateUploadFile);
+  return arr;
+}
 
 function api(action, payload={}) {
   payload.action = action;
@@ -1743,8 +1766,9 @@ function initials(name){return(name||'U').split(/\s+/).slice(-2).map(x=>x[0]).jo
 
 // ===== INIT =====
 window.addEventListener('load',()=>{
-  APP.token=localStorage.getItem('lct_token')||'';
-  const u=localStorage.getItem('lct_user');
+  try{localStorage.removeItem('lct_token');localStorage.removeItem('lct_user');}catch(e){}
+  APP.token=sessionStorage.getItem('lct_token')||'';
+  const u=sessionStorage.getItem('lct_user');
   if(APP.token&&u){APP.user=JSON.parse(u);showApp();refreshAll().catch(()=>showLogin())}
   $('lgPass').addEventListener('keydown',e=>{if(e.key==='Enter')login()})
 });
@@ -1755,11 +1779,11 @@ async function login(){
   try{
     const res=await api('login',{username,password,token:''});
     APP.token=res.token;APP.user=res.user;
-    localStorage.setItem('lct_token',APP.token);
-    localStorage.setItem('lct_user',JSON.stringify(APP.user));
+    sessionStorage.setItem('lct_token',APP.token);
+    sessionStorage.setItem('lct_user',JSON.stringify(APP.user));
     showApp();await refreshAll();
     if(res.user.isDefaultPass)alert('Tài khoản đang dùng mật khẩu mặc định. Vui lòng đổi mật khẩu.')
-  }catch(e){msg($('loginMsg'),e.message+' (F12→Console để xem chi tiết)','err')}
+  }catch(e){msg($('loginMsg'),'Đăng nhập thất bại. Vui lòng kiểm tra lại tài khoản, mật khẩu hoặc thử lại sau.','err')}
 }
 
 function showApp(){
@@ -1794,8 +1818,9 @@ function showLogin(){
   document.body.classList.remove('logged-in');
   $('app').classList.add('hide');
   $('login').classList.remove('hide');
-  localStorage.removeItem('lct_token');
-  localStorage.removeItem('lct_user');
+  sessionStorage.removeItem('lct_token');
+  sessionStorage.removeItem('lct_user');
+  try{localStorage.removeItem('lct_token');localStorage.removeItem('lct_user');}catch(e){}
   APP.token='';APP.user=null;
 }
 async function logout(){try{await api('logout')}catch(e){}showLogin()}
@@ -2072,7 +2097,12 @@ function openTypeDetail(key, label, clickType){
 }
 
 
-function jss(s){ return JSON.stringify(String(s==null?'':s)); }
+function jss(s){
+  return JSON.stringify(String(s==null?'':s))
+    .replace(/</g,'\\u003c')
+    .replace(/>/g,'\\u003e')
+    .replace(/&/g,'\\u0026');
+}
 function libraryEnsureState(){
   APP.libraryMode = APP.libraryMode || 'folder';
   APP.libraryFolderId = APP.libraryFolderId || DRIVE_LIBRARY_FOLDER_ID;
@@ -2906,7 +2936,13 @@ function setupFormDrop(){
   d.ondrop=e=>{e.preventDefault();d.classList.remove('drag');queueFormFiles(e.dataTransfer.files)};
   inp.onchange=()=>queueFormFiles(inp.files);
 }
-function queueFormFiles(files){APP.pendingFormFiles=[...APP.pendingFormFiles,...Array.from(files||[])];renderQueuedFiles()}
+function queueFormFiles(files){
+  try{
+    const valid=filterValidUploadFiles(files);
+    APP.pendingFormFiles=[...APP.pendingFormFiles,...valid];
+    renderQueuedFiles();
+  }catch(e){alert(e.message)}
+}
 function removeQueuedFile(i){APP.pendingFormFiles.splice(i,1);renderQueuedFiles()}
 function renderQueuedFiles(){
   const el=$('queuedFiles');if(!el)return;
@@ -2925,7 +2961,7 @@ async function saveMeeting(id){
     const meetingId=res.meetingId||id;
     if(APP.pendingFormFiles.length){
       msg($('saveMsg'),`Đang upload ${APP.pendingFormFiles.length} file...`);
-      for(const file of APP.pendingFormFiles){const base64=await readFile(file);await api('uploadMeetingFile',{meetingId,fileType:$('fUploadType').value,fileName:file.name,mimeType:file.type,base64});}
+      for(const file of APP.pendingFormFiles){validateUploadFile(file);const base64=await readFile(file);await api('uploadMeetingFile',{meetingId,fileType:$('fUploadType').value,fileName:file.name,mimeType:file.type,base64});}
     }
     closeModal();await refreshAll();
   }catch(e){alert(e.message);if(btn){btn.disabled=false;btn.textContent='💾 Lưu lịch'}}
