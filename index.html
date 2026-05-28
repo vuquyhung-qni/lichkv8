@@ -3561,6 +3561,35 @@ function showModal(title,body){
   $('modal').classList.remove('hide');
 }
 function closeModal(){APP.detailFiles=[];$('modal').classList.add('hide');$('modal').innerHTML=''}
+
+// ===== V30: EVENT DELEGATION CHO NÚT XEM CHI TIẾT / SỬA =====
+// Lý do: các nút lịch được render động bằng data-action. Nếu không gắn bộ lắng nghe
+// tập trung thì desktop/mobile bấm sẽ không phản hồi. Bắt cả click và touchend để ổn định trên mobile.
+let __lastTouchActionAt = 0;
+function handleDelegatedMeetingAction_(ev){
+  const target = ev.target;
+  if(!target || !target.closest) return;
+  const btn = target.closest('[data-action]');
+  if(!btn) return;
+  const action = btn.getAttribute('data-action');
+  if(action !== 'open-detail' && action !== 'edit-meeting') return;
+
+  // Tránh mobile chạy 2 lần: touchend xong trình duyệt phát sinh click.
+  const now = Date.now();
+  if(ev.type === 'click' && now - __lastTouchActionAt < 450) return;
+  if(ev.type === 'touchend') __lastTouchActionAt = now;
+
+  ev.preventDefault();
+  ev.stopPropagation();
+
+  const id = btn.getAttribute('data-meeting-id');
+  if(!id) return;
+  if(action === 'open-detail') openDetail(id);
+  if(action === 'edit-meeting') openMeetingForm(id);
+}
+document.addEventListener('click', handleDelegatedMeetingAction_, true);
+document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:true, passive:false});
+
 </script>
 </body>
 </html>
