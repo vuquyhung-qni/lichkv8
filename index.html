@@ -580,7 +580,18 @@
       box-shadow: 0 8px 22px rgba(11,103,178,.10);
     }
     .library-dropzone .drop-ico { font-size: 1.45rem; }
-    .library-dropzone input[type="file"] { display: none !important; }
+    .library-dropzone { position: relative; overflow: hidden; }
+    .library-dropzone .drop-content { pointer-events: none; position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
+    .library-dropzone input[type="file"].library-file-input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+      z-index: 4;
+      display: block !important;
+    }
 
     .library-upload-msg { margin-top: 7px; font-size: .78rem; color: var(--muted); }
     .library-upload-msg.err { color: #991b1b; }
@@ -1605,7 +1616,7 @@ function hasRole(list){
   return list.some(x=>x.toLowerCase()===r);
 }
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = "v25-library-dragdrop-google-script-run-20260528";
+const APP_VERSION = "v26-library-direct-file-picker-20260528";
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
@@ -2447,7 +2458,7 @@ function drivePopupFolderRender(items,title,folderId){
   const files=items.filter(x=>!(x.type==='folder'||x.mimeType==='application/vnd.google-apps.folder'));
   const sorted=[...folders,...files];
   return `<div class="library-browser" style="width:100%;height:100%;background:#f7f9fc">
-    <div class="library-statusbar"><span>${esc(title||'Thư mục')}: <b>${sorted.length}</b> mục</span><span class="muted">Kéo thả file để upload vào thư mục này</span></div>
+    <div class="library-statusbar"><span>${esc(title||'Thư mục')}: <b>${sorted.length}</b> mục</span><span class="muted">Kéo thả hoặc bấm vùng upload để chọn file</span></div>
     ${libraryDropzoneHtml(folderId||APP.popupDriveFolderId||'')}
     ${sorted.length?`<div class="library-grid">${sorted.map(libraryItemCard).join('')}</div>`:'<div class="library-empty">Thư mục chưa có file.</div>'}
   </div>`;
@@ -2491,15 +2502,18 @@ function libraryBodyClick(ev){
 function libraryDropzoneHtml(folderId){
   if(!folderId) return '';
   return `<div class="library-uploadbox" onclick="event.stopPropagation()">
-    <div class="library-dropzone" data-folder-id="${esc(folderId)}" onclick="librarySelectUploadFiles(event,this)" ondragenter="libraryUploadDragOver(event,this)" ondragover="libraryUploadDragOver(event,this)" ondragleave="libraryUploadDragLeave(event,this)" ondrop="libraryDropToFolder(event,this,${jss(folderId)})">
-      <span class="drop-ico">☁️</span>
-      <span><b>Kéo thả tài liệu vào đây hoặc bấm để chọn file</b><br><span class="muted drop-hint">Upload trực tiếp vào thư mục đang mở; hỗ trợ PDF, Word, Excel, PowerPoint, ảnh, file nén.</span></span>
-      <input type="file" multiple class="hide" onchange="libraryUploadToFolder(${jss(folderId)},this.files,this)">
-    </div>
+    <label class="library-dropzone" data-folder-id="${esc(folderId)}" ondragenter="libraryUploadDragOver(event,this)" ondragover="libraryUploadDragOver(event,this)" ondragleave="libraryUploadDragLeave(event,this)" ondrop="libraryDropToFolder(event,this,${jss(folderId)})" title="Bấm để chọn file hoặc kéo thả file từ máy tính vào đây">
+      <input type="file" multiple class="library-file-input" onclick="this.value=null" onchange="libraryUploadToFolder(${jss(folderId)},this.files,this)" aria-label="Chọn file để upload vào thư mục Drive đang mở">
+      <span class="drop-content">
+        <span class="drop-ico">☁️</span>
+        <span><b>Kéo thả tài liệu vào đây hoặc bấm để chọn file</b><br><span class="muted drop-hint">Upload trực tiếp vào thư mục đang mở; hỗ trợ PDF, Word, Excel, PowerPoint, ảnh, file nén.</span></span>
+      </span>
+    </label>
     <div class="library-upload-msg"></div>
   </div>`;
 }
 function librarySelectUploadFiles(ev,box){
+  // Giữ lại để tương thích bản cũ; bản mới dùng input file phủ toàn vùng upload nên bấm trực tiếp sẽ mở hộp chọn file.
   ev.preventDefault(); ev.stopPropagation();
   const input=box&&box.querySelector?box.querySelector('input[type=file]'):null;
   if(input) input.click();
@@ -2551,7 +2565,7 @@ function libraryRenderItems(items, title, folderId){
   const files=items.filter(x=>!(x.type==='folder'||x.mimeType==='application/vnd.google-apps.folder'));
   const sorted=[...folders,...files];
   return `<div class="library-browser">
-    <div class="library-statusbar"><span>${title||'Danh sách thư viện'}: <b>${sorted.length}</b> mục</span><span class="muted">${folderId?'Kéo thả file để upload vào thư mục đang mở':'Bấm thư mục/file để xem'}</span></div>
+    <div class="library-statusbar"><span>${title||'Danh sách thư viện'}: <b>${sorted.length}</b> mục</span><span class="muted">${folderId?'Kéo thả hoặc bấm vùng upload để chọn file':'Bấm thư mục/file để xem'}</span></div>
     ${folderId?libraryDropzoneHtml(folderId):''}
     ${sorted.length?`<div class="library-grid">${sorted.map(libraryItemCard).join('')}</div>`:'<div class="library-empty">Không tìm thấy file/thư mục phù hợp.</div>'}
   </div>`;
