@@ -3305,14 +3305,43 @@ async function openDetail(id){
     setupDrop(id);
   }catch(e){$('modalBody').innerHTML=`<div class="msg err">${esc(e.message)}</div>`}
 }
+function isDriveFolderLink(url){
+  const s=String(url||'');
+  return /\/folders\/[a-zA-Z0-9_-]+/.test(s) || /[?&]folderId=/.test(s);
+}
+function isMeetingFolderFile(f){
+  if(!f)return false;
+  return String(f.linkType||'').toLowerCase()==='folder' ||
+         String(f.mimeType||'').toLowerCase()==='application/vnd.google-apps.folder' ||
+         isDriveFolderLink(f.fileUrl) ||
+         (f.folderId && !f.driveFileId && !String(f.fileUrl||'').includes('/file/d/'));
+}
 function fileList(files){
   if(!files||!files.length)return'<div class="empty">Chưa có tài liệu.</div>';
-  return files.map((f,i)=>`<div class="file-row"><div><b>${esc(f.fileName)}</b><br><span class="muted" style="font-size:.78rem">${esc(f.fileType)} · V${esc(f.version)} · ${esc(f.uploadedBy)} · ${esc(dateVNShort(f.uploadedAt))}</span></div><button type="button" class="btn sm primary" onclick="openMeetingDetailFile(${i})">👁 Xem</button></div>`).join('')
+  return files.map((f,i)=>{
+    const isFolder=isMeetingFolderFile(f);
+    const btnLabel=isFolder?'📁 Mở':'👁 Xem';
+    const metaFolder=isFolder?'Thư mục Drive':'Tệp Drive';
+    return `<div class="file-row"><div><b>${esc(f.fileName)}</b><br><span class="muted" style="font-size:.78rem">${esc(f.fileType)} · V${esc(f.version)} · ${esc(f.uploadedBy)} · ${esc(dateVNShort(f.uploadedAt))} · ${esc(metaFolder)}</span></div><button type="button" class="btn sm primary" onclick="openMeetingDetailFile(${i})">${btnLabel}</button></div>`;
+  }).join('')
 }
 function openMeetingDetailFile(index){
   const f=(APP.detailFiles||[])[Number(index)];
-  if(!f){ alert('Không tìm thấy thông tin file trong chi tiết lịch.'); return; }
-  openDriveFilePopup(f.fileUrl, f.fileName, f.mimeType);
+  if(!f){ alert('Không tìm thấy thông tin tài liệu trong chi tiết lịch.'); return; }
+
+  // Các tài liệu import cũ thường lưu bằng link thư mục Drive trong FILE_URL,
+  // không phải link file /file/d/..., nên phải mở bằng trình duyệt thư mục của web app.
+  if(isMeetingFolderFile(f)){
+    const folderRef=f.folderId || f.fileUrl || f.driveFileId;
+    if(!folderRef){ alert('Tài liệu import cũ chưa có link thư mục Drive.'); return; }
+    openDriveFolderPopup(folderRef, f.fileName || ('Tài liệu '+(f.meetingId||'')));
+    return;
+  }
+
+  let url=f.fileUrl || '';
+  if(!url && f.driveFileId) url='https://drive.google.com/file/d/'+encodeURIComponent(f.driveFileId)+'/view?usp=sharing';
+  if(!url){ alert('Không có đường dẫn file Drive để xem.'); return; }
+  openDriveFilePopup(url, f.fileName, f.mimeType);
 }
 function uploadBox(id){return`<div style="margin-top:12px"><div class="field"><label>Loại tài liệu</label><select id="upType">${fileTypeOptions('TAI_LIEU_HOP')}</select></div><div id="drop" class="drop">Kéo thả file vào đây hoặc bấm để chọn file<br><span class="muted" style="font-size:.76rem">PDF, Word, Excel, PowerPoint, ảnh, zip...</span><input id="fileInput" type="file" multiple class="hide"></div><div id="upMsg"></div></div>`}
 function setupDrop(id){
