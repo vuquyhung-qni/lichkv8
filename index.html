@@ -691,6 +691,14 @@
     .library-popup-card.file-popup iframe,
     .library-popup-card.folder-popup iframe { background:#f7f9fc !important; }
 
+    .library-popup-card.file-popup .library-popup-viewer,
+    .library-popup-card.folder-popup .library-popup-viewer,
+    .library-popup-card.file-popup .library-popup-frame,
+    .library-popup-card.folder-popup .library-popup-frame {
+      background-color: #f7f9fc !important;
+    }
+    .library-popup-card.file-popup .library-popup-viewer { padding: 0 !important; }
+
 
     /* ===== FILTERBAR ===== */
     .filterbar {
@@ -2134,33 +2142,46 @@ function libraryIconFor(item){
   if(mt.includes('zip')||name.match(/\.(zip|rar|7z)$/))return'🗜️';
   return'📄';
 }
+function libraryGviewUrl(id){
+  const rawId=String(id||'');
+  const downloadUrl='https://drive.google.com/uc?export=download&id='+encodeURIComponent(rawId);
+  return 'https://docs.google.com/gview?embedded=true&url='+encodeURIComponent(downloadUrl);
+}
+function normalizePreviewUrl_(src,item){
+  const s=String(src||'');
+  if(!s)return '';
+  const id=String(item&&item.id||driveIdFromUrl(s)||'');
+  /* Bản cũ từng tạo link gview không encode phần url=... nên Google Viewer báo No preview available. */
+  if(id && s.includes('docs.google.com/gview') && s.includes('url=https://drive.google.com/uc?export=download&id=')){
+    return libraryGviewUrl(id);
+  }
+  return s;
+}
 function libraryPreviewUrl(item){
-  const id=encodeURIComponent(item && item.id || '');
+  const rawId=String(item && item.id || '');
+  const id=encodeURIComponent(rawId);
   const mt=String(item && item.mimeType || '').toLowerCase();
   const name=String(item && item.name || '').toLowerCase();
   const url=String(item && item.url || '');
-  if(item && item.previewUrl)return item.previewUrl;
+  const pv=normalizePreviewUrl_(item && item.previewUrl, item);
+  if(pv)return pv;
 
-  // Google Docs/Sheets/Slides: dùng preview riêng để không mở ra Drive.
+  // Google Docs/Sheets/Slides: dùng preview riêng, nền sáng, ít viền đen hơn Drive viewer.
   if(mt==='application/vnd.google-apps.document' || url.includes('docs.google.com/document/'))return `https://docs.google.com/document/d/${id}/preview?rm=minimal&embedded=true`;
   if(mt==='application/vnd.google-apps.spreadsheet' || url.includes('docs.google.com/spreadsheets/'))return `https://docs.google.com/spreadsheets/d/${id}/preview?rm=minimal&embedded=true`;
   if(mt==='application/vnd.google-apps.presentation' || url.includes('docs.google.com/presentation/'))return `https://docs.google.com/presentation/d/${id}/preview?rm=minimal&embedded=true`;
   if(mt==='application/vnd.google-apps.form')return item.url||`https://drive.google.com/open?id=${id}`;
 
-  // PDF: dùng Drive preview để mở ổn định ngay trong popup.
-  // Không dùng link uc/download trong iframe vì Chrome/Drive dễ báo "Không có bản xem trước nào".
-  if(mt==='application/pdf' || name.endsWith('.pdf')){
-    return `https://drive.google.com/file/d/${id}/preview?rm=minimal&embedded=true`;
+  // PDF/Word/Excel/PowerPoint: dùng Google Viewer với URL đã encode đúng để tránh lỗi "No preview available" và giảm nền đen.
+  if(mt==='application/pdf' || name.endsWith('.pdf') ||
+     mt.includes('msword') || mt.includes('wordprocessingml') || mt.includes('spreadsheet') || mt.includes('excel') ||
+     mt.includes('presentation') || mt.includes('powerpoint') || name.match(/\.(doc|docx|xls|xlsx|ppt|pptx)$/)){
+    return libraryGviewUrl(rawId);
   }
 
   // Ảnh: mở trực tiếp trong iframe.
   if(mt.startsWith('image/') || name.match(/\.(png|jpg|jpeg|gif|webp)$/)){
     return `https://drive.google.com/uc?export=view&id=${id}`;
-  }
-
-  // Word/Excel/PowerPoint: dùng Google Viewer.
-  if(mt.includes('msword') || mt.includes('wordprocessingml') || mt.includes('spreadsheet') || mt.includes('excel') || mt.includes('presentation') || mt.includes('powerpoint') || name.match(/\.(doc|docx|xls|xlsx|ppt|pptx)$/)){
-    return `https://docs.google.com/gview?embedded=true&url=https://drive.google.com/uc?export=download&id=${id}`;
   }
 
   return `https://drive.google.com/file/d/${id}/preview?rm=minimal&embedded=true`;
