@@ -1022,6 +1022,8 @@
     .m-meta-row { display: flex; align-items: baseline; gap: 6px; font-size: .85rem; color: var(--text2); }
     .m-meta-row .label { color: var(--muted); font-size: .76rem; flex-shrink: 0; }
     .m-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border2); }
+    .m-actions .btn, .tbl .btn { touch-action: manipulation; -webkit-tap-highlight-color: transparent; position: relative; z-index: 3; pointer-events: auto; }
+    .meeting-card { touch-action: manipulation; }
 
     /* ===== TABLE ===== */
     .table-wrap { overflow-x: auto; border-radius: var(--r-xs); }
@@ -1616,7 +1618,7 @@ function hasRole(list){
   return list.some(x=>x.toLowerCase()===r);
 }
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v25_library_upload_iframe_fix';
+const APP_VERSION = 'HTML_v28_mobile_detail_tap_fix';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
@@ -3054,8 +3056,8 @@ function meetingCards(arr,compact){
         ${m.fileCount>0 ? (m.fileCount===1 && m.firstFileUrl ? `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><button type="button" class="btn xs primary" onclick='openDriveFilePopup(${jss(m.firstFileUrl)},${jss('Tài liệu '+m.meetingId)},${jss('')})'>1 file</button></div>` : (m.folderId||m.linkFolder ? `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><button type="button" class="btn xs primary" onclick='openDriveFolderPopup(${jss(m.folderId||m.linkFolder)},${jss('Thư mục tài liệu '+m.meetingId)})'>${m.fileCount} file</button></div>` : `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><span style="font-weight:700">${m.fileCount} file</span><span class="muted" style="font-size:.76rem;margin-left:4px">(chưa có link Drive)</span></div>`)) : `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><span class="muted">0 file</span></div>`}
       </div>
       <div class="m-actions">
-        <button class="btn sm" onclick="openDetail('${esc(m.meetingId)}')">👁 Xem chi tiết</button>
-        ${hasRole(ROLE_EDIT)?`<button class="btn primary sm" onclick="openMeetingForm('${esc(m.meetingId)}')">✏️ Sửa</button>`:''}
+        <button type="button" class="btn sm js-open-detail" data-action="open-detail" data-meeting-id="${esc(m.meetingId)}">👁 Xem chi tiết</button>
+        ${hasRole(ROLE_EDIT)?`<button type="button" class="btn primary sm js-edit-meeting" data-action="edit-meeting" data-meeting-id="${esc(m.meetingId)}">✏️ Sửa</button>`:''}
       </div>
     </div>`;
   }).join('')+'</div>';
@@ -3095,8 +3097,8 @@ function renderManageTable(){
       <td>${esc(m.chuTri)}</td>
       <td></td>
       <td class="nowrap">
-        <button class="btn xs" onclick="openDetail('${esc(m.meetingId)}')">Xem</button>
-        ${hasRole(ROLE_EDIT)?`<button class="btn primary xs" onclick="openMeetingForm('${esc(m.meetingId)}')">Sửa</button>`:''}
+        <button type="button" class="btn xs js-open-detail" data-action="open-detail" data-meeting-id="${esc(m.meetingId)}">Xem</button>
+        ${hasRole(ROLE_EDIT)?`<button type="button" class="btn primary xs js-edit-meeting" data-action="edit-meeting" data-meeting-id="${esc(m.meetingId)}">Sửa</button>`:''}
       </td>
     </tr>`).join('')}</tbody>
   </table></div>`;
