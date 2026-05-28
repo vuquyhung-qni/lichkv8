@@ -671,6 +671,10 @@
     .meeting-card.truc { border-left-color: var(--gold); }
     .meeting-card.truc:hover { border-left-color: var(--gold2); }
     .m-top { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; flex-wrap: wrap; }
+    @media (min-width: 769px) {
+      .meeting-card .m-top { justify-content: flex-start; align-items: center; gap: 8px; }
+      .meeting-card .m-dateline { justify-content: flex-start; margin-left: 0; }
+    }
     .m-badges { display: flex; gap: 4px; flex-wrap: wrap; }
     .m-dateline { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
     .pill {
@@ -1340,6 +1344,51 @@ function typeLabel(v){const a=setupItems(['MEETING_TYPE','LOAI_LICH']).find(x=>x
 function statusLabel(v){const a=setupItems(['MEETING_STATUS','TRANG_THAI_LICH']).find(x=>x.value===v);return a?a.label:v}
 function optionsAny(keys,selected){return setupItems(keys).map(x=>`<option value="${esc(x.value)}"${x.value===selected?' selected':''}>${esc(x.label)}</option>`).join('')}
 function normText(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/[^a-z0-9]+/g,' ').trim()}
+
+function compactText(s){return normText(s).replace(/\s+/g,'')}
+function levenshteinWithin(a,b,maxDist){
+  a=String(a||''); b=String(b||'');
+  if(a===b)return true;
+  if(!a||!b)return false;
+  if(Math.abs(a.length-b.length)>maxDist)return false;
+  let prev=Array.from({length:b.length+1},(_,i)=>i);
+  for(let i=1;i<=a.length;i++){
+    let cur=[i], rowMin=cur[0];
+    for(let j=1;j<=b.length;j++){
+      const cost=a[i-1]===b[j-1]?0:1;
+      const val=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+cost);
+      cur[j]=val; if(val<rowMin)rowMin=val;
+    }
+    if(rowMin>maxDist)return false;
+    prev=cur;
+  }
+  return prev[b.length]<=maxDist;
+}
+function fuzzyTokenMatch(qt,hTokens){
+  if(!qt)return true;
+  if(qt.length===1)return hTokens.some(t=>t[0]===qt);
+  const maxDist=qt.length<=4?1:(qt.length<=8?2:3);
+  return hTokens.some(t=>{
+    if(!t)return false;
+    if(t===qt||t.includes(qt)||qt.includes(t))return true;
+    if(t[0]!==qt[0])return false;
+    return levenshteinWithin(qt,t,maxDist);
+  });
+}
+function smartMatch(haystack,query){
+  const h=normText(haystack), q=normText(query);
+  if(!q)return true;
+  if(h.includes(q))return true;
+  const hc=compactText(haystack), qc=compactText(query);
+  if(qc&&hc.includes(qc))return true;
+  const hTokens=h.split(' ').filter(Boolean);
+  const qTokens=q.split(' ').filter(x=>x.length>1);
+  if(!qTokens.length)return true;
+  let matched=0;
+  for(const qt of qTokens){ if(fuzzyTokenMatch(qt,hTokens))matched++; }
+  if(qTokens.length===1)return matched===1;
+  return matched===qTokens.length || matched/qTokens.length>=0.75;
+}
 function initials(name){return(name||'U').split(/\s+/).slice(-2).map(x=>x[0]).join('').toUpperCase()||'U'}
 
 // ===== INIT =====
@@ -1816,7 +1865,7 @@ async function changeScope(scope){
 function setCalendarKind(kind){APP.filters.kind=kind;renderCalendar()}
 function applyCalendarFilters(read=true){
   if(read){
-    APP.filters.kw=($('calKw')?.value||$('calKwM')?.value||'').trim().toLowerCase();
+    APP.filters.kw=($('calKw')?.value||$('calKwM')?.value||'').trim();
     APP.filters.leader=$('calLeader')?.value||'all';
     APP.filters.scope=$('calScope')?.value||APP.filters.scope;
   }
@@ -1849,8 +1898,8 @@ function applyCalendarFilters(read=true){
     if(f.kind==='TRUC_BAN'&&!isGB)return false;
     if(f.kind==='HOP'&&isGB)return false;
     // f.kind==='ALL': hiển thị tất cả
-    if(f.leader!=='all'){const hay=normText(`${m.lanhDaoLienQuan} ${m.chuTri} ${m.thanhPhan}`);if(!hay.includes(normText(f.leader)))return false;}
-    if(f.kw){const hay=`${m.meetingId} ${m.noiDung} ${m.thanhPhan} ${m.diaDiem} ${m.chuTri} ${m.ghiChu} ${m.soVanBan}`.toLowerCase();if(!hay.includes(f.kw))return false;}
+    if(f.leader!=='all'){const hay=`${m.lanhDaoLienQuan||''} ${m.chuTri||''} ${m.thanhPhan||''}`;if(!smartMatch(hay,f.leader))return false;}
+    if(f.kw){const hay=`${m.meetingId||''} ${m.noiDung||''} ${m.thanhPhan||''} ${m.diaDiem||''} ${m.chuTri||''} ${m.ghiChu||''} ${m.soVanBan||''}`;if(!smartMatch(hay,f.kw))return false;}
     return true;
   });
   if($('calCount'))$('calCount').textContent=`${arr.length} lịch · ${scopeLabel(f.scope)}`;
@@ -2124,11 +2173,15 @@ async function renderUsers(){
 
 function renderUsersTable(){
   const users=APP._userList||[];
-  const kw=(document.getElementById('uKw')?.value||'').toLowerCase();
-  const roleF=document.getElementById('uRoleF')?.value||'all';
-  const statusF=document.getElementById('uStatusF')?.value||'all';
-  const filtered=users.filter(u=>{
-    if(kw&&!`${u.username} ${u.fullname} ${u.donVi} ${u.email}`.toLowerCase().includes(kw))return false;
+  const activeId=document.activeElement?document.activeElement.id:'';
+  const caret=(activeId==='uKw'&&document.activeElement)?document.activeElement.selectionStart:null;
+  const uf=APP._userFilters||{};
+  const kw=(activeId==='uKw'?($('uKw')?.value||''):(uf.kw??($('uKw')?.value||''))).trim();
+  const roleF=(activeId==='uRoleF'?($('uRoleF')?.value||'all'):(uf.roleF??($('uRoleF')?.value||'all')));
+  const statusF=(activeId==='uStatusF'?($('uStatusF')?.value||'all'):(uf.statusF??($('uStatusF')?.value||'all')));
+  APP._userFilters={kw,roleF,statusF};
+  const filtered=users.map((u,idx)=>({u,idx})).filter(({u})=>{
+    if(kw&&!smartMatch(`${u.username||''} ${u.fullname||''} ${u.donVi||''} ${u.email||''} ${u.chucvu||''} ${u.role||''}`,kw))return false;
     if(roleF!=='all'&&u.role!==roleF)return false;
     if(statusF!=='all'&&u.status!==statusF)return false;
     return true;
@@ -2143,25 +2196,25 @@ function renderUsersTable(){
       </div>
       <div class="panel-b">
         <div class="toolbar" style="margin-bottom:12px">
-          <input id="uKw" placeholder="Tìm tên, tài khoản, đơn vị..." oninput="renderUsersTable()" style="min-width:200px">
-          <select id="uRoleF" onchange="renderUsersTable()">
-            <option value="all">Tất cả vai trò</option>
-            <option value="SuperAdmin">SuperAdmin</option>
-            <option value="Admin">Admin</option>
-            <option value="LanhDaoCucChi">Lãnh đạo Chi cục</option>
-            <option value="LanhDaoPhong">Lãnh đạo Phòng</option>
-            <option value="Thuky">Thư ký</option>
-            <option value="Viewer">Viewer</option>
+          <input id="uKw" placeholder="Tìm thông minh: tên, tài khoản, đơn vị..." value="${esc(kw)}" oninput="APP._userFilters=APP._userFilters||{};APP._userFilters.kw=this.value;renderUsersTable()" style="min-width:200px">
+          <select id="uRoleF" onchange="APP._userFilters=APP._userFilters||{};APP._userFilters.roleF=this.value;renderUsersTable()">
+            <option value="all" ${roleF==='all'?'selected':''}>Tất cả vai trò</option>
+            <option value="SuperAdmin" ${roleF==='SuperAdmin'?'selected':''}>SuperAdmin</option>
+            <option value="Admin" ${roleF==='Admin'?'selected':''}>Admin</option>
+            <option value="LanhDaoCucChi" ${roleF==='LanhDaoCucChi'?'selected':''}>Lãnh đạo Chi cục</option>
+            <option value="LanhDaoPhong" ${roleF==='LanhDaoPhong'?'selected':''}>Lãnh đạo Phòng</option>
+            <option value="Thuky" ${roleF==='Thuky'?'selected':''}>Thư ký</option>
+            <option value="Viewer" ${roleF==='Viewer'?'selected':''}>Viewer</option>
           </select>
-          <select id="uStatusF" onchange="renderUsersTable()">
-            <option value="all">Tất cả trạng thái</option>
-            <option value="Active">Đang hoạt động</option>
-            <option value="Inactive">Đã khoá</option>
+          <select id="uStatusF" onchange="APP._userFilters=APP._userFilters||{};APP._userFilters.statusF=this.value;renderUsersTable()">
+            <option value="all" ${statusF==='all'?'selected':''}>Tất cả trạng thái</option>
+            <option value="Active" ${statusF==='Active'?'selected':''}>Đang hoạt động</option>
+            <option value="Inactive" ${statusF==='Inactive'?'selected':''}>Đã khoá</option>
           </select>
         </div>
         <div class="table-wrap"><table class="tbl">
           <thead><tr><th>#</th><th>Tài khoản</th><th>Họ tên</th><th>Vai trò</th><th>Đơn vị</th><th>Chức vụ</th><th>Trạng thái</th><th></th></tr></thead>
-          <tbody>${filtered.map((u,i)=>`<tr>
+          <tbody>${filtered.map(({u,idx},i)=>`<tr>
             <td class="muted" style="font-size:.78rem">${i+1}</td>
             <td class="mono" style="font-weight:700">${esc(u.username)}</td>
             <td>${esc(u.fullname)}</td>
@@ -2170,15 +2223,19 @@ function renderUsersTable(){
             <td style="font-size:.83rem">${esc(u.chucvu||'')}</td>
             <td><span class="pill ${u.status==='Active'?'status-PUBLISHED':'status-CANCELLED'}">${u.status==='Active'?'Hoạt động':'Đã khoá'}</span></td>
             <td style="white-space:nowrap">
-              <button class="btn xs" onclick="openUserDetail(${i})">👁</button>
-              ${isSA?`<button class="btn primary xs" onclick="openUserForm(APP._userList[${i}])">✏️</button>`:''}
-              ${isSA&&u.username!==APP.user.username?`<button class="btn xs ${u.status==='Active'?'warn':'ok'}" onclick="toggleUserStatus(${i})">${u.status==='Active'?'🔒':'🔓'}</button>`:''}
+              <button class="btn xs" onclick="openUserDetail(${idx})">👁</button>
+              ${isSA?`<button class="btn primary xs" onclick="openUserForm(APP._userList[${idx}])">✏️</button>`:''}
+              ${isSA&&u.username!==APP.user.username?`<button class="btn xs ${u.status==='Active'?'warn':'ok'}" onclick="toggleUserStatus(${idx})">${u.status==='Active'?'🔒':'🔓'}</button>`:''}
               ${isSA&&u.isDefaultPass?'<span title="Đang dùng MK mặc định" style="font-size:.9rem">⚠️</span>':''}
             </td>
           </tr>`).join('')}</tbody>
         </table></div>
       </div>
     </div>`;
+  if(activeId==='uKw'){
+    const inp=$('uKw');
+    if(inp){inp.focus(); const pos=caret==null?inp.value.length:caret; try{inp.setSelectionRange(pos,pos)}catch(e){}}
+  }
 }
 
 function openUserDetail(idx){
