@@ -1395,7 +1395,7 @@ function hasRole(list){
   return list.some(x=>x.toLowerCase()===r);
 }
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = "v9-library-search-filter-fix-20260528";
+const APP_VERSION = "v10-library-open-click-preview-fix-20260528";
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
@@ -1431,7 +1431,7 @@ function api(action, payload={}) {
     const timer = setTimeout(() => {
       cleanup();
       reject(new Error('Timeout — GAS không phản hồi'));
-    }, action === 'librarySearchFiles' ? 60000 : 30000);
+    }, action === 'librarySearchFiles' ? 90000 : 30000);
     function cleanup() {
       clearTimeout(timer);
       try { delete window[cbName]; } catch(e) {}
@@ -2011,21 +2011,42 @@ function libraryIconFor(item){
 function libraryPreviewUrl(item){
   const id=encodeURIComponent(item.id||'');
   const mt=String(item.mimeType||'');
+  if(item.previewUrl)return item.previewUrl;
   if(mt==='application/vnd.google-apps.document')return `https://docs.google.com/document/d/${id}/preview`;
   if(mt==='application/vnd.google-apps.spreadsheet')return `https://docs.google.com/spreadsheets/d/${id}/preview`;
   if(mt==='application/vnd.google-apps.presentation')return `https://docs.google.com/presentation/d/${id}/preview`;
   if(mt==='application/vnd.google-apps.form')return item.url||`https://drive.google.com/open?id=${id}`;
   return `https://drive.google.com/file/d/${id}/preview`;
 }
+function libraryOpenUrl(item){
+  if(!item)return '#';
+  if(item.openUrl)return item.openUrl;
+  if(item.url)return item.url;
+  return `https://drive.google.com/open?id=${encodeURIComponent(item.id||'')}`;
+}
+function libraryFindItemById(id){
+  const items=(APP.libraryData&&APP.libraryData.items)||[];
+  return items.find(x=>String(x.id)===String(id));
+}
 function libraryItemCard(item){
   const isFolder=(item.type==='folder'||item.mimeType==='application/vnd.google-apps.folder');
-  const action=isFolder?`libraryOpenFolder(${jss(item.id)},${jss(item.name)})`:`libraryOpenFile(${jss(item.id)})`;
   const meta=isFolder?'Thư mục':(item.modifiedTime?('Cập nhật '+esc(item.modifiedTime)):(item.mimeLabel||'Tệp văn bản'));
-  return `<button class="library-item ${isFolder?'folder':'file'}" onclick="${action}" title="${esc(item.name)}">
+  return `<button type="button" class="library-item ${isFolder?'folder':'file'}" data-id="${esc(item.id||'')}" data-type="${isFolder?'folder':'file'}" title="${esc(item.name)}">
     <span class="li-icon">${libraryIconFor(item)}</span>
     <span class="li-name">${esc(item.name||'Không tên')}</span>
     <span class="li-meta">${meta}</span>
   </button>`;
+}
+function libraryBodyClick(ev){
+  const btn=ev.target.closest && ev.target.closest('.library-item');
+  if(!btn)return;
+  ev.preventDefault();
+  ev.stopPropagation();
+  const id=btn.getAttribute('data-id')||'';
+  const type=btn.getAttribute('data-type')||'';
+  if(!id)return;
+  if(type==='folder') libraryOpenFolder(id);
+  else libraryOpenFile(id);
 }
 function libraryRenderItems(items, title){
   items=Array.isArray(items)?items:[];
@@ -2053,9 +2074,10 @@ function renderLibraryContent(){
       <div class="library-preview-head">
         <button class="btn sm ghost" onclick="libraryBack()">↩ Quay lại</button>
         <div class="library-preview-title">${libraryIconFor(item)} ${esc(item.name||'Tài liệu')}</div>
-        <a class="btn sm primary" href="${esc(item.url||src)}" target="_blank" rel="noopener">↗ Mở trên Drive</a>
+        <a class="btn sm ghost" href="${esc(libraryOpenUrl(item))}" target="_blank" rel="noopener">↗ Mở ngoài Drive</a>
       </div>
       <iframe class="library-preview-frame" src="${esc(src)}" loading="lazy" allow="autoplay"></iframe>
+      <div class="library-note">Nếu khung xem trước báo không có quyền, chạy hàm <b>fixLibraryPermissions</b> trong Apps Script hoặc cấp quyền xem cho thư mục/file.</div>
     </div>`;
     return;
   }
@@ -2106,9 +2128,11 @@ function libraryOpenFolder(id,name){
   libraryLoadFolder(id,true);
 }
 function libraryOpenFile(id){
-  const items=(APP.libraryData&&APP.libraryData.items)||[];
-  const item=items.find(x=>String(x.id)===String(id));
-  if(!item)return;
+  const item=libraryFindItemById(id);
+  if(!item){
+    showLibraryHelp('Không tìm thấy thông tin file trong danh sách hiện tại. Bấm Tải lại rồi thử lại.', 'err');
+    return;
+  }
   libraryPushState();
   APP.libraryMode='preview';
   APP.libraryPreview=item;
@@ -2156,9 +2180,14 @@ function clearLibrarySearch(){
 async function testLibraryConnection(){
   showLibraryHelp('Đang kiểm tra kết nối tới Apps Script... HTML '+APP_VERSION, '');
   try{
+    let ver='';
+    try{
+      const v=await api('getVersion',{});
+      ver=' · GS '+(v.version||'không rõ');
+    }catch(_){ ver=' · chưa đọc được GS version'; }
     const res=await api('libraryListFolder',{folderId:DRIVE_LIBRARY_FOLDER_ID, rootFolderId:DRIVE_LIBRARY_FOLDER_ID});
     const n=(res.items||[]).length;
-    showLibraryHelp('Kết nối OK ('+APP_VERSION+'). Đã đọc được thư mục gốc: '+n+' mục. Có thể bấm trực tiếp thư mục và tìm file trong web app.', '');
+    showLibraryHelp('Kết nối OK: HTML '+APP_VERSION+ver+'. Đã đọc thư mục gốc: '+n+' mục. Bấm vào thẻ thư mục/file để mở trong web app.', '');
   }catch(e){
     showLibraryHelp('Kết nối lỗi: '+((e&&e.message)||e)+'. Cần Deploy Apps Script phiên bản mới và kiểm tra GAS_URL.', 'err');
   }
@@ -2209,8 +2238,8 @@ function renderLibrary(){
       </div>
       <div id="librarySearchHelp" class="library-search-help"></div>
       <div class="library-crumb"><span>📁</span><span id="libraryCrumbText">Đang xem: <b>Thư mục gốc thư viện văn bản</b></span></div>
-      <div id="libraryBody" class="library-body"></div>
-      <div class="library-note">Thư viện dùng trình duyệt nội bộ để bấm thư mục, Back/Close và tìm file ngay trong web app. Nếu vẫn hiện Google Drive/403 nghĩa là trình duyệt/GitHub đang chạy HTML cũ; bản này không dùng iframe Google Drive để tìm kiếm.</div>
+      <div id="libraryBody" class="library-body" onclick="libraryBodyClick(event)"></div>
+      <div class="library-note">Thư viện dùng trình duyệt nội bộ để bấm thư mục/file ngay trong web app. Nếu file không xem trước được trong khung, nguyên nhân thường là quyền Drive của file; chạy hàm fixLibraryPermissions trong Apps Script hoặc cấp quyền xem cho thư mục/file.</div>
     </div>`;
   const help=$('librarySearchHelp');
   if(help && APP.libraryError){help.textContent='Cần cập nhật Code.gs để dùng đầy đủ tìm kiếm và mở thư mục nội bộ.';help.classList.add('show');}
