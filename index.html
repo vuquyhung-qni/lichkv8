@@ -1395,6 +1395,7 @@ function hasRole(list){
   return list.some(x=>x.toLowerCase()===r);
 }
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
+const APP_VERSION = "v9-library-search-filter-fix-20260528";
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
@@ -1430,7 +1431,7 @@ function api(action, payload={}) {
     const timer = setTimeout(() => {
       cleanup();
       reject(new Error('Timeout — GAS không phản hồi'));
-    }, 25000);
+    }, action === 'librarySearchFiles' ? 60000 : 30000);
     function cleanup() {
       clearTimeout(timer);
       try { delete window[cbName]; } catch(e) {}
@@ -1441,7 +1442,7 @@ function api(action, payload={}) {
       if (!res || res.ok === false) reject(new Error((res && res.msg) || 'Lỗi không xác định'));
       else resolve(res);
     };
-    const qs = new URLSearchParams({ data: JSON.stringify(payload), callback: cbName });
+    const qs = new URLSearchParams({ data: JSON.stringify(payload), callback: cbName, _ts: Date.now().toString() });
     script.src = GAS_URL + '?' + qs.toString();
     script.async = true;
     script.onerror = function() {
@@ -1517,18 +1518,16 @@ function fuzzyTokenMatch(qt,hTokens){
   });
 }
 function smartMatch(haystack,query){
-  const h=normText(haystack), q=normText(query);
+  // Tìm kiếm lịch theo hướng CHÍNH XÁC HƠN:
+  // - Không phân biệt hoa/thường, có dấu/không dấu.
+  // - Tách nhiều từ khóa; TẤT CẢ từ khóa phải có trong dữ liệu.
+  // - Không dùng fuzzy/Levenshtein để tránh nhập "Phạm Quốc Hưng" nhưng lôi nhầm lịch khác.
+  const h=normText(haystack);
+  const q=normText(query);
   if(!q)return true;
-  if(h.includes(q))return true;
-  const hc=compactText(haystack), qc=compactText(query);
-  if(qc&&hc.includes(qc))return true;
-  const hTokens=h.split(' ').filter(Boolean);
-  const qTokens=q.split(' ').filter(x=>x.length>1);
-  if(!qTokens.length)return true;
-  let matched=0;
-  for(const qt of qTokens){ if(fuzzyTokenMatch(qt,hTokens))matched++; }
-  if(qTokens.length===1)return matched===1;
-  return matched===qTokens.length || matched/qTokens.length>=0.75;
+  const tokens=q.split(' ').filter(x=>x.length>0);
+  if(!tokens.length)return true;
+  return tokens.every(t=>h.includes(t));
 }
 
 function normLeaderName(s){
@@ -2155,11 +2154,11 @@ function clearLibrarySearch(){
 }
 
 async function testLibraryConnection(){
-  showLibraryHelp('Đang kiểm tra kết nối tới Apps Script...', '');
+  showLibraryHelp('Đang kiểm tra kết nối tới Apps Script... HTML '+APP_VERSION, '');
   try{
     const res=await api('libraryListFolder',{folderId:DRIVE_LIBRARY_FOLDER_ID, rootFolderId:DRIVE_LIBRARY_FOLDER_ID});
     const n=(res.items||[]).length;
-    showLibraryHelp('Kết nối OK. Đã đọc được thư mục gốc: '+n+' mục. Nếu trước đó vẫn hiện 403, hãy xóa cache trình duyệt hoặc thay đúng file index.html trên GitHub.', '');
+    showLibraryHelp('Kết nối OK ('+APP_VERSION+'). Đã đọc được thư mục gốc: '+n+' mục. Có thể bấm trực tiếp thư mục và tìm file trong web app.', '');
   }catch(e){
     showLibraryHelp('Kết nối lỗi: '+((e&&e.message)||e)+'. Cần Deploy Apps Script phiên bản mới và kiểm tra GAS_URL.', 'err');
   }
@@ -2211,7 +2210,7 @@ function renderLibrary(){
       <div id="librarySearchHelp" class="library-search-help"></div>
       <div class="library-crumb"><span>📁</span><span id="libraryCrumbText">Đang xem: <b>Thư mục gốc thư viện văn bản</b></span></div>
       <div id="libraryBody" class="library-body"></div>
-      <div class="library-note">Thư viện dùng trình duyệt nội bộ để bấm thư mục, Back/Close và tìm file ngay trong web app. Nếu vẫn hiện Google Drive/403 nghĩa là đang chạy HTML cũ hoặc chưa Deploy bản Apps Script mới.</div>
+      <div class="library-note">Thư viện dùng trình duyệt nội bộ để bấm thư mục, Back/Close và tìm file ngay trong web app. Nếu vẫn hiện Google Drive/403 nghĩa là trình duyệt/GitHub đang chạy HTML cũ; bản này không dùng iframe Google Drive để tìm kiếm.</div>
     </div>`;
   const help=$('librarySearchHelp');
   if(help && APP.libraryError){help.textContent='Cần cập nhật Code.gs để dùng đầy đủ tìm kiếm và mở thư mục nội bộ.';help.classList.add('show');}
