@@ -418,7 +418,11 @@
       transition: transform .18s, box-shadow .18s;
     }
     .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: #c4d6ea; }
-    .stat-active { box-shadow: 0 0 0 2.5px var(--blue2), var(--shadow) !important; transform: translateY(-2px); }
+    .stat-active {
+      box-shadow: inset 0 0 0 1px rgba(15,76,129,.20), var(--shadow-sm) !important;
+      border-color: rgba(15,76,129,.22) !important;
+      transform: none;
+    }
     .th-active,.td-active { background: #eff6ff !important; color: var(--blue) !important; font-weight:800; }
     .stat-card::after {
       content: '';
@@ -433,6 +437,16 @@
     .stat-k { font-size: .72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
     .stat-v { font-size: 2rem; font-weight: 900; color: var(--navy); line-height: 1.1; margin: 5px 0 3px; }
     .stat-sub { font-size: .72rem; color: var(--muted); }
+    .stat-card.stat-today { background: linear-gradient(180deg,#fff 0%,#f8fbff 100%); }
+    .stat-card.stat-week  { background: linear-gradient(180deg,#fff 0%,#fbf8ff 100%); }
+    .stat-card.stat-month { background: linear-gradient(180deg,#fff 0%,#f5fff9 100%); }
+    .stat-card.stat-year  { background: linear-gradient(180deg,#fff 0%,#fffdf3 100%); }
+    .stat-card.stat-total::after { background: linear-gradient(90deg,#0f4c81,#0b67b2); }
+    .stat-card.stat-published::after { background: linear-gradient(90deg,#059669,#10b981); }
+    .stat-card.stat-draft::after { background: linear-gradient(90deg,#6c35c8,#9c5fef); }
+    .stat-card.stat-cancelled::after { background: linear-gradient(90deg,#b3261e,#ef4444); }
+    .leader-full { display: inline; }
+    .leader-short { display: none; }
 
     /* ===== PANEL ===== */
     .panel {
@@ -452,6 +466,12 @@
     }
     .panel-h h3 { font-size: .92rem; font-weight: 700; color: var(--navy); flex: 1; }
     .panel-b { padding: 16px 18px; }
+    .library-panel { height: calc(100svh - 126px); display: flex; flex-direction: column; }
+    .library-panel .panel-h { flex-shrink: 0; }
+    .library-head-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .library-body { padding: 0; flex: 1; min-height: 0; background: #fff; }
+    .library-frame { width: 100%; height: 100%; min-height: 620px; border: 0; display: block; background: #fff; }
+    .library-note { font-size: .78rem; color: var(--muted); padding: 8px 18px; border-top: 1px solid var(--border2); background: #f8fbff; }
 
     /* ===== FILTERBAR ===== */
     .filterbar {
@@ -922,6 +942,11 @@
       .topbar { padding: 10px 16px; }
       .topbar-title, .topbar-sub { display: none; }
       .topbar-mobile-title { display: flex !important; }
+      .leader-full { display: none; }
+      .leader-short { display: inline; }
+      .library-panel { height: calc(100svh - 108px); }
+      .library-frame { min-height: calc(100svh - 178px); }
+      .library-head-actions .btn { padding: 7px 10px; font-size: .78rem; }
 
       /* Bottom navigation bar */
       body.logged-in .bottom-nav {
@@ -1116,6 +1141,10 @@
         <span class="nav-icon">📝</span>
         <span class="nav-label">Quản lý lịch</span>
       </button>
+      <button class="nav-btn" data-screen="library" onclick="go('library')">
+        <span class="nav-icon">📚</span>
+        <span class="nav-label">Thư viện văn bản</span>
+      </button>
       <div class="nav-section-label" id="navAdminSection">Quản trị</div>
       <button class="nav-btn" data-screen="users" id="navUsers" onclick="go('users')">
         <span class="nav-icon">👥</span>
@@ -1158,6 +1187,7 @@
       <section id="screen-dashboard" class="hide"></section>
       <section id="screen-calendar"></section>
       <section id="screen-manage" class="hide"></section>
+      <section id="screen-library" class="hide"></section>
       <section id="screen-users" class="hide"></section>
       <section id="screen-settings" class="hide"></section>
     </div>
@@ -1244,6 +1274,9 @@ function hasRole(list){
 }
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
+const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
+const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
+const DRIVE_LIBRARY_EMBED_URL = 'https://drive.google.com/embeddedfolderview?id=1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv&hl=vi#grid';
 
 function api(action, payload={}) {
   payload.action = action;
@@ -1381,7 +1414,7 @@ async function go(screen){
   document.querySelectorAll('.bn-item').forEach(b=>b.classList.toggle('active',b.dataset.screen===screen));
   document.querySelectorAll('[id^="screen-"]').forEach(s=>s.classList.add('hide'));
   $('screen-'+screen).classList.remove('hide');
-  const titles={dashboard:'TỔNG QUAN',calendar:'LỊCH CÔNG TÁC',manage:'QUẢN LÝ LỊCH',users:'NGƯỜI DÙNG',settings:'DANH MỤC'};
+  const titles={dashboard:'TỔNG QUAN',calendar:'LỊCH CÔNG TÁC',manage:'QUẢN LÝ LỊCH',library:'THƯ VIỆN VĂN BẢN',users:'NGƯỜI DÙNG',settings:'DANH MỤC'};
   $('pageTitle').textContent=titles[screen]||'';
   if(window.innerWidth<768)closeSide();
   await render();
@@ -1400,10 +1433,10 @@ async function refreshAll(){
   render();
 }
 function setLoading(){
-  ['screen-dashboard','screen-calendar','screen-manage','screen-users','screen-settings']
+  ['screen-dashboard','screen-calendar','screen-manage','screen-library','screen-users','screen-settings']
     .forEach(id=>$(id).innerHTML='<div class="loading"><div class="spin"></div><span>Đang tải...</span></div>');
 }
-async function render(){renderDashboard();renderCalendar();renderManage();await renderUsers();renderSettings();}
+async function render(){renderDashboard();renderCalendar();renderManage();renderLibrary();await renderUsers();renderSettings();}
 
 // ===== DASHBOARD =====
 function renderDashboard(){
@@ -1481,10 +1514,10 @@ function renderDashboard(){
     </div>
     <div class="sp"></div>
     <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
-      ${statCard('Tổng',d.total||0,'Tất cả lịch')}
-      ${statCard('Đã duyệt',d.published||0,'Trạng thái PUBLISHED')}
-      ${statCard('Nháp',d.draft||0,'Trạng thái DRAFT')}
-      ${statCard('Đã hủy',d.cancelled||0,'Trạng thái CANCELLED')}
+      ${statCard('Tổng',d.total||0,'Tất cả lịch','stat-total')}
+      ${statCard('Đã duyệt',d.published||0,'Trạng thái PUBLISHED','stat-published')}
+      ${statCard('Nháp',d.draft||0,'Trạng thái DRAFT','stat-draft')}
+      ${statCard('Đã hủy',d.cancelled||0,'Trạng thái CANCELLED','stat-cancelled')}
     </div>
     <div class="sp"></div>
     <div class="panel">
@@ -1498,10 +1531,10 @@ function renderDashboard(){
                 const _dc={'Phạm Quốc Hưng':'#0f4c81','Ngô Tùng Dương':'#b76b00','Bùi Ngọc Lợi':'#0b67b2','Nguyễn Cảnh Thắng':'#38a3d1'};
                 const _dot=_dc[x.name]||'#5f6b76';
                 return`<tr>
-                <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${_dot};margin-right:5px;vertical-align:middle;flex-shrink:0"></span><b>${esc(x.short||x.display)}</b></td>
-                <td style="cursor:pointer;color:var(--blue);font-weight:600" onclick="openLeaderStatDetail('${esc(x.name)}','${esc(x.short||x.display)}','week')" title="Bấm để xem danh sách">${x.week}</td>
-                <td style="cursor:pointer;color:var(--blue);font-weight:600" onclick="openLeaderStatDetail('${esc(x.name)}','${esc(x.short||x.display)}','month')" title="Bấm để xem danh sách">${x.month}</td>
-                <td style="cursor:pointer;color:var(--blue);font-weight:700" onclick="openLeaderStatDetail('${esc(x.name)}','${esc(x.short||x.display)}','year')" title="Bấm để xem danh sách"><b>${x.year}</b></td>
+                <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${_dot};margin-right:5px;vertical-align:middle;flex-shrink:0"></span><b><span class="leader-full">Đ/c ${esc(x.name)}</span><span class="leader-short">${esc(x.short||('Đ/c '+x.name.split(' ').pop()))}</span></b></td>
+                <td style="cursor:pointer;color:var(--blue);font-weight:600" onclick="openLeaderStatDetail('${esc(x.name)}','Đ/c ${esc(x.name)}','week')" title="Bấm để xem danh sách">${x.week}</td>
+                <td style="cursor:pointer;color:var(--blue);font-weight:600" onclick="openLeaderStatDetail('${esc(x.name)}','Đ/c ${esc(x.name)}','month')" title="Bấm để xem danh sách">${x.month}</td>
+                <td style="cursor:pointer;color:var(--blue);font-weight:700" onclick="openLeaderStatDetail('${esc(x.name)}','Đ/c ${esc(x.name)}','year')" title="Bấm để xem danh sách"><b>${x.year}</b></td>
                 <td><div class="barline"><span style="width:${Math.min(100,Math.round(x.year*100/maxYear))}%"></span></div></td>
               </tr>`}).join('')}
             </tbody>
@@ -1517,7 +1550,8 @@ function renderDashboard(){
 }
 function statCard(k,v,sub,cls,period){
   const isActive=period&&APP.dashPeriod===period;
-  return `<div class="stat-card${isActive?' stat-active':''}" ${period?`onclick="setDashPeriod('${period}')" style="cursor:pointer"`:''}>
+  const extra=cls?` ${cls}`:'';
+  return `<div class="stat-card${extra}${isActive?' stat-active':''}" ${period?`onclick="setDashPeriod('${period}')" style="cursor:pointer"`:''}>
     <div class="stat-k">${esc(k)}</div>
     <div class="stat-v">${esc(v)}</div>
     <div class="stat-sub">${esc(sub)}</div>
@@ -1525,13 +1559,16 @@ function statCard(k,v,sub,cls,period){
 }
 function statCardClickable(k,v,sub,period){
   const isActive=period&&APP.dashPeriod===period;
-  return `<div class="stat-card${isActive?' stat-active':''}" onclick="openStatDetail('${period}','${k.replace(/'/g,"&apos;")}')" style="cursor:pointer">
+  const safeLabel=esc(k).replace(/'/g,"&apos;");
+  return `<div class="stat-card stat-${period}${isActive?' stat-active':''}" onclick="openStatDetail('${period}','${safeLabel}')" style="cursor:pointer">
     <div class="stat-k">${esc(k)}</div>
     <div class="stat-v">${esc(v)}</div>
     <div class="stat-sub">${esc(sub)}</div>
   </div>`;
 }
 function openStatDetail(period, label){
+  APP.dashPeriod=period;
+  renderDashboard();
   const today=new Date(); today.setHours(0,0,0,0);
   const[wStart,wEnd]=weekRange(today);
   const mStart=new Date(today.getFullYear(),today.getMonth(),1);
@@ -1633,6 +1670,25 @@ function openTypeDetail(key, label, clickType){
     `<div style="max-height:60vh;overflow:auto">${meetingCards(arr,true)||'<div class=\"empty\">Không có lịch.</div>'}</div>
     <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn" onclick="closeModal()">Đóng</button></div>`
   );
+}
+
+function renderLibrary(){
+  const el=$('screen-library');
+  if(!el)return;
+  el.innerHTML=`
+    <div class="panel library-panel">
+      <div class="panel-h">
+        <h3>📚 Thư viện văn bản</h3>
+        <div class="library-head-actions">
+          <button class="btn sm" onclick="renderLibrary()">↻ Tải lại</button>
+          <a class="btn sm primary" href="${DRIVE_LIBRARY_URL}" target="_blank" rel="noopener">↗ Mở trên Drive</a>
+        </div>
+      </div>
+      <div class="library-body">
+        <iframe class="library-frame" src="${DRIVE_LIBRARY_EMBED_URL}" loading="lazy" allow="autoplay"></iframe>
+      </div>
+      <div class="library-note">Nếu khung Drive không hiển thị, cần kiểm tra quyền chia sẻ thư mục hoặc bấm “Mở trên Drive”.</div>
+    </div>`;
 }
 
 // ===== CALENDAR =====
