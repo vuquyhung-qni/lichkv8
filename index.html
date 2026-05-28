@@ -655,9 +655,39 @@
       color-scheme: light;
     }
     .library-popup-card.file-popup .library-popup-frame {
+      width: 100%;
+      height: 100%;
       max-width: 100%;
       flex: 1 1 auto;
       background: #f7f9fc !important;
+    }
+    /* V21: không để màu đen của Drive viewer tràn ra toàn popup.
+       Khung ngoài luôn là nền lịch #f7f9fc; iframe được đặt trong một "trang" sáng ở giữa. */
+    .library-popup-card.file-popup .library-popup-viewer {
+      background: #f7f9fc !important;
+      padding: 0 22px 18px !important;
+      overflow: auto !important;
+    }
+    .library-popup-docshell {
+      width: min(860px, 100%);
+      height: 100%;
+      min-height: 0;
+      margin: 0 auto;
+      background: #fff;
+      border-left: 1px solid #d9e3ec;
+      border-right: 1px solid #d9e3ec;
+      box-shadow: 0 8px 28px rgba(6,58,99,.10);
+      overflow: hidden;
+      display: flex;
+    }
+    .library-popup-docshell .library-popup-frame {
+      width: 100% !important;
+      height: 100% !important;
+      flex: 1 1 auto !important;
+      background: #fff !important;
+    }
+    .library-popup-card.file-popup.wide-preview .library-popup-docshell {
+      width: min(1180px, 100%);
     }
     .library-popup-card.folder-popup .library-popup-frame {
       max-width: none;
@@ -697,7 +727,7 @@
     .library-popup-card.folder-popup .library-popup-frame {
       background-color: #f7f9fc !important;
     }
-    .library-popup-card.file-popup .library-popup-viewer { padding: 0 !important; }
+    .library-popup-card.file-popup .library-popup-viewer { padding: 0 22px 18px !important; }
 
 
     /* ===== FILTERBAR ===== */
@@ -1529,7 +1559,7 @@ function hasRole(list){
   return list.some(x=>x.toLowerCase()===r);
 }
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = "v19-manage-color-pdf-popup-fix-20260528";
+const APP_VERSION = "v21-popup-light-crop-20260528";
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
@@ -2414,13 +2444,16 @@ function libraryShowFilePopup(item){
   overlay.onclick=function(ev){ if(ev.target===overlay) libraryCloseFilePopup(); };
   const src=libraryPreviewUrl(item);
   const open=libraryOpenUrl(item);
-  overlay.innerHTML=`<div class="library-popup-card file-popup" role="dialog" aria-modal="true" aria-label="Xem tài liệu">
+  const mt=String(item.mimeType||'').toLowerCase();
+  const nm=String(item.name||'').toLowerCase();
+  const wide=(mt.includes('spreadsheet')||mt.includes('presentation')||nm.match(/\.(xls|xlsx|ppt|pptx|png|jpg|jpeg|webp)$/));
+  overlay.innerHTML=`<div class="library-popup-card file-popup ${wide?'wide-preview':''}" role="dialog" aria-modal="true" aria-label="Xem tài liệu">
     <div class="library-popup-head">
       <div class="library-popup-title">${libraryIconFor(item)} ${esc(item.name||'Tài liệu')}</div>
       <a class="btn sm ghost" href="${esc(open)}" target="_blank" rel="noopener">↗ Mở ngoài Drive</a>
       <button type="button" class="library-popup-close" onclick="libraryCloseFilePopup()" title="Đóng">✕</button>
     </div>
-    <div class="library-popup-viewer"><iframe class="library-popup-frame" src="${esc(src)}" loading="lazy" allow="autoplay"></iframe></div>
+    <div class="library-popup-viewer"><div class="library-popup-docshell"><iframe class="library-popup-frame" src="${esc(src)}" loading="lazy" allow="autoplay"></iframe></div></div>
   </div>`;
   document.body.appendChild(overlay);
   document.addEventListener('keydown', libraryPopupEscHandler);
