@@ -1618,7 +1618,7 @@ function hasRole(list){
   return list.some(x=>x.toLowerCase()===r);
 }
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v28_mobile_detail_tap_fix';
+const APP_VERSION = 'HTML_v29_library_dragdrop_capture_fix';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
@@ -1777,19 +1777,65 @@ async function waitUploadStatus(uploadId, fileName){
 }
 
 let __dragGuardInstalled=false;
+function isFileDragEvent(ev){
+  const dt=ev && ev.dataTransfer;
+  if(!dt)return false;
+  const types=Array.from(dt.types||[]).map(x=>String(x));
+  return types.indexOf('Files')>=0 || types.indexOf('application/x-moz-file')>=0;
+}
+function findLibraryDropzone(ev){
+  return ev && ev.target && ev.target.closest ? ev.target.closest('.library-dropzone') : null;
+}
 function installUploadDragGuards(){
   if(__dragGuardInstalled)return;
   __dragGuardInstalled=true;
-  ['dragenter','dragover','drop'].forEach(type=>{
-    window.addEventListener(type, ev=>{
-      const dt=ev.dataTransfer;
-      const hasFiles=dt && Array.from(dt.types||[]).indexOf('Files')>=0;
-      if(!hasFiles)return;
-      const inDrop=ev.target && ev.target.closest && ev.target.closest('.library-dropzone,.drop');
-      if(inDrop)return;
+
+  // Bắt sự kiện ở capture phase để vùng input file trong suốt không nuốt mất thao tác kéo-thả.
+  ['dragenter','dragover'].forEach(type=>{
+    document.addEventListener(type, ev=>{
+      if(!isFileDragEvent(ev))return;
+      const zone=findLibraryDropzone(ev);
+      if(zone){
+        ev.preventDefault();
+        ev.stopPropagation();
+        try{ev.dataTransfer.dropEffect='copy';}catch(_){ }
+        zone.classList.add('drag');
+        return;
+      }
+      const otherDrop=ev.target && ev.target.closest && ev.target.closest('.drop');
+      if(otherDrop)return; // để nguyên vùng upload tài liệu cuộc họp xử lý riêng
       ev.preventDefault();
-    }, false);
+    }, true);
   });
+
+  document.addEventListener('dragleave', ev=>{
+    const zone=findLibraryDropzone(ev);
+    if(!zone)return;
+    const to=ev.relatedTarget;
+    if(to && zone.contains(to))return;
+    zone.classList.remove('drag');
+  }, true);
+
+  document.addEventListener('drop', ev=>{
+    if(!isFileDragEvent(ev))return;
+    const zone=findLibraryDropzone(ev);
+    if(zone){
+      ev.preventDefault();
+      ev.stopPropagation();
+      zone.classList.remove('drag');
+      const folderId=zone.getAttribute('data-folder-id')||'';
+      const files=ev.dataTransfer ? ev.dataTransfer.files : null;
+      if(!files || !files.length){
+        librarySetUploadMsg(zone,'Không nhận được file. Hãy kéo file từ máy tính vào vùng này, hoặc bấm vào vùng upload để chọn file. Nếu kéo từ Google Drive/trình duyệt thì trình duyệt không truyền file thật để upload.','err');
+        return;
+      }
+      libraryUploadToFolder(folderId, files, zone);
+      return;
+    }
+    const otherDrop=ev.target && ev.target.closest && ev.target.closest('.drop');
+    if(otherDrop)return;
+    ev.preventDefault();
+  }, true);
 }
 
 function dateVN(iso){
@@ -2617,7 +2663,7 @@ async function libraryUploadToFolder(folderId,files,source){
   }catch(e){
     const msg=(e&&e.message)||String(e||'Upload lỗi');
     librarySetUploadMsg(source,msg,'err');
-    showLibraryHelp('Upload không thành công: '+msg+'. Hãy kiểm tra đã dán Code.gs V25, Deploy New version và tài khoản triển khai có quyền sửa thư mục Drive.', 'err');
+    showLibraryHelp('Upload không thành công: '+msg+'. Hãy kiểm tra đã dán Code.gs V29, Deploy New version và tài khoản triển khai có quyền sửa thư mục Drive.', 'err');
   }
 }
 function libraryRenderItems(items, title, folderId){
