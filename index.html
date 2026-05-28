@@ -548,7 +548,7 @@
     .library-frame { width: 100%; height: 100%; min-height: 620px; border: 0; display: block; background: #fff; }
     .library-note { font-size: .78rem; color: var(--muted); padding: 8px 18px; border-top: 1px solid var(--border2); background: #f8fbff; }
 
-    .library-browser { height: 100%; min-height: 0; overflow: auto; padding: 16px 18px 22px; background: #fff; }
+    .library-browser { height: 100%; min-height: 0; overflow: auto; padding: 16px 18px 22px; background: #f7f9fc; }
     .library-statusbar { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; color:var(--text2); font-size:.82rem; }
     .library-statusbar b { color:var(--navy); }
     .library-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
@@ -589,8 +589,7 @@
       position: fixed;
       inset: 0;
       z-index: 300;
-      /* Không dùng màng lọc xanh/blur để tránh làm tài liệu trong iframe bị ám màu */
-      background: rgba(3, 29, 56, .22);
+      background: rgba(15, 23, 42, .16);
       backdrop-filter: none !important;
       -webkit-backdrop-filter: none !important;
       display: flex;
@@ -601,10 +600,10 @@
     .library-popup-card {
       width: min(1180px, 96vw);
       height: min(820px, 92svh);
-      background: #fff;
+      background: #f7f9fc;
       border-radius: 16px;
-      box-shadow: 0 28px 70px rgba(6,58,99,.28);
-      border: 1.5px solid #0b5a96;
+      box-shadow: 0 28px 70px rgba(6,58,99,.24);
+      border: 1.5px solid #d9e3ec;
       overflow: hidden;
       display: flex;
       flex-direction: column;
@@ -618,11 +617,11 @@
     .library-popup-head {
       flex-shrink: 0;
       padding: 10px 14px;
-      border-bottom: 1px solid rgba(255,255,255,.18);
+      border-bottom: 1px solid rgba(255,255,255,.16);
       display: flex;
       align-items: center;
       gap: 10px;
-      background: linear-gradient(135deg, #063a63 0%, #0b5a96 100%);
+      background: linear-gradient(135deg, var(--navy), var(--blue));
     }
     .library-popup-title {
       flex: 1;
@@ -633,16 +632,36 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+    .library-popup-viewer {
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      background: #f7f9fc;
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      overflow: hidden;
+    }
     .library-popup-frame {
       flex: 1;
       min-height: 0;
       width: 100%;
+      height: 100%;
       border: 0;
-      background: linear-gradient(180deg, #063a63 0%, #0b5a96 100%);
+      background: #f7f9fc !important;
       opacity: 1 !important;
       filter: none !important;
       mix-blend-mode: normal !important;
       color-scheme: light;
+    }
+    .library-popup-card.file-popup .library-popup-frame {
+      max-width: 980px;
+      flex: 0 1 980px;
+      background: #f7f9fc !important;
+    }
+    .library-popup-card.folder-popup .library-popup-frame {
+      max-width: none;
+      flex: 1 1 auto;
     }
     .library-popup-foot { display:none !important; }
     .library-popup-close {
@@ -665,6 +684,10 @@
       border-color: rgba(255,255,255,.9);
       color: var(--navy);
     }
+    .library-popup-card .library-browser, .library-popup-card .library-empty, .library-popup-card .library-loading-box, .library-popup-card .library-error-box { background:#f7f9fc !important; }
+    .library-popup-card.folder-popup .library-popup-viewer { background:#f7f9fc !important; align-items:stretch; justify-content:stretch; }
+    .library-popup-card.file-popup .library-popup-viewer { background:#f7f9fc !important; padding:0; }
+    .library-popup-card.file-popup .library-popup-frame { background:#f7f9fc !important; }
 
 
     /* ===== FILTERBAR ===== */
@@ -935,6 +958,9 @@
     .tbl tr:last-child td { border-bottom: none; }
     .tbl tr:hover td { background: #fafbff; }
     .leader-table td:nth-child(n+2), .leader-table th:nth-child(n+2) { text-align: center; }
+
+    .leader-table td:first-child { font-weight: 800; }
+    .leader-table td:first-child b { font-weight: 800; }
     @media (max-width: 768px) {
       .leader-table th, .leader-table td { font-size: .75rem; padding: 8px 6px; white-space: nowrap; }
       .leader-table td:first-child { white-space: nowrap; font-size: .8rem; }
@@ -1152,6 +1178,7 @@
       .library-searchbar .btn { flex: 1; justify-content: center; }
       .library-popup-overlay { padding: 8px; }
       .library-popup-card { width: 100vw; height: 96svh; border-radius: 12px; }
+      .library-popup-card.file-popup .library-popup-frame { max-width: 100%; flex-basis: 100%; }
       .library-popup-head { padding: 9px 10px; }
       .library-popup-title { font-size: .86rem; }
 
@@ -1481,7 +1508,7 @@ function hasRole(list){
   return list.some(x=>x.toLowerCase()===r);
 }
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = "v14b-meeting-file-popup-fix-20260528";
+const APP_VERSION = "v16-popup-bg-folder-internal-20260528";
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
@@ -1852,7 +1879,7 @@ function renderDashboard(){
                 const _dc={'Phạm Quốc Hưng':'#0f4c81','Ngô Tùng Dương':'#b76b00','Bùi Ngọc Lợi':'#0b67b2','Nguyễn Cảnh Thắng':'#38a3d1'};
                 const _dot=_dc[x.name]||'#5f6b76';
                 return`<tr>
-                <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${_dot};margin-right:5px;vertical-align:middle;flex-shrink:0"></span><b><span class="leader-full">Đ/c ${esc(x.name)}</span><span class="leader-short">${esc(x.short||('Đ/c '+x.name.split(' ').pop()))}</span></b></td>
+                <td style="color:${_dot};font-weight:800"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${_dot};margin-right:6px;vertical-align:middle;flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,.9)"></span><b style="color:${_dot}"><span class="leader-full">Đ/c ${esc(x.name)}</span><span class="leader-short">${esc(x.short||('Đ/c '+x.name.split(' ').pop()))}</span></b></td>
                 <td style="cursor:pointer;color:var(--blue);font-weight:600" onclick="openLeaderStatDetail('${esc(x.name)}','Đ/c ${esc(x.name)}','week')" title="Bấm để xem danh sách">${x.week}</td>
                 <td style="cursor:pointer;color:var(--blue);font-weight:600" onclick="openLeaderStatDetail('${esc(x.name)}','Đ/c ${esc(x.name)}','month')" title="Bấm để xem danh sách">${x.month}</td>
                 <td style="cursor:pointer;color:var(--blue);font-weight:700" onclick="openLeaderStatDetail('${esc(x.name)}','Đ/c ${esc(x.name)}','year')" title="Bấm để xem danh sách"><b>${x.year}</b></td>
@@ -2100,11 +2127,14 @@ function libraryPreviewUrl(item){
   const name=String(item && item.name || '').toLowerCase();
   const url=String(item && item.url || '');
   if(item && item.previewUrl)return item.previewUrl;
-  if(mt==='application/vnd.google-apps.document' || mt.includes('msword') || mt.includes('wordprocessingml') || name.match(/\.(doc|docx)$/) || url.includes('docs.google.com/document/'))return `https://docs.google.com/document/d/${id}/preview`;
-  if(mt==='application/vnd.google-apps.spreadsheet' || mt.includes('spreadsheet') || mt.includes('excel') || name.match(/\.(xls|xlsx|csv)$/) || url.includes('docs.google.com/spreadsheets/'))return `https://docs.google.com/spreadsheets/d/${id}/preview`;
-  if(mt==='application/vnd.google-apps.presentation' || mt.includes('presentation') || mt.includes('powerpoint') || name.match(/\.(ppt|pptx)$/) || url.includes('docs.google.com/presentation/'))return `https://docs.google.com/presentation/d/${id}/preview`;
+  if(mt==='application/vnd.google-apps.document' || url.includes('docs.google.com/document/'))return `https://docs.google.com/document/d/${id}/preview?rm=minimal&embedded=true`;
+  if(mt==='application/vnd.google-apps.spreadsheet' || url.includes('docs.google.com/spreadsheets/'))return `https://docs.google.com/spreadsheets/d/${id}/preview?rm=minimal&embedded=true`;
+  if(mt==='application/vnd.google-apps.presentation' || url.includes('docs.google.com/presentation/'))return `https://docs.google.com/presentation/d/${id}/preview?rm=minimal&embedded=true`;
   if(mt==='application/vnd.google-apps.form')return item.url||`https://drive.google.com/open?id=${id}`;
-  return `https://drive.google.com/file/d/${id}/preview`;
+  if(mt.includes('msword') || mt.includes('wordprocessingml') || mt.includes('spreadsheet') || mt.includes('excel') || mt.includes('presentation') || mt.includes('powerpoint') || mt==='application/pdf' || name.match(/\.(doc|docx|xls|xlsx|ppt|pptx|pdf)$/)){
+    return `https://docs.google.com/gview?embedded=true&url=https://drive.google.com/uc?export=download&id=${id}`;
+  }
+  return `https://drive.google.com/file/d/${id}/preview?rm=minimal&embedded=true`;
 }
 function libraryOpenUrl(item){
   if(!item)return '#';
@@ -2144,18 +2174,60 @@ function openDriveFolderPopup(folderIdOrUrl,title){
   overlay.id='libraryFilePopup';
   overlay.className='library-popup-overlay';
   overlay.onclick=function(ev){ if(ev.target===overlay) libraryCloseFilePopup(); };
-  const src=driveFolderEmbedUrl(id);
   const open=`https://drive.google.com/drive/folders/${encodeURIComponent(id)}`;
-  overlay.innerHTML=`<div class="library-popup-card" role="dialog" aria-modal="true" aria-label="Xem thư mục tài liệu">
+  overlay.innerHTML=`<div class="library-popup-card folder-popup" role="dialog" aria-modal="true" aria-label="Xem thư mục tài liệu">
     <div class="library-popup-head">
-      <div class="library-popup-title">📁 ${esc(title||'Thư mục tài liệu')}</div>
+      <div class="library-popup-title" id="driveFolderPopupTitle">📁 ${esc(title||'Thư mục tài liệu')}</div>
       <a class="btn sm ghost" href="${esc(open)}" target="_blank" rel="noopener">↗ Mở ngoài Drive</a>
       <button type="button" class="library-popup-close" onclick="libraryCloseFilePopup()" title="Đóng">✕</button>
     </div>
-    <iframe class="library-popup-frame" src="${esc(src)}" loading="lazy"></iframe>
+    <div class="library-popup-viewer" id="driveFolderPopupBody">
+      <div class="library-loading-box" style="width:100%"><div class="spin" style="margin:0 auto 10px"></div>Đang tải thư mục tài liệu...</div>
+    </div>
   </div>`;
   document.body.appendChild(overlay);
   document.addEventListener('keydown', libraryPopupEscHandler);
+  drivePopupFolderLoad(id,title||'Thư mục tài liệu');
+}
+async function drivePopupFolderLoad(folderId,title){
+  const body=document.getElementById('driveFolderPopupBody');
+  const titleEl=document.getElementById('driveFolderPopupTitle');
+  if(titleEl)titleEl.textContent='📁 '+(title||'Thư mục tài liệu');
+  if(body)body.innerHTML='<div class="library-loading-box" style="width:100%"><div class="spin" style="margin:0 auto 10px"></div>Đang tải thư mục tài liệu...</div>';
+  try{
+    const res=await api('driveListFolder',{folderId:folderId});
+    const folder=res.folder||{id:folderId,name:title||'Thư mục tài liệu'};
+    if(titleEl)titleEl.textContent='📁 '+(folder.name||title||'Thư mục tài liệu');
+    APP.popupDriveFolderItems=res.items||[];
+    if(body){
+      body.innerHTML=drivePopupFolderRender(APP.popupDriveFolderItems, folder.name||'Thư mục tài liệu');
+      body.onclick=drivePopupFolderClick;
+    }
+  }catch(e){
+    if(body)body.innerHTML=`<div class="library-error-box" style="width:calc(100% - 36px)">Không tải được thư mục trong web app: ${esc((e&&e.message)||String(e||''))}<br><span class="muted">Có thể Apps Script chưa có action <b>driveListFolder</b> hoặc chưa Deploy New version.</span></div>`;
+  }
+}
+function drivePopupFolderRender(items,title){
+  items=Array.isArray(items)?items:[];
+  const folders=items.filter(x=>x.type==='folder'||x.mimeType==='application/vnd.google-apps.folder');
+  const files=items.filter(x=>!(x.type==='folder'||x.mimeType==='application/vnd.google-apps.folder'));
+  const sorted=[...folders,...files];
+  return `<div class="library-browser" style="width:100%;height:100%;background:#f7f9fc">
+    <div class="library-statusbar"><span>${esc(title||'Thư mục')}: <b>${sorted.length}</b> mục</span><span class="muted">Bấm file để xem trong popup</span></div>
+    ${sorted.length?`<div class="library-grid">${sorted.map(libraryItemCard).join('')}</div>`:'<div class="library-empty">Thư mục chưa có file.</div>'}
+  </div>`;
+}
+function drivePopupFolderClick(ev){
+  const btn=ev.target.closest && ev.target.closest('.library-item');
+  if(!btn)return;
+  ev.preventDefault();
+  ev.stopPropagation();
+  const id=btn.getAttribute('data-id')||'';
+  const type=btn.getAttribute('data-type')||'';
+  const item=(APP.popupDriveFolderItems||[]).find(x=>String(x.id)===String(id));
+  if(!item)return;
+  if(type==='folder')drivePopupFolderLoad(item.id,item.name||'Thư mục tài liệu');
+  else libraryShowFilePopup(item);
 }
 function libraryFindItemById(id){
   const items=(APP.libraryData&&APP.libraryData.items)||[];
@@ -2277,13 +2349,13 @@ function libraryShowFilePopup(item){
   overlay.onclick=function(ev){ if(ev.target===overlay) libraryCloseFilePopup(); };
   const src=libraryPreviewUrl(item);
   const open=libraryOpenUrl(item);
-  overlay.innerHTML=`<div class="library-popup-card" role="dialog" aria-modal="true" aria-label="Xem tài liệu">
+  overlay.innerHTML=`<div class="library-popup-card file-popup" role="dialog" aria-modal="true" aria-label="Xem tài liệu">
     <div class="library-popup-head">
       <div class="library-popup-title">${libraryIconFor(item)} ${esc(item.name||'Tài liệu')}</div>
       <a class="btn sm ghost" href="${esc(open)}" target="_blank" rel="noopener">↗ Mở ngoài Drive</a>
       <button type="button" class="library-popup-close" onclick="libraryCloseFilePopup()" title="Đóng">✕</button>
     </div>
-    <iframe class="library-popup-frame" src="${esc(src)}" loading="lazy" allow="autoplay"></iframe>
+    <div class="library-popup-viewer"><iframe class="library-popup-frame" src="${esc(src)}" loading="lazy" allow="autoplay"></iframe></div>
   </div>`;
   document.body.appendChild(overlay);
   document.addEventListener('keydown', libraryPopupEscHandler);
