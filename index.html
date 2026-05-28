@@ -590,7 +590,7 @@
       inset: 0;
       z-index: 160;
       /* Không dùng màng lọc xanh/blur để tránh làm tài liệu trong iframe bị ám màu */
-      background: rgba(15, 23, 42, .18);
+      background: rgba(3, 29, 56, .22);
       backdrop-filter: none !important;
       -webkit-backdrop-filter: none !important;
       display: flex;
@@ -603,8 +603,8 @@
       height: min(820px, 92svh);
       background: #fff;
       border-radius: 16px;
-      box-shadow: 0 28px 70px rgba(0,0,0,.22);
-      border: 1px solid rgba(214,226,240,.95);
+      box-shadow: 0 28px 70px rgba(6,58,99,.28);
+      border: 1.5px solid #0b5a96;
       overflow: hidden;
       display: flex;
       flex-direction: column;
@@ -618,16 +618,16 @@
     .library-popup-head {
       flex-shrink: 0;
       padding: 10px 14px;
-      border-bottom: 1px solid var(--border2);
+      border-bottom: 1px solid rgba(255,255,255,.18);
       display: flex;
       align-items: center;
       gap: 10px;
-      background: linear-gradient(90deg, #f7fbff, #fff);
+      background: linear-gradient(135deg, #063a63 0%, #0b5a96 100%);
     }
     .library-popup-title {
       flex: 1;
       min-width: 0;
-      color: var(--navy);
+      color: #fff;
       font-weight: 800;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -638,20 +638,13 @@
       min-height: 0;
       width: 100%;
       border: 0;
-      background: #fff;
+      background: linear-gradient(180deg, #063a63 0%, #0b5a96 100%);
       opacity: 1 !important;
       filter: none !important;
       mix-blend-mode: normal !important;
       color-scheme: light;
     }
-    .library-popup-foot {
-      flex-shrink: 0;
-      padding: 7px 14px;
-      border-top: 1px solid var(--border2);
-      background: #f8fbff;
-      color: var(--muted);
-      font-size: .78rem;
-    }
+    .library-popup-foot { display:none !important; }
     .library-popup-close {
       width: 34px;
       height: 34px;
@@ -666,6 +659,12 @@
       justify-content: center;
     }
     .library-popup-close:hover { background:#dc2626; border-color:#dc2626; color:#fff; }
+
+    .library-popup-head .btn.ghost {
+      background: rgba(255,255,255,.96);
+      border-color: rgba(255,255,255,.9);
+      color: var(--navy);
+    }
 
 
     /* ===== FILTERBAR ===== */
@@ -2096,12 +2095,14 @@ function libraryIconFor(item){
   return'📄';
 }
 function libraryPreviewUrl(item){
-  const id=encodeURIComponent(item.id||'');
-  const mt=String(item.mimeType||'');
-  if(item.previewUrl)return item.previewUrl;
-  if(mt==='application/vnd.google-apps.document')return `https://docs.google.com/document/d/${id}/preview`;
-  if(mt==='application/vnd.google-apps.spreadsheet')return `https://docs.google.com/spreadsheets/d/${id}/preview`;
-  if(mt==='application/vnd.google-apps.presentation')return `https://docs.google.com/presentation/d/${id}/preview`;
+  const id=encodeURIComponent(item && item.id || '');
+  const mt=String(item && item.mimeType || '').toLowerCase();
+  const name=String(item && item.name || '').toLowerCase();
+  const url=String(item && item.url || '');
+  if(item && item.previewUrl)return item.previewUrl;
+  if(mt==='application/vnd.google-apps.document' || mt.includes('msword') || mt.includes('wordprocessingml') || name.match(/\.(doc|docx)$/) || url.includes('docs.google.com/document/'))return `https://docs.google.com/document/d/${id}/preview`;
+  if(mt==='application/vnd.google-apps.spreadsheet' || mt.includes('spreadsheet') || mt.includes('excel') || name.match(/\.(xls|xlsx|csv)$/) || url.includes('docs.google.com/spreadsheets/'))return `https://docs.google.com/spreadsheets/d/${id}/preview`;
+  if(mt==='application/vnd.google-apps.presentation' || mt.includes('presentation') || mt.includes('powerpoint') || name.match(/\.(ppt|pptx)$/) || url.includes('docs.google.com/presentation/'))return `https://docs.google.com/presentation/d/${id}/preview`;
   if(mt==='application/vnd.google-apps.form')return item.url||`https://drive.google.com/open?id=${id}`;
   return `https://drive.google.com/file/d/${id}/preview`;
 }
@@ -2110,6 +2111,50 @@ function libraryOpenUrl(item){
   if(item.openUrl)return item.openUrl;
   if(item.url)return item.url;
   return `https://drive.google.com/open?id=${encodeURIComponent(item.id||'')}`;
+}
+
+function driveIdFromUrl(url){
+  const s=String(url||'');
+  let m=s.match(/\/folders\/([a-zA-Z0-9_-]+)/); if(m)return m[1];
+  m=s.match(/\/file\/d\/([a-zA-Z0-9_-]+)/); if(m)return m[1];
+  m=s.match(/\/(?:document|spreadsheets|presentation)\/d\/([a-zA-Z0-9_-]+)/); if(m)return m[1];
+  m=s.match(/[?&]id=([a-zA-Z0-9_-]+)/); if(m)return m[1];
+  return '';
+}
+function popupItemFromDriveUrl(url,name,mimeType){
+  return {
+    id: driveIdFromUrl(url),
+    name: name || 'Tài liệu',
+    type: 'file',
+    mimeType: mimeType || '',
+    url: url || ''
+  };
+}
+function openDriveFilePopup(url,name,mimeType){
+  const item=popupItemFromDriveUrl(url,name,mimeType);
+  if(!item.id && item.url){ item.previewUrl=item.url; }
+  libraryShowFilePopup(item);
+}
+function openDriveFolderPopup(folderIdOrUrl,title){
+  const id = driveIdFromUrl(folderIdOrUrl) || String(folderIdOrUrl||'');
+  if(!id){ alert('Không xác định được ID thư mục Drive.'); return; }
+  libraryCloseFilePopup();
+  const overlay=document.createElement('div');
+  overlay.id='libraryFilePopup';
+  overlay.className='library-popup-overlay';
+  overlay.onclick=function(ev){ if(ev.target===overlay) libraryCloseFilePopup(); };
+  const src=driveFolderEmbedUrl(id);
+  const open=`https://drive.google.com/drive/folders/${encodeURIComponent(id)}`;
+  overlay.innerHTML=`<div class="library-popup-card" role="dialog" aria-modal="true" aria-label="Xem thư mục tài liệu">
+    <div class="library-popup-head">
+      <div class="library-popup-title">📁 ${esc(title||'Thư mục tài liệu')}</div>
+      <a class="btn sm ghost" href="${esc(open)}" target="_blank" rel="noopener">↗ Mở ngoài Drive</a>
+      <button type="button" class="library-popup-close" onclick="libraryCloseFilePopup()" title="Đóng">✕</button>
+    </div>
+    <iframe class="library-popup-frame" src="${esc(src)}" loading="lazy"></iframe>
+  </div>`;
+  document.body.appendChild(overlay);
+  document.addEventListener('keydown', libraryPopupEscHandler);
 }
 function libraryFindItemById(id){
   const items=(APP.libraryData&&APP.libraryData.items)||[];
@@ -2238,7 +2283,6 @@ function libraryShowFilePopup(item){
       <button type="button" class="library-popup-close" onclick="libraryCloseFilePopup()" title="Đóng">✕</button>
     </div>
     <iframe class="library-popup-frame" src="${esc(src)}" loading="lazy" allow="autoplay"></iframe>
-    <div class="library-popup-foot">Tài liệu đang được mở trong cửa sổ popup của web app. Nếu không xem được, kiểm tra quyền Drive hoặc dùng nút “Mở ngoài Drive”.</div>
   </div>`;
   document.body.appendChild(overlay);
   document.addEventListener('keydown', libraryPopupEscHandler);
@@ -2334,8 +2378,6 @@ function renderLibrary(){
             <button class="library-icon-btn close" onclick="closeLibraryViewer()" title="Đóng thư viện">☒</button>
           </div>
           <button class="btn sm" onclick="reloadLibraryFrame()">↻ Tải lại</button>
-          <button class="btn sm ghost" onclick="testLibraryConnection()">⚙ Kiểm tra</button>
-          <button class="btn sm ghost" onclick="openLibraryRoot()">⌂ Thư mục gốc</button>
           <a class="btn sm primary" href="${DRIVE_LIBRARY_URL}" target="_blank" rel="noopener">↗ Mở trên Drive</a>
         </div>
       </div>
@@ -2350,7 +2392,6 @@ function renderLibrary(){
       <div id="librarySearchHelp" class="library-search-help"></div>
       <div class="library-crumb"><span>📁</span><span id="libraryCrumbText">Đang xem: <b>Thư mục gốc thư viện văn bản</b></span></div>
       <div id="libraryBody" class="library-body" onclick="libraryBodyClick(event)"></div>
-      <div class="library-note">Thư viện dùng trình duyệt nội bộ để bấm thư mục/file ngay trong web app. Nếu file không xem trước được trong khung, nguyên nhân thường là quyền Drive của file; chạy hàm fixLibraryPermissions trong Apps Script hoặc cấp quyền xem cho thư mục/file.</div>
     </div>`;
   const help=$('librarySearchHelp');
   if(help && APP.libraryError){help.textContent='Cần cập nhật Code.gs để dùng đầy đủ tìm kiếm và mở thư mục nội bộ.';help.classList.add('show');}
@@ -2567,7 +2608,7 @@ function meetingCards(arr,compact){
         ${m.chuTri?`<div class="m-meta-row"><span class="label">👤 Chủ trì</span><span>${esc(m.chuTri)}</span></div>`:''}
         ${m.thanhPhan&&!compact?`<div class="m-meta-row"><span class="label">👥 Thành phần</span><span>${esc(m.thanhPhan)}</span></div>`:''}
         ${m.ghiChu&&!compact?`<div class="m-meta-row"><span class="label">📝 Ghi chú</span><span>${esc(m.ghiChu)}</span></div>`:''}
-        ${m.fileCount>0 ? (m.fileCount===1 && m.firstFileUrl ? `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><a href="${esc(m.firstFileUrl)}" target="_blank" style="color:var(--blue);font-weight:700;text-decoration:none">1 file ↗</a></div>` : (m.linkFolder ? `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><a href="${esc(m.linkFolder)}" target="_blank" style="color:var(--blue);font-weight:700;text-decoration:none">${m.fileCount} file ↗</a></div>` : `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><span style="font-weight:700">${m.fileCount} file</span><span class="muted" style="font-size:.76rem;margin-left:4px">(chưa có link Drive)</span></div>`)) : `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><span class="muted">0 file</span></div>`}
+        ${m.fileCount>0 ? (m.fileCount===1 && m.firstFileUrl ? `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><button type="button" class="btn xs primary" onclick="openDriveFilePopup(${jss(m.firstFileUrl)},${jss('Tài liệu '+m.meetingId)},'')">1 file</button></div>` : (m.folderId||m.linkFolder ? `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><button type="button" class="btn xs primary" onclick="openDriveFolderPopup(${jss(m.folderId||m.linkFolder)},${jss('Thư mục tài liệu '+m.meetingId)})">${m.fileCount} file</button></div>` : `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><span style="font-weight:700">${m.fileCount} file</span><span class="muted" style="font-size:.76rem;margin-left:4px">(chưa có link Drive)</span></div>`)) : `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><span class="muted">0 file</span></div>`}
       </div>
       <div class="m-actions">
         <button class="btn sm" onclick="openDetail('${esc(m.meetingId)}')">👁 Xem chi tiết</button>
@@ -2751,7 +2792,7 @@ async function openDetail(id){
           ${m.thanhPhan?`<div class="m-meta-row"><span class="label" style="min-width:120px">👥 Thành phần</span>${esc(m.thanhPhan)}</div>`:''}
           ${m.soVanBan?`<div class="m-meta-row"><span class="label" style="min-width:120px">📄 Số văn bản</span><span class="mono">${esc(m.soVanBan)}</span></div>`:''}
           ${m.ghiChu?`<div class="m-meta-row"><span class="label" style="min-width:120px">📝 Ghi chú</span>${esc(m.ghiChu)}</div>`:''}
-          ${m.linkFolder?`<div class="m-meta-row"><span class="label" style="min-width:120px">📁 Thư mục</span><a href="${esc(m.linkFolder)}" target="_blank" class="btn xs primary">Mở Drive</a></div>`:''}
+          ${(m.folderId||m.linkFolder)?`<div class="m-meta-row"><span class="label" style="min-width:120px">📁 Thư mục</span><button type="button" class="btn xs primary" onclick="openDriveFolderPopup(${jss(m.folderId||m.linkFolder)},${jss('Thư mục tài liệu '+m.meetingId)})">Mở trong web app</button></div>`:''}
         </div>
       </div>
       <div class="sp"></div>
@@ -2769,7 +2810,7 @@ async function openDetail(id){
 }
 function fileList(files){
   if(!files||!files.length)return'<div class="empty">Chưa có tài liệu.</div>';
-  return files.map(f=>`<div class="file-row"><div><b>${esc(f.fileName)}</b><br><span class="muted" style="font-size:.78rem">${esc(f.fileType)} · V${esc(f.version)} · ${esc(f.uploadedBy)} · ${esc(dateVNShort(f.uploadedAt))}</span></div><a class="btn sm primary" href="${esc(f.fileUrl)}" target="_blank">↗ Mở</a></div>`).join('')
+  return files.map(f=>`<div class="file-row"><div><b>${esc(f.fileName)}</b><br><span class="muted" style="font-size:.78rem">${esc(f.fileType)} · V${esc(f.version)} · ${esc(f.uploadedBy)} · ${esc(dateVNShort(f.uploadedAt))}</span></div><button type="button" class="btn sm primary" onclick="openDriveFilePopup(${jss(f.fileUrl)},${jss(f.fileName)},${jss(f.mimeType)})">👁 Xem</button></div>`).join('')
 }
 function uploadBox(id){return`<div style="margin-top:12px"><div class="field"><label>Loại tài liệu</label><select id="upType">${fileTypeOptions('TAI_LIEU_HOP')}</select></div><div id="drop" class="drop">Kéo thả file vào đây hoặc bấm để chọn file<br><span class="muted" style="font-size:.76rem">PDF, Word, Excel, PowerPoint, ảnh, zip...</span><input id="fileInput" type="file" multiple class="hide"></div><div id="upMsg"></div></div>`}
 function setupDrop(id){
