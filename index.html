@@ -2078,7 +2078,7 @@ async function libraryLoadFolder(folderId, push=true){
     APP.libraryLoading=false;
     APP.libraryMode='fallback';
     APP.libraryError=(e&&e.message)||String(e||'Không tải được thư viện');
-    showLibraryHelp('Chưa gọi được chức năng đọc thư mục từ Apps Script. Cần cập nhật thêm phần Code.gs đi kèm để tìm kiếm và mở thư mục trực tiếp trong web app.', 'err');
+    showLibraryHelp('Không gọi được action libraryListFolder từ Web App. Nếu test trong Apps Script đã OK, hãy Deploy → New version và thay index.html trên GitHub bằng bản mới.', 'err');
   }
   renderLibraryContent();
   updateLibraryButtons();
@@ -2122,7 +2122,7 @@ async function searchLibraryDrive(push=true){
     APP.libraryLoading=false;
     APP.libraryMode='fallback';
     APP.libraryError=(e&&e.message)||String(e||'Không tìm được');
-    showLibraryHelp('Google Drive không cho nhúng trang tìm kiếm trong iframe. Để tìm file trực tiếp trong web app, cần cập nhật thêm phần Code.gs đi kèm.', 'err');
+    showLibraryHelp('Không gọi được action librarySearchFiles từ Web App. Nếu test trong Apps Script đã OK, hãy Deploy → New version và thay index.html trên GitHub bằng bản mới.', 'err');
   }
   renderLibraryContent();
   updateLibraryButtons();
@@ -2133,11 +2133,33 @@ function clearLibrarySearch(){
   showLibraryHelp('', '');
   openLibraryRoot();
 }
+
+async function testLibraryConnection(){
+  showLibraryHelp('Đang kiểm tra kết nối tới Apps Script...', '');
+  try{
+    const res=await api('libraryListFolder',{folderId:DRIVE_LIBRARY_FOLDER_ID, rootFolderId:DRIVE_LIBRARY_FOLDER_ID});
+    const n=(res.items||[]).length;
+    showLibraryHelp('Kết nối OK. Đã đọc được thư mục gốc: '+n+' mục. Nếu trước đó vẫn hiện 403, hãy xóa cache trình duyệt hoặc thay đúng file index.html trên GitHub.', '');
+  }catch(e){
+    showLibraryHelp('Kết nối lỗi: '+((e&&e.message)||e)+'. Cần Deploy Apps Script phiên bản mới và kiểm tra GAS_URL.', 'err');
+  }
+}
+
 function renderLibraryFallback(){
   const body=$('libraryBody');
   if(!body)return;
-  const msg=APP.libraryError?`<div class="library-error-box"><b>Chưa thể dùng trình duyệt thư viện nội bộ.</b><br>${esc(APP.libraryError)}<br>Vẫn hiển thị thư mục Drive nhúng bên dưới; để tìm kiếm/mở thư mục ngay trong web app cần bổ sung hàm Apps Script theo file patch đi kèm.</div>`:'';
-  body.innerHTML=`${msg}<iframe id="libraryFrame" class="library-fallback-frame" src="${DRIVE_LIBRARY_EMBED_URL}" loading="lazy" allow="autoplay"></iframe>`;
+  const err = APP.libraryError ? esc(APP.libraryError) : 'Chưa gọi được Apps Script.';
+  body.innerHTML=`<div class="library-browser">
+    <div class="library-error-box" style="text-align:left;line-height:1.65">
+      <b>Chưa tải được Thư viện văn bản nội bộ.</b><br>
+      Lỗi trả về: <span class="mono">${err}</span><br><br>
+      Nguyên nhân thường gặp: đã chạy test trong Apps Script được nhưng <b>chưa Deploy phiên bản mới</b>, hoặc file HTML trên GitHub vẫn là bản cũ nên còn dùng iframe Google Drive.
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <button class="btn sm primary" onclick="libraryLoadFolder(DRIVE_LIBRARY_FOLDER_ID,false)">↻ Thử tải lại thư viện nội bộ</button>
+        <a class="btn sm ghost" href="${DRIVE_LIBRARY_URL}" target="_blank" rel="noopener">↗ Mở tạm trên Drive</a>
+      </div>
+    </div>
+  </div>`;
 }
 function renderLibrary(){
   const el=$('screen-library');
@@ -2153,6 +2175,7 @@ function renderLibrary(){
             <button class="library-icon-btn close" onclick="closeLibraryViewer()" title="Đóng thư viện">☒</button>
           </div>
           <button class="btn sm" onclick="reloadLibraryFrame()">↻ Tải lại</button>
+          <button class="btn sm ghost" onclick="testLibraryConnection()">⚙ Kiểm tra</button>
           <button class="btn sm ghost" onclick="openLibraryRoot()">⌂ Thư mục gốc</button>
           <a class="btn sm primary" href="${DRIVE_LIBRARY_URL}" target="_blank" rel="noopener">↗ Mở trên Drive</a>
         </div>
@@ -2168,7 +2191,7 @@ function renderLibrary(){
       <div id="librarySearchHelp" class="library-search-help"></div>
       <div class="library-crumb"><span>📁</span><span id="libraryCrumbText">Đang xem: <b>Thư mục gốc thư viện văn bản</b></span></div>
       <div id="libraryBody" class="library-body"></div>
-      <div class="library-note">Thư viện dùng trình duyệt nội bộ để bấm thư mục, Back/Close và tìm file ngay trong web app. Nếu chưa cập nhật Code.gs, hệ thống tự chuyển về khung Drive nhúng dự phòng.</div>
+      <div class="library-note">Thư viện dùng trình duyệt nội bộ để bấm thư mục, Back/Close và tìm file ngay trong web app. Nếu vẫn hiện Google Drive/403 nghĩa là đang chạy HTML cũ hoặc chưa Deploy bản Apps Script mới.</div>
     </div>`;
   const help=$('librarySearchHelp');
   if(help && APP.libraryError){help.textContent='Cần cập nhật Code.gs để dùng đầy đủ tìm kiếm và mở thư mục nội bộ.';help.classList.add('show');}
