@@ -1677,7 +1677,7 @@ function apiViaHiddenUploadPost(payload){
       form.method='POST';
       form.action=GAS_URL;
       form.target=iframeName;
-      form.enctype='text/plain';
+      form.enctype='application/x-www-form-urlencoded';
       form.acceptCharset='UTF-8';
       form.style.display='none';
       const input=document.createElement('input');
@@ -1746,6 +1746,32 @@ function api(action, payload={}) {
     };
     (document.head || document.body).appendChild(script);
   });
+}
+
+function makeUploadId(){
+  return '_up_' + Date.now() + '_' + Math.random().toString(36).slice(2,10);
+}
+async function waitUploadStatus(uploadId, fileName){
+  const deadline = Date.now() + 30000;
+  let lastMsg = '';
+  while(Date.now() < deadline){
+    await sleep(1500);
+    try{
+      const st = await api('getUploadStatus',{uploadId});
+      if(st && !st.pending){
+        if(st.ok === false) throw new Error(st.msg || ('Upload lỗi: '+(fileName||'')));
+        return st;
+      }
+      lastMsg = (st && st.msg) || lastMsg;
+    }catch(e){
+      const msg = (e && e.message) || String(e || '');
+      if(/Action không hợp lệ|getUploadStatus/i.test(msg)){
+        throw new Error('Web App đang chạy bản cũ, chưa có getUploadStatus/uploadLibraryFile. Cần Deploy lại bằng New version rồi cập nhật GAS_URL nếu đổi deployment.');
+      }
+      lastMsg = msg;
+    }
+  }
+  throw new Error('Chưa nhận được phản hồi upload từ Web App sau 30 giây. Khả năng cao là form POST bị chặn hoặc Web App chưa Deploy phiên bản mới. ' + (lastMsg ? 'Thông tin cuối: '+lastMsg : ''));
 }
 
 let __dragGuardInstalled=false;
@@ -2570,12 +2596,16 @@ async function libraryUploadToFolder(folderId,files,source){
       const file=valid[i];
       librarySetUploadMsg(source,`Đang upload ${i+1}/${valid.length}: ${file.name}`,'');
       const base64=await readFile(file);
-      await api('uploadLibraryFile',{folderId,rootFolderId:DRIVE_LIBRARY_FOLDER_ID,fileName:file.name,mimeType:file.type,base64});
-      if(usingIframe) await sleep(900);
+      const uploadId=makeUploadId();
+      await api('uploadLibraryFile',{uploadId,folderId,rootFolderId:DRIVE_LIBRARY_FOLDER_ID,fileName:file.name,mimeType:file.type,base64});
+      if(usingIframe){
+        librarySetUploadMsg(source,`Đã gửi ${file.name}; đang kiểm tra kết quả trên Apps Script...`,'');
+        await waitUploadStatus(uploadId,file.name);
+      }
     }
-    librarySetUploadMsg(source, usingIframe ? 'Đã gửi file lên Apps Script. Đợi vài giây rồi tải lại thư mục...' : 'Đã upload xong. Đang tải lại thư mục...','ok');
+    librarySetUploadMsg(source, 'Đã upload xong. Đang tải lại thư mục...','ok');
     if(source && source.value!==undefined) source.value='';
-    if(usingIframe) await sleep(5200);
+    if(usingIframe) await sleep(800);
     if(APP.popupDriveFolderId && String(APP.popupDriveFolderId)===String(folderId) && document.getElementById('driveFolderPopupBody')){
       await drivePopupFolderLoad(folderId,APP.popupDriveFolderTitle||'Thư mục tài liệu');
     }
