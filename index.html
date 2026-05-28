@@ -469,6 +469,81 @@
     .library-panel { height: calc(100svh - 126px); display: flex; flex-direction: column; }
     .library-panel .panel-h { flex-shrink: 0; }
     .library-head-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .library-nav-actions { display:flex; gap:6px; align-items:center; margin-right:6px; }
+    .library-icon-btn {
+      width: 34px; height: 34px;
+      border-radius: 8px;
+      border: 1.5px solid var(--border);
+      background: #fff;
+      color: var(--navy);
+      display: inline-grid;
+      place-items: center;
+      font-size: 1rem;
+      font-weight: 900;
+      box-shadow: 0 2px 8px rgba(6,58,99,.06);
+      transition: all .18s;
+    }
+    .library-icon-btn:hover { border-color: var(--blue2); color: var(--blue2); transform: translateY(-1px); }
+    .library-icon-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+    .library-icon-btn.close { color: #991b1b; background: #fff5f5; border-color: #fecaca; }
+    .library-icon-btn.close:hover { color: #fff; background: #dc2626; border-color: #dc2626; }
+    .library-crumb {
+      padding: 7px 18px;
+      border-bottom: 1px solid var(--border2);
+      background: #f8fbff;
+      color: var(--text2);
+      font-size: .78rem;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .library-crumb b { color: var(--navy); }
+    .library-searchbar {
+      padding: 11px 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border2);
+      background: linear-gradient(90deg,#ffffff 0%,#f7fbff 100%);
+      flex-shrink: 0;
+    }
+    .library-searchbox {
+      flex: 1;
+      min-width: 220px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-sm);
+      background: #fff;
+      padding: 0 10px;
+      height: 38px;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .library-searchbox:focus-within {
+      border-color: var(--blue2);
+      box-shadow: 0 0 0 3px rgba(45,120,239,.12);
+    }
+    .library-searchbox span { color: var(--muted); font-size: .92rem; flex-shrink: 0; }
+    .library-searchbox input {
+      flex: 1;
+      min-width: 0;
+      border: 0;
+      outline: none;
+      background: transparent;
+      color: var(--text);
+      font-size: .88rem;
+      font-weight: 500;
+    }
+    .library-search-help {
+      padding: 7px 18px;
+      border-bottom: 1px solid var(--border2);
+      background: #fffdf6;
+      color: #8a5a00;
+      font-size: .76rem;
+      display: none;
+    }
+    .library-search-help.show { display: block; }
     .library-body { padding: 0; flex: 1; min-height: 0; background: #fff; }
     .library-frame { width: 100%; height: 100%; min-height: 620px; border: 0; display: block; background: #fff; }
     .library-note { font-size: .78rem; color: var(--muted); padding: 8px 18px; border-top: 1px solid var(--border2); background: #f8fbff; }
@@ -949,8 +1024,13 @@
       .leader-full { display: none; }
       .leader-short { display: inline; }
       .library-panel { height: calc(100svh - 108px); }
-      .library-frame { min-height: calc(100svh - 178px); }
+      .library-frame { min-height: calc(100svh - 236px); }
       .library-head-actions .btn { padding: 7px 10px; font-size: .78rem; }
+      .library-nav-actions { order: -1; width: 100%; justify-content: flex-end; margin-right: 0; }
+      .library-icon-btn { width: 32px; height: 32px; }
+      .library-searchbar { padding: 9px 12px; flex-wrap: wrap; }
+      .library-searchbox { flex-basis: 100%; min-width: 0; }
+      .library-searchbar .btn { flex: 1; justify-content: center; }
 
       /* Bottom navigation bar */
       body.logged-in .bottom-nav {
@@ -1254,7 +1334,8 @@ const APP = {
   token:'', user:null, setup:{}, depts:[], usersLite:[], meetings:[],
   dashboard:null, currentScreen:'calendar', dashPeriod:'week',
   filters:{kw:'', leader:'all', scope:'CURRENT', kind:'ALL'},
-  loadedAll:false, pendingFormFiles:[]
+  loadedAll:false, pendingFormFiles:[],
+  libraryStack:[], libraryCurrentUrl:''
 };
 
 // ===== PHÂN QUYỀN =====
@@ -1280,7 +1361,10 @@ function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
-const DRIVE_LIBRARY_EMBED_URL = 'https://drive.google.com/embeddedfolderview?id=1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv&hl=vi#grid';
+function driveFolderEmbedUrl(folderId=DRIVE_LIBRARY_FOLDER_ID){
+  return `https://drive.google.com/embeddedfolderview?id=${encodeURIComponent(folderId)}&usp=sharing&hl=vi#grid`;
+}
+const DRIVE_LIBRARY_EMBED_URL = driveFolderEmbedUrl(DRIVE_LIBRARY_FOLDER_ID);
 
 function api(action, payload={}) {
   payload.action = action;
@@ -1721,23 +1805,120 @@ function openTypeDetail(key, label, clickType){
   );
 }
 
+function driveSearchUrl(keyword){
+  const q=String(keyword||'').trim();
+  return q ? `https://drive.google.com/drive/search?q=${encodeURIComponent(q)}&hl=vi` : DRIVE_LIBRARY_URL;
+}
+function updateLibraryButtons(){
+  const backBtn=$('libraryBackBtn');
+  if(backBtn)backBtn.disabled=!(APP.libraryStack&&APP.libraryStack.length);
+  const crumb=$('libraryCrumbText');
+  if(crumb){
+    const isSearch=(APP.libraryCurrentUrl||'').includes('/drive/search');
+    crumb.innerHTML=isSearch ? 'Đang xem: <b>Kết quả tìm kiếm trong Drive</b>' : 'Đang xem: <b>Thư mục gốc thư viện văn bản</b>';
+  }
+}
+function setLibraryFrameUrl(url, push=true){
+  const frame=$('libraryFrame');
+  if(!frame)return;
+  const current=APP.libraryCurrentUrl || frame.getAttribute('src') || '';
+  if(push && current && current!==url){
+    APP.libraryStack.push(current);
+    if(APP.libraryStack.length>20)APP.libraryStack.shift();
+  }
+  APP.libraryCurrentUrl=url;
+  frame.src=url;
+  updateLibraryButtons();
+}
+function reloadLibraryFrame(){
+  const url=APP.libraryCurrentUrl || DRIVE_LIBRARY_EMBED_URL;
+  setLibraryFrameUrl(url,false);
+}
+function libraryBack(){
+  const frame=$('libraryFrame');
+  if(!frame)return;
+  const prev=APP.libraryStack && APP.libraryStack.pop();
+  if(prev){
+    APP.libraryCurrentUrl=prev;
+    frame.src=prev;
+    updateLibraryButtons();
+  }
+}
+function closeLibraryViewer(){
+  APP.libraryStack=[];
+  APP.libraryCurrentUrl=DRIVE_LIBRARY_EMBED_URL;
+  go('dashboard');
+}
+function openLibraryRoot(){
+  APP.libraryStack=[];
+  setLibraryFrameUrl(DRIVE_LIBRARY_EMBED_URL,false);
+  const help=$('librarySearchHelp');
+  if(help){help.textContent='';help.classList.remove('show');}
+}
+function tryPatchDriveLinks(frame){
+  // Chỉ thực hiện được nếu trình duyệt cho phép truy cập cùng nguồn; Google Drive thường chặn cross-origin.
+  try{
+    const doc=frame.contentDocument || frame.contentWindow.document;
+    doc.querySelectorAll('a[target="_blank"]').forEach(a=>a.setAttribute('target','_self'));
+  }catch(e){}
+}
+function searchLibraryDrive(openBlank=false){
+  const input=$('librarySearchInput');
+  const q=input ? input.value.trim() : '';
+  if(!q){
+    if(input)input.focus();
+    const help=$('librarySearchHelp');
+    if(help){help.textContent='Nhập tên file, số/ký hiệu văn bản hoặc từ khóa cần tìm trong thư viện.';help.classList.add('show');}
+    return;
+  }
+  const url=driveSearchUrl(q);
+  const help=$('librarySearchHelp');
+  if(help){
+    help.textContent='Đang mở kết quả tìm kiếm trong khung nội bộ của web app. Trường hợp Google Drive chặn hiển thị tìm kiếm trong iframe, dùng nút “Mở trên Drive”.';
+    help.classList.add('show');
+  }
+  setLibraryFrameUrl(url,true);
+}
+function clearLibrarySearch(){
+  const input=$('librarySearchInput');
+  if(input){input.value='';input.focus();}
+  const help=$('librarySearchHelp');
+  if(help){help.textContent='';help.classList.remove('show');}
+  openLibraryRoot();
+}
 function renderLibrary(){
   const el=$('screen-library');
   if(!el)return;
+  if(!APP.libraryCurrentUrl)APP.libraryCurrentUrl=DRIVE_LIBRARY_EMBED_URL;
   el.innerHTML=`
     <div class="panel library-panel">
       <div class="panel-h">
         <h3>📚 Thư viện văn bản</h3>
         <div class="library-head-actions">
-          <button class="btn sm" onclick="renderLibrary()">↻ Tải lại</button>
+          <div class="library-nav-actions" title="Điều hướng thư viện">
+            <button id="libraryBackBtn" class="library-icon-btn" onclick="libraryBack()" title="Quay lại">↩</button>
+            <button class="library-icon-btn close" onclick="closeLibraryViewer()" title="Đóng thư viện">☒</button>
+          </div>
+          <button class="btn sm" onclick="reloadLibraryFrame()">↻ Tải lại</button>
           <a class="btn sm primary" href="${DRIVE_LIBRARY_URL}" target="_blank" rel="noopener">↗ Mở trên Drive</a>
         </div>
       </div>
-      <div class="library-body">
-        <iframe class="library-frame" src="${DRIVE_LIBRARY_EMBED_URL}" loading="lazy" allow="autoplay"></iframe>
+      <div class="library-searchbar">
+        <div class="library-searchbox">
+          <span>🔎</span>
+          <input id="librarySearchInput" placeholder="Tìm tên file, số/ký hiệu văn bản, từ khóa..." onkeydown="if(event.key==='Enter')searchLibraryDrive(false)">
+        </div>
+        <button class="btn sm primary" onclick="searchLibraryDrive(false)">Tìm file</button>
+        <button class="btn sm ghost" onclick="clearLibrarySearch()">Xóa tìm</button>
       </div>
-      <div class="library-note">Nếu khung Drive không hiển thị, cần kiểm tra quyền chia sẻ thư mục hoặc bấm “Mở trên Drive”.</div>
+      <div id="librarySearchHelp" class="library-search-help"></div>
+      <div class="library-crumb"><span>📁</span><span id="libraryCrumbText">Đang xem: <b>Thư mục gốc thư viện văn bản</b></span></div>
+      <div class="library-body">
+        <iframe id="libraryFrame" class="library-frame" src="${APP.libraryCurrentUrl}" loading="lazy" allow="autoplay" sandbox="allow-scripts allow-same-origin allow-forms allow-downloads" onload="tryPatchDriveLinks(this);updateLibraryButtons()"></iframe>
+      </div>
+      <div class="library-note">Khung Drive được nhúng trực tiếp trong web app; nút Back dùng để quay lại màn hình thư viện trước đó, nút Close để đóng thư viện. Nếu Google Drive chặn một số thao tác trong iframe, có thể dùng “Mở trên Drive”.</div>
     </div>`;
+  updateLibraryButtons();
 }
 
 // ===== CALENDAR =====
