@@ -589,8 +589,10 @@
       position: fixed;
       inset: 0;
       z-index: 160;
-      background: rgba(8, 18, 38, .58);
-      backdrop-filter: blur(4px);
+      /* Không dùng màng lọc xanh/blur để tránh làm tài liệu trong iframe bị ám màu */
+      background: rgba(15, 23, 42, .18);
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -601,12 +603,16 @@
       height: min(820px, 92svh);
       background: #fff;
       border-radius: 16px;
-      box-shadow: 0 28px 70px rgba(0,0,0,.32);
-      border: 1px solid rgba(255,255,255,.4);
+      box-shadow: 0 28px 70px rgba(0,0,0,.22);
+      border: 1px solid rgba(214,226,240,.95);
       overflow: hidden;
       display: flex;
       flex-direction: column;
       animation: popupIn .18s ease-out;
+      opacity: 1 !important;
+      filter: none !important;
+      mix-blend-mode: normal !important;
+      isolation: isolate;
     }
     @keyframes popupIn { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
     .library-popup-head {
@@ -633,6 +639,10 @@
       width: 100%;
       border: 0;
       background: #fff;
+      opacity: 1 !important;
+      filter: none !important;
+      mix-blend-mode: normal !important;
+      color-scheme: light;
     }
     .library-popup-foot {
       flex-shrink: 0;
@@ -1472,7 +1482,7 @@ function hasRole(list){
   return list.some(x=>x.toLowerCase()===r);
 }
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = "v11-library-file-popup-20260528";
+const APP_VERSION = "v12-popup-nofilter-20260528";
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
