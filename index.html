@@ -1473,6 +1473,52 @@ function smartMatch(haystack,query){
   if(qTokens.length===1)return matched===1;
   return matched===qTokens.length || matched/qTokens.length>=0.75;
 }
+
+function normLeaderName(s){
+  return normText(String(s||'')
+    .replace(/^(Đ\/c|D\/c|đ\/c|d\/c|Đồng chí|dong chi|Đc|dc)\s*/i,'')
+    .replace(/\s*[-–—]\s*.*/,'')
+  );
+}
+function leaderFullName(v){
+  const x=normText(v);
+  const map={
+    'hung':'Pham Quoc Hung',
+    'pham quoc hung':'Pham Quoc Hung',
+    'duong':'Ngo Tung Duong',
+    'ngo tung duong':'Ngo Tung Duong',
+    'loi':'Bui Ngoc Loi',
+    'bui ngoc loi':'Bui Ngoc Loi',
+    'thang':'Nguyen Canh Thang',
+    'nguyen canh thang':'Nguyen Canh Thang'
+  };
+  return map[x]||String(v||'');
+}
+function meetingLeaderHaystack(m){
+  // Chỉ dùng trường Chủ trì và Lãnh đạo liên quan để tránh khớp nhầm tên trong thành phần tham dự.
+  return `${m.chuTri||''};${m.lanhDaoLienQuan||''}`;
+}
+function matchLeaderExact(m,leader){
+  if(!leader||leader==='all')return true;
+  const target=normLeaderName(leaderFullName(leader));
+  if(!target)return true;
+  const raw=meetingLeaderHaystack(m);
+  const parts=String(raw||'').split(/[,;\n]+/).map(x=>normLeaderName(x)).filter(Boolean);
+  return parts.some(p=>p===target||p.includes(target)||target.includes(p));
+}
+function syncCalendarKw(sourceId){
+  const src=$(sourceId); if(!src)return;
+  APP.filters.kw=src.value.trim();
+  ['calKw','calKwM'].forEach(id=>{const el=$(id); if(el&&el!==src)el.value=src.value;});
+}
+function clearCalendarFilters(){
+  APP.filters={kw:'',leader:'all',scope:'CURRENT',kind:'ALL'};
+  ['calKw','calKwM'].forEach(id=>{const el=$(id); if(el)el.value='';});
+  const l=$('calLeader'); if(l)l.value='all';
+  const sc=$('calScope'); if(sc)sc.value='CURRENT';
+  renderCalendar();
+}
+
 function initials(name){return(name||'U').split(/\s+/).slice(-2).map(x=>x[0]).join('').toUpperCase()||'U'}
 
 // ===== INIT =====
@@ -1964,9 +2010,10 @@ function renderCalendar(){
     <!-- MOBILE: search row + 3 cycle buttons -->
     <div class="cal-search-row">
       <div class="search-wrap" style="flex:1">
-        <input id="calKwM" placeholder="Tìm nội dung, địa điểm, chủ trì..." value="${esc(f.kw)}" onkeydown="if(event.key==='Enter')applyCalendarFilters()">
+        <input id="calKwM" placeholder="Tìm nội dung, địa điểm, chủ trì..." value="${esc(f.kw)}" oninput="syncCalendarKw('calKwM');applyCalendarFilters(false)" onkeydown="if(event.key==='Enter')applyCalendarFilters()">
         <button onclick="applyCalendarFilters()">🔍</button>
       </div>
+      <button class="btn sm" onclick="clearCalendarFilters()" title="Xóa điều kiện lọc" style="white-space:nowrap">↺</button>
       ${hasRole(ROLE_EDIT)?'<button class="btn primary sm" onclick="openMeetingForm()" style="white-space:nowrap">＋ Thêm</button>':''}
     </div>
     <div class="cal-filter-row">
@@ -1978,7 +2025,7 @@ function renderCalendar(){
     <!-- DESKTOP: 1-line toolbar -->
     <div class="cal-toolbar" style="display:none">
       <div class="cal-search">
-        <input id="calKw" placeholder="Tìm nội dung, địa điểm, chủ trì..." value="${esc(f.kw)}" onkeydown="if(event.key==='Enter')applyCalendarFilters()">
+        <input id="calKw" placeholder="Tìm nội dung, địa điểm, chủ trì..." value="${esc(f.kw)}" oninput="syncCalendarKw('calKw');applyCalendarFilters(false)" onkeydown="if(event.key==='Enter')applyCalendarFilters()">
         <button onclick="applyCalendarFilters()">🔍</button>
       </div>
       <select id="calLeader" class="cal-select" onchange="applyCalendarFilters()">
@@ -1996,6 +2043,7 @@ function renderCalendar(){
         <button class="kind-btn ${f.kind==='HOP'?'active':''}" onclick="setCalendarKind('HOP')">🏛 Lịch Họp</button>
         <button class="kind-btn ${f.kind==='TRUC_BAN'?'active':''}" onclick="setCalendarKind('TRUC_BAN')">📋 Trực ban</button>
       </div>
+      <button class="btn sm" onclick="clearCalendarFilters()" title="Xóa điều kiện lọc">↺ Xóa lọc</button>
       ${hasRole(ROLE_EDIT)?'<button class="btn-add" onclick="openMeetingForm()">＋ Thêm</button>':''}
     </div>
 
@@ -2046,8 +2094,11 @@ async function changeScope(scope){
 function setCalendarKind(kind){APP.filters.kind=kind;renderCalendar()}
 function applyCalendarFilters(read=true){
   if(read){
-    APP.filters.kw=($('calKw')?.value||$('calKwM')?.value||'').trim();
-    APP.filters.leader=$('calLeader')?.value||'all';
+    const activeId=document.activeElement?document.activeElement.id:'';
+    if(activeId==='calKwM')APP.filters.kw=($('calKwM')?.value||'').trim();
+    else if(activeId==='calKw')APP.filters.kw=($('calKw')?.value||'').trim();
+    else APP.filters.kw=(APP.filters.kw||'').trim();
+    APP.filters.leader=$('calLeader')?.value||APP.filters.leader||'all';
     APP.filters.scope=$('calScope')?.value||APP.filters.scope;
   }
   const f=APP.filters;
@@ -2079,7 +2130,7 @@ function applyCalendarFilters(read=true){
     if(f.kind==='TRUC_BAN'&&!isGB)return false;
     if(f.kind==='HOP'&&isGB)return false;
     // f.kind==='ALL': hiển thị tất cả
-    if(f.leader!=='all'){const hay=`${m.lanhDaoLienQuan||''} ${m.chuTri||''} ${m.thanhPhan||''}`;if(!smartMatch(hay,f.leader))return false;}
+    if(f.leader!=='all'&&!matchLeaderExact(m,f.leader))return false;
     if(f.kw){const hay=`${m.meetingId||''} ${m.noiDung||''} ${m.thanhPhan||''} ${m.diaDiem||''} ${m.chuTri||''} ${m.ghiChu||''} ${m.soVanBan||''}`;if(!smartMatch(hay,f.kw))return false;}
     return true;
   });
@@ -2156,7 +2207,7 @@ function renderManage(){
 }
 function renderManageTable(){
   const kw=($('mgKw')?.value||'').toLowerCase(),st=$('mgStatus')?.value||'all';
-  let arr=APP.meetings.filter(m=>(st==='all'||m.trangThai===st)&&(!kw||(`${m.meetingId} ${m.noiDung} ${m.diaDiem} ${m.chuTri}`.toLowerCase().includes(kw))));
+  let arr=APP.meetings.filter(m=>(st==='all'||m.trangThai===st)&&(!kw||smartMatch(`${m.meetingId||''} ${m.noiDung||''} ${m.diaDiem||''} ${m.chuTri||''} ${m.lanhDaoLienQuan||''} ${m.thanhPhan||''} ${m.soVanBan||''}`,kw)));
   $('mgTable').innerHTML=`<div class="table-wrap"><table class="tbl">
     <thead><tr><th>ID</th><th>Ngày / Giờ</th><th>Nội dung</th><th>Chủ trì</th><th>Trạng thái</th><th></th></tr></thead>
     <tbody>${arr.map(m=>`<tr>
@@ -2392,6 +2443,7 @@ function renderUsersTable(){
             <option value="Active" ${statusF==='Active'?'selected':''}>Đang hoạt động</option>
             <option value="Inactive" ${statusF==='Inactive'?'selected':''}>Đã khoá</option>
           </select>
+          <button class="btn sm" onclick="APP._userFilters={kw:'',roleF:'all',statusF:'all'};renderUsersTable()">↺ Xóa lọc</button>
         </div>
         <div class="table-wrap"><table class="tbl">
           <thead><tr><th>#</th><th>Tài khoản</th><th>Họ tên</th><th>Vai trò</th><th>Đơn vị</th><th>Chức vụ</th><th>Trạng thái</th><th></th></tr></thead>
