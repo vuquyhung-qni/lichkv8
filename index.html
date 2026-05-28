@@ -1618,7 +1618,7 @@ function hasRole(list){
   return list.some(x=>x.toLowerCase()===r);
 }
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v34_show_bulk_sync_button';
+const APP_VERSION = 'HTML_v35_bulk_migrate_no_timeout';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
@@ -1725,10 +1725,11 @@ function api(action, payload={}) {
   return new Promise((resolve, reject) => {
     const cbName = '_cb_' + Date.now() + Math.random().toString(36).slice(2);
     const script = document.createElement('script');
+    const timeoutMs = ['migrateAllMeetingLegacyFiles','getLegacyMigrationStatus','migrateMeetingLegacyFiles'].includes(action) ? 180000 : (action === 'librarySearchFiles' ? 90000 : 30000);
     const timer = setTimeout(() => {
       cleanup();
-      reject(new Error('Timeout — GAS không phản hồi'));
-    }, action === 'librarySearchFiles' ? 90000 : 30000);
+      reject(new Error('Timeout — GAS không phản hồi. Với đồng bộ tài liệu cũ, hãy dùng bản V35 và chạy lô nhỏ.'));
+    }, timeoutMs);
     function cleanup() {
       clearTimeout(timer);
       try { delete window[cbName]; } catch(e) {}
@@ -3618,7 +3619,7 @@ function canBulkLegacySync(){
 }
 async function openBulkLegacyMigration(){
   showModal('<h3>🔁 Đồng bộ tài liệu cũ</h3>', `
-    <div class="msg">Chức năng này rà soát các dòng tài liệu cũ đang trỏ tới thư mục Drive, sao chép file về thư mục chuẩn của từng lịch <b>LHxxxx</b>, sau đó ẩn dòng link thư mục cũ để không đếm trùng.</div>
+    <div class="msg">Chức năng này rà soát các dòng tài liệu cũ đang trỏ tới thư mục Drive, sao chép file về thư mục chuẩn của từng lịch <b>LHxxxx</b>, sau đó ẩn dòng link thư mục cũ để không đếm trùng. Bản V35 chạy theo lô nhỏ để tránh timeout Apps Script.</div>
     <div id="bulkMigStatus" class="msg">Đang kiểm tra dữ liệu...</div>
     <div id="bulkMigSample"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap">
@@ -3654,7 +3655,7 @@ async function runBulkLegacyMigration(dryRun){
     while(true){
       totalBatches++;
       msg(box,`${dryRun?'Đang rà soát thử':'Đang đồng bộ'} lô ${totalBatches}...<br>Đã sao chép: <b>${totalCopied}</b>; bỏ qua: <b>${totalSkipped}</b>.`);
-      const res=await api('migrateAllMeetingLegacyFiles',{limit:30,mode:'copy',dryRun:!!dryRun});
+      const res=await api('migrateAllMeetingLegacyFiles',{limit:3,timeBudgetMs:22000,mode:'copy',dryRun:!!dryRun});
       totalCopied += Number(res.copied||0);
       totalMoved += Number(res.moved||0);
       totalSkipped += Number(res.skipped||0);
