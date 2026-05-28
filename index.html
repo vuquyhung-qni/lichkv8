@@ -584,6 +584,79 @@
     .library-fallback-frame { width:100%; height:100%; min-height:620px; border:0; background:#fff; }
     .library-mini-link { color:var(--blue); font-weight:700; text-decoration:none; }
 
+    /* ===== LIBRARY FILE POPUP ===== */
+    .library-popup-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 160;
+      background: rgba(8, 18, 38, .58);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+    }
+    .library-popup-card {
+      width: min(1180px, 96vw);
+      height: min(820px, 92svh);
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 28px 70px rgba(0,0,0,.32);
+      border: 1px solid rgba(255,255,255,.4);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      animation: popupIn .18s ease-out;
+    }
+    @keyframes popupIn { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
+    .library-popup-head {
+      flex-shrink: 0;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border2);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(90deg, #f7fbff, #fff);
+    }
+    .library-popup-title {
+      flex: 1;
+      min-width: 0;
+      color: var(--navy);
+      font-weight: 800;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .library-popup-frame {
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      border: 0;
+      background: #fff;
+    }
+    .library-popup-foot {
+      flex-shrink: 0;
+      padding: 7px 14px;
+      border-top: 1px solid var(--border2);
+      background: #f8fbff;
+      color: var(--muted);
+      font-size: .78rem;
+    }
+    .library-popup-close {
+      width: 34px;
+      height: 34px;
+      border: 1.5px solid #fecaca;
+      background: #fff5f5;
+      color: #991b1b;
+      border-radius: 9px;
+      font-weight: 900;
+      font-size: 1rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .library-popup-close:hover { background:#dc2626; border-color:#dc2626; color:#fff; }
+
 
     /* ===== FILTERBAR ===== */
     .filterbar {
@@ -1068,6 +1141,10 @@
       .library-searchbar { padding: 9px 12px; flex-wrap: wrap; }
       .library-searchbox { flex-basis: 100%; min-width: 0; }
       .library-searchbar .btn { flex: 1; justify-content: center; }
+      .library-popup-overlay { padding: 8px; }
+      .library-popup-card { width: 100vw; height: 96svh; border-radius: 12px; }
+      .library-popup-head { padding: 9px 10px; }
+      .library-popup-title { font-size: .86rem; }
 
       /* Bottom navigation bar */
       body.logged-in .bottom-nav {
@@ -1395,7 +1472,7 @@ function hasRole(list){
   return list.some(x=>x.toLowerCase()===r);
 }
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = "v10-library-open-click-preview-fix-20260528";
+const APP_VERSION = "v11-library-file-popup-20260528";
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
@@ -2133,12 +2210,36 @@ function libraryOpenFile(id){
     showLibraryHelp('Không tìm thấy thông tin file trong danh sách hiện tại. Bấm Tải lại rồi thử lại.', 'err');
     return;
   }
-  libraryPushState();
-  APP.libraryMode='preview';
-  APP.libraryPreview=item;
-  APP.libraryLoading=false;
-  renderLibraryContent();
-  updateLibraryButtons();
+  libraryShowFilePopup(item);
+}
+function libraryShowFilePopup(item){
+  if(!item)return;
+  libraryCloseFilePopup();
+  const overlay=document.createElement('div');
+  overlay.id='libraryFilePopup';
+  overlay.className='library-popup-overlay';
+  overlay.onclick=function(ev){ if(ev.target===overlay) libraryCloseFilePopup(); };
+  const src=libraryPreviewUrl(item);
+  const open=libraryOpenUrl(item);
+  overlay.innerHTML=`<div class="library-popup-card" role="dialog" aria-modal="true" aria-label="Xem tài liệu">
+    <div class="library-popup-head">
+      <div class="library-popup-title">${libraryIconFor(item)} ${esc(item.name||'Tài liệu')}</div>
+      <a class="btn sm ghost" href="${esc(open)}" target="_blank" rel="noopener">↗ Mở ngoài Drive</a>
+      <button type="button" class="library-popup-close" onclick="libraryCloseFilePopup()" title="Đóng">✕</button>
+    </div>
+    <iframe class="library-popup-frame" src="${esc(src)}" loading="lazy" allow="autoplay"></iframe>
+    <div class="library-popup-foot">Tài liệu đang được mở trong cửa sổ popup của web app. Nếu không xem được, kiểm tra quyền Drive hoặc dùng nút “Mở ngoài Drive”.</div>
+  </div>`;
+  document.body.appendChild(overlay);
+  document.addEventListener('keydown', libraryPopupEscHandler);
+}
+function libraryCloseFilePopup(){
+  const old=document.getElementById('libraryFilePopup');
+  if(old)old.remove();
+  document.removeEventListener('keydown', libraryPopupEscHandler);
+}
+function libraryPopupEscHandler(ev){
+  if(ev.key==='Escape') libraryCloseFilePopup();
 }
 async function searchLibraryDrive(push=true){
   libraryEnsureState();
