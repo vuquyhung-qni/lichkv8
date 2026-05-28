@@ -548,6 +548,43 @@
     .library-frame { width: 100%; height: 100%; min-height: 620px; border: 0; display: block; background: #fff; }
     .library-note { font-size: .78rem; color: var(--muted); padding: 8px 18px; border-top: 1px solid var(--border2); background: #f8fbff; }
 
+    .library-browser { height: 100%; min-height: 0; overflow: auto; padding: 16px 18px 22px; background: #fff; }
+    .library-statusbar { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; color:var(--text2); font-size:.82rem; }
+    .library-statusbar b { color:var(--navy); }
+    .library-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+    .library-item {
+      border: 1px solid var(--border2);
+      background: #fff;
+      border-radius: 12px;
+      padding: 13px 10px 11px;
+      min-height: 124px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-align: center;
+      box-shadow: var(--shadow-sm);
+      transition: transform .16s, box-shadow .16s, border-color .16s, background .16s;
+      cursor: pointer;
+      color: var(--text);
+    }
+    .library-item:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: #bcd2ea; background:#f9fcff; }
+    .library-item .li-icon { font-size: 2.6rem; line-height: 1; }
+    .library-item .li-name { font-weight: 700; font-size: .82rem; color: var(--text); line-height:1.35; word-break: break-word; max-width: 100%; }
+    .library-item .li-meta { font-size: .68rem; color: var(--muted); line-height:1.25; }
+    .library-item.folder .li-icon { color:#f0a500; }
+    .library-item.file .li-icon { color: var(--blue); }
+    .library-empty, .library-error-box, .library-loading-box { padding: 36px 20px; text-align:center; color: var(--muted); }
+    .library-error-box { color:#8a5a00; background:#fffdf6; border:1px solid #fde68a; border-radius:12px; margin:16px 18px; }
+    .library-preview { height: 100%; min-height: 0; display:flex; flex-direction:column; background:#fff; }
+    .library-preview-head { padding: 10px 14px; border-bottom:1px solid var(--border2); display:flex; align-items:center; gap:10px; background:#f8fbff; }
+    .library-preview-title { font-weight:800; color:var(--navy); min-width:0; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .library-preview-frame { flex:1; min-height:560px; border:0; width:100%; background:#fff; }
+    .library-fallback-frame { width:100%; height:100%; min-height:620px; border:0; background:#fff; }
+    .library-mini-link { color:var(--blue); font-weight:700; text-decoration:none; }
+
+
     /* ===== FILTERBAR ===== */
     .filterbar {
       display: flex;
@@ -1851,91 +1888,261 @@ function openTypeDetail(key, label, clickType){
   );
 }
 
-function driveSearchUrl(keyword){
-  const q=String(keyword||'').trim();
-  return q ? `https://drive.google.com/drive/search?q=${encodeURIComponent(q)}&hl=vi` : DRIVE_LIBRARY_URL;
+
+function jss(s){ return JSON.stringify(String(s==null?'':s)); }
+function libraryEnsureState(){
+  APP.libraryMode = APP.libraryMode || 'folder';
+  APP.libraryFolderId = APP.libraryFolderId || DRIVE_LIBRARY_FOLDER_ID;
+  APP.libraryData = APP.libraryData || null;
+  APP.libraryKeyword = APP.libraryKeyword || '';
+  APP.libraryPreview = APP.libraryPreview || null;
+  APP.libraryStack = APP.libraryStack || [];
+  APP.libraryLoading = !!APP.libraryLoading;
+  APP.libraryError = APP.libraryError || '';
+}
+function librarySnapshot(){
+  libraryEnsureState();
+  return {
+    mode: APP.libraryMode,
+    folderId: APP.libraryFolderId,
+    data: APP.libraryData,
+    keyword: APP.libraryKeyword,
+    preview: APP.libraryPreview,
+    error: APP.libraryError
+  };
+}
+function libraryRestore(st){
+  if(!st)return;
+  APP.libraryMode = st.mode || 'folder';
+  APP.libraryFolderId = st.folderId || DRIVE_LIBRARY_FOLDER_ID;
+  APP.libraryData = st.data || null;
+  APP.libraryKeyword = st.keyword || '';
+  APP.libraryPreview = st.preview || null;
+  APP.libraryError = st.error || '';
+  APP.libraryLoading = false;
+  renderLibraryContent();
+  updateLibraryButtons();
+}
+function libraryPushState(){
+  libraryEnsureState();
+  APP.libraryStack.push(librarySnapshot());
+  if(APP.libraryStack.length>30)APP.libraryStack.shift();
 }
 function updateLibraryButtons(){
+  libraryEnsureState();
   const backBtn=$('libraryBackBtn');
   if(backBtn)backBtn.disabled=!(APP.libraryStack&&APP.libraryStack.length);
   const crumb=$('libraryCrumbText');
   if(crumb){
-    const isSearch=(APP.libraryCurrentUrl||'').includes('/drive/search');
-    crumb.innerHTML=isSearch ? 'Đang xem: <b>Kết quả tìm kiếm trong Drive</b>' : 'Đang xem: <b>Thư mục gốc thư viện văn bản</b>';
+    let html='Đang xem: <b>Thư mục gốc thư viện văn bản</b>';
+    if(APP.libraryMode==='search') html='Đang xem: <b>Kết quả tìm kiếm</b>';
+    if(APP.libraryMode==='preview') html='Đang xem: <b>Xem tài liệu</b>';
+    if(APP.libraryMode==='fallback') html='Đang xem: <b>Khung Drive nhúng</b>';
+    if(APP.libraryMode==='folder' && APP.libraryData && Array.isArray(APP.libraryData.path) && APP.libraryData.path.length){
+      html='Đang xem: <b>'+APP.libraryData.path.map(x=>esc(x.name||'Thư mục')).join(' / ')+'</b>';
+    }
+    crumb.innerHTML=html;
   }
-}
-function setLibraryFrameUrl(url, push=true){
-  const frame=$('libraryFrame');
-  if(!frame)return;
-  const current=APP.libraryCurrentUrl || frame.getAttribute('src') || '';
-  if(push && current && current!==url){
-    APP.libraryStack.push(current);
-    if(APP.libraryStack.length>20)APP.libraryStack.shift();
-  }
-  APP.libraryCurrentUrl=url;
-  frame.src=url;
-  updateLibraryButtons();
 }
 function reloadLibraryFrame(){
-  const url=APP.libraryCurrentUrl || DRIVE_LIBRARY_EMBED_URL;
-  setLibraryFrameUrl(url,false);
+  libraryEnsureState();
+  if(APP.libraryMode==='search') return searchLibraryDrive(false);
+  if(APP.libraryMode==='preview') return renderLibraryContent();
+  if(APP.libraryMode==='fallback') return renderLibraryFallback();
+  libraryLoadFolder(APP.libraryFolderId||DRIVE_LIBRARY_FOLDER_ID,false);
 }
 function libraryBack(){
-  const frame=$('libraryFrame');
-  if(!frame)return;
-  const prev=APP.libraryStack && APP.libraryStack.pop();
-  if(prev){
-    APP.libraryCurrentUrl=prev;
-    frame.src=prev;
-    updateLibraryButtons();
-  }
+  libraryEnsureState();
+  const prev=APP.libraryStack.pop();
+  if(prev) libraryRestore(prev);
+  else updateLibraryButtons();
 }
 function closeLibraryViewer(){
   APP.libraryStack=[];
-  APP.libraryCurrentUrl=DRIVE_LIBRARY_EMBED_URL;
+  APP.libraryMode='folder';
+  APP.libraryFolderId=DRIVE_LIBRARY_FOLDER_ID;
+  APP.libraryData=null;
+  APP.libraryPreview=null;
+  APP.libraryKeyword='';
+  APP.libraryError='';
   go('dashboard');
 }
 function openLibraryRoot(){
+  libraryEnsureState();
   APP.libraryStack=[];
-  setLibraryFrameUrl(DRIVE_LIBRARY_EMBED_URL,false);
+  APP.libraryKeyword='';
+  const input=$('librarySearchInput'); if(input)input.value='';
+  const help=$('librarySearchHelp'); if(help){help.textContent='';help.classList.remove('show');}
+  libraryLoadFolder(DRIVE_LIBRARY_FOLDER_ID,false);
+}
+function libraryIconFor(item){
+  if(!item)return'📄';
+  if(item.type==='folder'||item.mimeType==='application/vnd.google-apps.folder')return'📁';
+  const mt=String(item.mimeType||'').toLowerCase();
+  const name=String(item.name||'').toLowerCase();
+  if(mt.includes('pdf')||name.endsWith('.pdf'))return'📕';
+  if(mt.includes('spreadsheet')||mt.includes('excel')||name.match(/\.(xls|xlsx|csv)$/))return'📊';
+  if(mt.includes('document')||mt.includes('word')||name.match(/\.(doc|docx)$/))return'📝';
+  if(mt.includes('presentation')||mt.includes('powerpoint')||name.match(/\.(ppt|pptx)$/))return'📽️';
+  if(mt.includes('image')||name.match(/\.(png|jpg|jpeg|gif|webp)$/))return'🖼️';
+  if(mt.includes('video'))return'🎞️';
+  if(mt.includes('zip')||name.match(/\.(zip|rar|7z)$/))return'🗜️';
+  return'📄';
+}
+function libraryPreviewUrl(item){
+  const id=encodeURIComponent(item.id||'');
+  const mt=String(item.mimeType||'');
+  if(mt==='application/vnd.google-apps.document')return `https://docs.google.com/document/d/${id}/preview`;
+  if(mt==='application/vnd.google-apps.spreadsheet')return `https://docs.google.com/spreadsheets/d/${id}/preview`;
+  if(mt==='application/vnd.google-apps.presentation')return `https://docs.google.com/presentation/d/${id}/preview`;
+  if(mt==='application/vnd.google-apps.form')return item.url||`https://drive.google.com/open?id=${id}`;
+  return `https://drive.google.com/file/d/${id}/preview`;
+}
+function libraryItemCard(item){
+  const isFolder=(item.type==='folder'||item.mimeType==='application/vnd.google-apps.folder');
+  const action=isFolder?`libraryOpenFolder(${jss(item.id)},${jss(item.name)})`:`libraryOpenFile(${jss(item.id)})`;
+  const meta=isFolder?'Thư mục':(item.modifiedTime?('Cập nhật '+esc(item.modifiedTime)):(item.mimeLabel||'Tệp văn bản'));
+  return `<button class="library-item ${isFolder?'folder':'file'}" onclick="${action}" title="${esc(item.name)}">
+    <span class="li-icon">${libraryIconFor(item)}</span>
+    <span class="li-name">${esc(item.name||'Không tên')}</span>
+    <span class="li-meta">${meta}</span>
+  </button>`;
+}
+function libraryRenderItems(items, title){
+  items=Array.isArray(items)?items:[];
+  const folders=items.filter(x=>x.type==='folder'||x.mimeType==='application/vnd.google-apps.folder');
+  const files=items.filter(x=>!(x.type==='folder'||x.mimeType==='application/vnd.google-apps.folder'));
+  const sorted=[...folders,...files];
+  return `<div class="library-browser">
+    <div class="library-statusbar"><span>${title||'Danh sách thư viện'}: <b>${sorted.length}</b> mục</span><span class="muted">Bấm thư mục để mở trực tiếp trong web app</span></div>
+    ${sorted.length?`<div class="library-grid">${sorted.map(libraryItemCard).join('')}</div>`:'<div class="library-empty">Không tìm thấy file/thư mục phù hợp.</div>'}
+  </div>`;
+}
+function renderLibraryContent(){
+  libraryEnsureState();
+  const body=$('libraryBody');
+  if(!body)return;
+  updateLibraryButtons();
+  if(APP.libraryLoading){
+    body.innerHTML='<div class="library-loading-box"><div class="spin" style="margin:0 auto 10px"></div>Đang tải thư viện văn bản...</div>';
+    return;
+  }
+  if(APP.libraryMode==='preview' && APP.libraryPreview){
+    const item=APP.libraryPreview;
+    const src=libraryPreviewUrl(item);
+    body.innerHTML=`<div class="library-preview">
+      <div class="library-preview-head">
+        <button class="btn sm ghost" onclick="libraryBack()">↩ Quay lại</button>
+        <div class="library-preview-title">${libraryIconFor(item)} ${esc(item.name||'Tài liệu')}</div>
+        <a class="btn sm primary" href="${esc(item.url||src)}" target="_blank" rel="noopener">↗ Mở trên Drive</a>
+      </div>
+      <iframe class="library-preview-frame" src="${esc(src)}" loading="lazy" allow="autoplay"></iframe>
+    </div>`;
+    return;
+  }
+  if(APP.libraryMode==='search'){
+    const items=(APP.libraryData&&APP.libraryData.items)||[];
+    body.innerHTML=libraryRenderItems(items, `Kết quả tìm “${esc(APP.libraryKeyword)}”`);
+    return;
+  }
+  if(APP.libraryMode==='fallback'){
+    renderLibraryFallback();
+    return;
+  }
+  const items=(APP.libraryData&&APP.libraryData.items)||[];
+  body.innerHTML=libraryRenderItems(items, 'Thư viện văn bản');
+}
+function showLibraryHelp(text,type){
   const help=$('librarySearchHelp');
-  if(help){help.textContent='';help.classList.remove('show');}
+  if(!help)return;
+  help.textContent=text||'';
+  help.classList.toggle('show',!!text);
+  help.style.color=type==='err'?'#991b1b':'#8a5a00';
 }
-function tryPatchDriveLinks(frame){
-  // Chỉ thực hiện được nếu trình duyệt cho phép truy cập cùng nguồn; Google Drive thường chặn cross-origin.
+async function libraryLoadFolder(folderId, push=true){
+  libraryEnsureState();
+  if(push)libraryPushState();
+  APP.libraryMode='folder';
+  APP.libraryFolderId=folderId||DRIVE_LIBRARY_FOLDER_ID;
+  APP.libraryLoading=true;
+  APP.libraryError='';
+  renderLibraryContent();
   try{
-    const doc=frame.contentDocument || frame.contentWindow.document;
-    doc.querySelectorAll('a[target="_blank"]').forEach(a=>a.setAttribute('target','_self'));
-  }catch(e){}
+    const res=await api('libraryListFolder',{folderId:APP.libraryFolderId, rootFolderId:DRIVE_LIBRARY_FOLDER_ID});
+    APP.libraryLoading=false;
+    APP.libraryMode='folder';
+    APP.libraryData={folder:res.folder||{},items:res.items||[],path:res.path||[]};
+    APP.libraryFolderId=(res.folder&&res.folder.id)||APP.libraryFolderId;
+    showLibraryHelp('', '');
+  }catch(e){
+    APP.libraryLoading=false;
+    APP.libraryMode='fallback';
+    APP.libraryError=(e&&e.message)||String(e||'Không tải được thư viện');
+    showLibraryHelp('Chưa gọi được chức năng đọc thư mục từ Apps Script. Cần cập nhật thêm phần Code.gs đi kèm để tìm kiếm và mở thư mục trực tiếp trong web app.', 'err');
+  }
+  renderLibraryContent();
+  updateLibraryButtons();
 }
-function searchLibraryDrive(openBlank=false){
+function libraryOpenFolder(id,name){
+  libraryLoadFolder(id,true);
+}
+function libraryOpenFile(id){
+  const items=(APP.libraryData&&APP.libraryData.items)||[];
+  const item=items.find(x=>String(x.id)===String(id));
+  if(!item)return;
+  libraryPushState();
+  APP.libraryMode='preview';
+  APP.libraryPreview=item;
+  APP.libraryLoading=false;
+  renderLibraryContent();
+  updateLibraryButtons();
+}
+async function searchLibraryDrive(push=true){
+  libraryEnsureState();
   const input=$('librarySearchInput');
   const q=input ? input.value.trim() : '';
   if(!q){
     if(input)input.focus();
-    const help=$('librarySearchHelp');
-    if(help){help.textContent='Nhập tên file, số/ký hiệu văn bản hoặc từ khóa cần tìm trong thư viện.';help.classList.add('show');}
+    showLibraryHelp('Nhập tên file, số/ký hiệu văn bản hoặc từ khóa cần tìm trong thư viện.');
     return;
   }
-  const url=driveSearchUrl(q);
-  const help=$('librarySearchHelp');
-  if(help){
-    help.textContent='Đang mở kết quả tìm kiếm trong khung nội bộ của web app. Trường hợp Google Drive chặn hiển thị tìm kiếm trong iframe, dùng nút “Mở trên Drive”.';
-    help.classList.add('show');
+  if(push)libraryPushState();
+  APP.libraryMode='search';
+  APP.libraryKeyword=q;
+  APP.libraryLoading=true;
+  APP.libraryError='';
+  renderLibraryContent();
+  try{
+    const res=await api('librarySearchFiles',{keyword:q, rootFolderId:DRIVE_LIBRARY_FOLDER_ID, max:200});
+    APP.libraryLoading=false;
+    APP.libraryMode='search';
+    APP.libraryData={items:res.items||[],path:[]};
+    showLibraryHelp(`Đã tìm trong thư viện nội bộ: ${q}`);
+  }catch(e){
+    APP.libraryLoading=false;
+    APP.libraryMode='fallback';
+    APP.libraryError=(e&&e.message)||String(e||'Không tìm được');
+    showLibraryHelp('Google Drive không cho nhúng trang tìm kiếm trong iframe. Để tìm file trực tiếp trong web app, cần cập nhật thêm phần Code.gs đi kèm.', 'err');
   }
-  setLibraryFrameUrl(url,true);
+  renderLibraryContent();
+  updateLibraryButtons();
 }
 function clearLibrarySearch(){
   const input=$('librarySearchInput');
   if(input){input.value='';input.focus();}
-  const help=$('librarySearchHelp');
-  if(help){help.textContent='';help.classList.remove('show');}
+  showLibraryHelp('', '');
   openLibraryRoot();
+}
+function renderLibraryFallback(){
+  const body=$('libraryBody');
+  if(!body)return;
+  const msg=APP.libraryError?`<div class="library-error-box"><b>Chưa thể dùng trình duyệt thư viện nội bộ.</b><br>${esc(APP.libraryError)}<br>Vẫn hiển thị thư mục Drive nhúng bên dưới; để tìm kiếm/mở thư mục ngay trong web app cần bổ sung hàm Apps Script theo file patch đi kèm.</div>`:'';
+  body.innerHTML=`${msg}<iframe id="libraryFrame" class="library-fallback-frame" src="${DRIVE_LIBRARY_EMBED_URL}" loading="lazy" allow="autoplay"></iframe>`;
 }
 function renderLibrary(){
   const el=$('screen-library');
   if(!el)return;
-  if(!APP.libraryCurrentUrl)APP.libraryCurrentUrl=DRIVE_LIBRARY_EMBED_URL;
+  libraryEnsureState();
   el.innerHTML=`
     <div class="panel library-panel">
       <div class="panel-h">
@@ -1946,25 +2153,30 @@ function renderLibrary(){
             <button class="library-icon-btn close" onclick="closeLibraryViewer()" title="Đóng thư viện">☒</button>
           </div>
           <button class="btn sm" onclick="reloadLibraryFrame()">↻ Tải lại</button>
+          <button class="btn sm ghost" onclick="openLibraryRoot()">⌂ Thư mục gốc</button>
           <a class="btn sm primary" href="${DRIVE_LIBRARY_URL}" target="_blank" rel="noopener">↗ Mở trên Drive</a>
         </div>
       </div>
       <div class="library-searchbar">
         <div class="library-searchbox">
           <span>🔎</span>
-          <input id="librarySearchInput" placeholder="Tìm tên file, số/ký hiệu văn bản, từ khóa..." onkeydown="if(event.key==='Enter')searchLibraryDrive(false)">
+          <input id="librarySearchInput" value="${esc(APP.libraryKeyword||'')}" placeholder="Tìm tên file, số/ký hiệu văn bản, từ khóa..." onkeydown="if(event.key==='Enter')searchLibraryDrive(true)">
         </div>
-        <button class="btn sm primary" onclick="searchLibraryDrive(false)">Tìm file</button>
+        <button class="btn sm primary" onclick="searchLibraryDrive(true)">Tìm file</button>
         <button class="btn sm ghost" onclick="clearLibrarySearch()">Xóa tìm</button>
       </div>
       <div id="librarySearchHelp" class="library-search-help"></div>
       <div class="library-crumb"><span>📁</span><span id="libraryCrumbText">Đang xem: <b>Thư mục gốc thư viện văn bản</b></span></div>
-      <div class="library-body">
-        <iframe id="libraryFrame" class="library-frame" src="${APP.libraryCurrentUrl}" loading="lazy" allow="autoplay" sandbox="allow-scripts allow-same-origin allow-forms allow-downloads" onload="tryPatchDriveLinks(this);updateLibraryButtons()"></iframe>
-      </div>
-      <div class="library-note">Khung Drive được nhúng trực tiếp trong web app; nút Back dùng để quay lại màn hình thư viện trước đó, nút Close để đóng thư viện. Nếu Google Drive chặn một số thao tác trong iframe, có thể dùng “Mở trên Drive”.</div>
+      <div id="libraryBody" class="library-body"></div>
+      <div class="library-note">Thư viện dùng trình duyệt nội bộ để bấm thư mục, Back/Close và tìm file ngay trong web app. Nếu chưa cập nhật Code.gs, hệ thống tự chuyển về khung Drive nhúng dự phòng.</div>
     </div>`;
+  const help=$('librarySearchHelp');
+  if(help && APP.libraryError){help.textContent='Cần cập nhật Code.gs để dùng đầy đủ tìm kiếm và mở thư mục nội bộ.';help.classList.add('show');}
+  renderLibraryContent();
   updateLibraryButtons();
+  if(!APP.libraryData && !APP.libraryLoading && APP.libraryMode==='folder'){
+    setTimeout(()=>libraryLoadFolder(APP.libraryFolderId||DRIVE_LIBRARY_FOLDER_ID,false),0);
+  }
 }
 
 // ===== CALENDAR =====
