@@ -1618,7 +1618,7 @@ function hasRole(list){
   return list.some(x=>x.toLowerCase()===r);
 }
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v29_library_dragdrop_capture_fix';
+const APP_VERSION = 'HTML_v32_migrate_legacy_files_ok';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
@@ -3099,7 +3099,7 @@ function meetingCards(arr,compact){
         ${m.chuTri?`<div class="m-meta-row"><span class="label">👤 Chủ trì</span><span>${esc(m.chuTri)}</span></div>`:''}
         ${m.thanhPhan&&!compact?`<div class="m-meta-row"><span class="label">👥 Thành phần</span><span>${esc(m.thanhPhan)}</span></div>`:''}
         ${m.ghiChu&&!compact?`<div class="m-meta-row"><span class="label">📝 Ghi chú</span><span>${esc(m.ghiChu)}</span></div>`:''}
-        ${m.fileCount>0 ? (m.fileCount===1 && m.firstFileUrl ? `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><button type="button" class="btn xs primary" onclick='openDriveFilePopup(${jss(m.firstFileUrl)},${jss('Tài liệu '+m.meetingId)},${jss('')})'>1 file</button></div>` : (m.folderId||m.linkFolder ? `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><button type="button" class="btn xs primary" onclick='openDriveFolderPopup(${jss(m.folderId||m.linkFolder)},${jss('Thư mục tài liệu '+m.meetingId)})'>${m.fileCount} file</button></div>` : `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><span style="font-weight:700">${m.fileCount} file</span><span class="muted" style="font-size:.76rem;margin-left:4px">(chưa có link Drive)</span></div>`)) : `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><span class="muted">0 file</span></div>`}
+        ${m.fileCount>0 ? (m.fileCount===1 && m.firstFileUrl ? `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><button type="button" class="btn xs primary" onclick='openDriveFilePopup(${jss(m.firstFileUrl)},${jss('Tài liệu '+m.meetingId)},${jss('')})'>1 file</button></div>` : (m.fileFolderId||m.folderId||m.linkFolder ? `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><button type="button" class="btn xs primary" onclick='openDriveFolderPopup(${jss(m.fileFolderId||m.folderId||m.linkFolder)},${jss(m.fileFolderName||('Thư mục tài liệu '+m.meetingId))})'>${m.fileCount} file</button></div>` : `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><span style="font-weight:700">${m.fileCount} file</span><span class="muted" style="font-size:.76rem;margin-left:4px">(chưa có link Drive)</span></div>`)) : `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><span class="muted">0 file</span></div>`}
       </div>
       <div class="m-actions">
         <button type="button" class="btn sm js-open-detail" data-action="open-detail" data-meeting-id="${esc(m.meetingId)}">👁 Xem chi tiết</button>
@@ -3289,13 +3289,13 @@ async function openDetail(id){
           ${m.thanhPhan?`<div class="m-meta-row"><span class="label" style="min-width:120px">👥 Thành phần</span>${esc(m.thanhPhan)}</div>`:''}
           ${m.soVanBan?`<div class="m-meta-row"><span class="label" style="min-width:120px">📄 Số văn bản</span><span class="mono">${esc(m.soVanBan)}</span></div>`:''}
           ${m.ghiChu?`<div class="m-meta-row"><span class="label" style="min-width:120px">📝 Ghi chú</span>${esc(m.ghiChu)}</div>`:''}
-          ${(m.folderId||m.linkFolder)?`<div class="m-meta-row"><span class="label" style="min-width:120px">📁 Thư mục</span><button type="button" class="btn xs primary" onclick='openDriveFolderPopup(${jss(m.folderId||m.linkFolder)},${jss('Thư mục tài liệu '+m.meetingId)})'>Mở trong web app</button></div>`:''}
+          ${(m.fileFolderId||m.folderId||m.linkFolder)?`<div class="m-meta-row"><span class="label" style="min-width:120px">📁 Thư mục</span><button type="button" class="btn xs primary" onclick='openDriveFolderPopup(${jss(m.fileFolderId||m.folderId||m.linkFolder)},${jss(m.fileFolderName||('Thư mục tài liệu '+m.meetingId))})'>Mở trong web app</button></div>`:''}
         </div>
       </div>
       <div class="sp"></div>
       <div class="panel" style="box-shadow:none;border-color:var(--border2)">
         <div class="panel-h"><h3>📎 Tài liệu</h3></div>
-        <div class="panel-b">${fileList(res.files)}${res.canUpload?uploadBox(id):''}</div>
+        <div class="panel-b">${legacySyncBox(id,res)}${fileList(res.files)}${res.canUpload?uploadBox(id):''}</div>
       </div>
       <div class="sp"></div>
       <div class="panel" style="box-shadow:none;border-color:var(--border2)">
@@ -3316,13 +3316,33 @@ function isMeetingFolderFile(f){
          isDriveFolderLink(f.fileUrl) ||
          (f.folderId && !f.driveFileId && !String(f.fileUrl||'').includes('/file/d/'));
 }
+function legacySyncBox(id,res){
+  const info=(res&&res.legacyInfo)||{};
+  if(!info.hasLegacyFolder)return'';
+  const n=Number(info.fileCount||0);
+  return `<div class="msg" style="margin:0 0 10px;border-left-color:var(--gold)">
+    <b>Phát hiện tài liệu theo lịch cũ:</b> ${n} file trong ${Number(info.folderCount||0)} thư mục cũ.
+    <button type="button" class="btn xs primary" style="margin-left:8px" onclick="syncLegacyFiles('${esc(id)}')">Đồng bộ về thư mục ${esc(id)}</button>
+    <span class="muted" style="font-size:.78rem;margin-left:6px">Sau đồng bộ, hệ thống sẽ hiển thị từng file và mở trực tiếp trong web app.</span>
+  </div>`;
+}
+async function syncLegacyFiles(id){
+  if(!confirm('Đồng bộ toàn bộ tài liệu theo lịch cũ về thư mục mới của '+id+'?\n\nHệ thống sẽ sao chép file sang thư mục LHxxxx và ẩn dòng link thư mục cũ để tránh đếm trùng.'))return;
+  try{
+    const res=await api('migrateMeetingLegacyFiles',{meetingId:id,mode:'copy',hideLegacy:true});
+    alert((res&&res.msg?res.msg:'Đã đồng bộ')+'\nSao chép: '+(res.copied||0)+' file; bỏ qua: '+(res.skipped||0)+' file.');
+    await refreshAll();
+    setTimeout(()=>openDetail(id),300);
+  }catch(e){alert((e&&e.message)||String(e||'Không đồng bộ được tài liệu cũ.'))}
+}
 function fileList(files){
   if(!files||!files.length)return'<div class="empty">Chưa có tài liệu.</div>';
   return files.map((f,i)=>{
     const isFolder=isMeetingFolderFile(f);
     const btnLabel=isFolder?'📁 Mở':'👁 Xem';
-    const metaFolder=isFolder?'Thư mục Drive':'Tệp Drive';
-    return `<div class="file-row"><div><b>${esc(f.fileName)}</b><br><span class="muted" style="font-size:.78rem">${esc(f.fileType)} · V${esc(f.version)} · ${esc(f.uploadedBy)} · ${esc(dateVNShort(f.uploadedAt))} · ${esc(metaFolder)}</span></div><button type="button" class="btn sm primary" onclick="openMeetingDetailFile(${i})">${btnLabel}</button></div>`;
+    const metaFolder=isFolder?'Thư mục Drive':(f.isVirtualFromFolder?'Tệp trong thư mục cũ':'Tệp Drive');
+    const src=f.sourceFolderName?` · ${esc(f.sourceFolderName)}`:'';
+    return `<div class="file-row"><div><b>${esc(f.fileName)}</b><br><span class="muted" style="font-size:.78rem">${esc(f.fileType)} · V${esc(f.version)} · ${esc(f.uploadedBy)} · ${esc(dateVNShort(f.uploadedAt))} · ${esc(metaFolder)}${src}</span></div><button type="button" class="btn sm primary" onclick="openMeetingDetailFile(${i})">${btnLabel}</button></div>`;
   }).join('')
 }
 function openMeetingDetailFile(index){
