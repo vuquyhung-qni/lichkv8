@@ -439,6 +439,8 @@
     .stat-v { font-size: 2rem; font-weight: 900; color: var(--navy); line-height: 1.1; margin: 5px 0 3px; }
     .stat-sub { font-size: .72rem; color: var(--muted); }
     .stat-card.stat-today { background: linear-gradient(180deg,#fff 0%,#f8fbff 100%); }
+    .stat-card.stat-tomorrow { background: linear-gradient(180deg,#fff 0%,#f0fbff 100%); }
+    .stat-card.stat-tomorrow::after { background: linear-gradient(90deg,#38a3d1,#0b67b2); }
     .stat-card.stat-week  { background: linear-gradient(180deg,#fff 0%,#fbf8ff 100%); }
     .stat-card.stat-month { background: linear-gradient(180deg,#fff 0%,#f5fff9 100%); }
     .stat-card.stat-year  { background: linear-gradient(180deg,#fff 0%,#fffdf3 100%); }
@@ -545,6 +547,7 @@
       display: none;
     }
     .library-search-help.show { display: block; }
+    .mobile-search-icon { display: none; }
     .library-body { padding: 0; flex: 1; min-height: 0; background: #fff; }
     .library-frame { width: 100%; height: 100%; min-height: 620px; border: 0; display: block; background: #fff; }
     .library-note { font-size: .78rem; color: var(--muted); padding: 8px 18px; border-top: 1px solid var(--border2); background: #f8fbff; }
@@ -1233,6 +1236,23 @@
       .library-popup-head { padding: 9px 10px; }
       .library-popup-title { font-size: .86rem; }
 
+      /* Mobile: thư viện văn bản tinh gọn */
+      #screen-library .panel-h { padding: 16px 22px; }
+      #screen-library .panel-h h3 { font-size: 1.08rem; text-transform: uppercase; letter-spacing: .4px; }
+      #screen-library .library-head-actions,
+      #screen-library .library-nav-actions { display: none !important; }
+      #screen-library .library-searchbar { padding: 10px 12px; display: flex; flex-wrap: nowrap; gap: 8px; align-items: center; }
+      #screen-library .library-searchbox { flex: 1 1 auto; flex-basis: auto; min-width: 0; }
+      #screen-library .library-searchbox input { font-size: .88rem; }
+      #screen-library .library-searchbar .btn.ghost { display: none !important; }
+      #screen-library .library-searchbar .btn.primary { flex: 0 0 48px; width: 48px; height: 42px; padding: 0; justify-content: center; }
+      #screen-library .desktop-search-label { display: none !important; }
+      #screen-library .mobile-search-icon { display: inline-flex !important; font-size: 1.05rem; align-items: center; justify-content: center; }
+      #screen-library .library-crumb,
+      #screen-library .library-search-help,
+      #screen-library .library-statusbar { display: none !important; }
+      #screen-library .library-browser { padding-top: 14px; }
+
       /* Bottom navigation bar */
       body.logged-in .bottom-nav {
         display: flex;
@@ -1509,21 +1529,13 @@
     <span id="bnMeetBadge" class="bn-badge">0</span>
     <span>Lịch</span>
   </button>
-  <button class="bn-item" data-screen="manage" onclick="go('manage')">
-    <span class="bn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3" cy="6" r="1.5" fill="currentColor"/><circle cx="3" cy="12" r="1.5" fill="currentColor"/><circle cx="3" cy="18" r="1.5" fill="currentColor"/></svg></span>
-    <span>Quản lý</span>
+  <button class="bn-item" data-screen="library" onclick="go('library')">
+    <span class="bn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/><path d="M8 6h8"/><path d="M8 10h8"/></svg></span>
+    <span>TVVB</span>
   </button>
-  <button class="bn-item" id="bnUsers" data-screen="users" onclick="go('users')">
-    <span class="bn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
-    <span>Users</span>
-  </button>
-  <button class="bn-item" id="bnSettings" data-screen="settings" onclick="go('settings')">
-    <span class="bn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
-    <span>Danh mục</span>
-  </button>
-  <button class="bn-item" onclick="toggleUserPopup()">
-    <span class="bn-icon" id="bnAvatarIcon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
-    <span>Tôi</span>
+  <button class="bn-item" onclick="toggleSide()">
+    <span class="bn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></span>
+    <span>Menu</span>
   </button>
 </nav>
 
@@ -1559,7 +1571,7 @@ function hasRole(list){
   return list.some(x=>x.toLowerCase()===r);
 }
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = "v22-security-hardened-20260528";
+const APP_VERSION = "v24-mobile-library-dashboard-20260528";
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
@@ -1881,6 +1893,9 @@ function renderDashboard(){
   }
   const isFullData=!!APP.allMeetings;
   const nonTrucBan=meetings.filter(m=>m.loaiLich!=='TRUC_BAN');
+  const tomorrowStart=new Date(now); tomorrowStart.setDate(now.getDate()+1); tomorrowStart.setHours(0,0,0,0);
+  const tomorrowEnd=new Date(tomorrowStart); tomorrowEnd.setHours(23,59,59,999);
+  const countTomorrow=meetings.filter(m=>{const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;return s&&e&&s<=tomorrowEnd&&e>=tomorrowStart;}).length;
   const countWeek=nonTrucBan.filter(m=>{const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;return s&&e&&s<=wEnd&&e>=wStart;}).length;
   const countMonth=nonTrucBan.filter(m=>{const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;return s&&e&&s<=mEnd&&e>=mStart;}).length;
   const yStart=new Date(now.getFullYear(),0,1); const yEnd=new Date(now.getFullYear(),11,31,23,59,59,999);
@@ -1931,15 +1946,15 @@ function renderDashboard(){
   $('screen-dashboard').innerHTML=`
     <div class="stats-grid">
       ${statCardClickable('Hôm nay',d.today||0,'Lịch diễn ra hôm nay','today')}
+      ${statCardClickable('Ngày mai',countTomorrow,'Lịch sẽ diễn ra ngày mai','tomorrow')}
       ${statCardClickable('Trong tuần',countWeek,'Lịch họp tuần này','week')}
       ${statCardClickable('Trong tháng',countMonth,'Lịch họp tháng '+String(now.getMonth()+1)+'/'+now.getFullYear(),'month')}
-      ${statCardClickable('Trong năm',countYear,(isFullData?'':'⏳ ')+'Năm '+now.getFullYear(),'year')}
     </div>
     <div class="sp"></div>
     <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
+      ${statCardClickable('Trong năm',countYear,(isFullData?'':'⏳ ')+'Năm '+now.getFullYear(),'year')}
       ${statCard('Tổng',d.total||0,'Tất cả lịch','stat-total')}
       ${statCard('Đã duyệt',d.published||0,'Trạng thái PUBLISHED','stat-published')}
-      ${statCard('Nháp',d.draft||0,'Trạng thái DRAFT','stat-draft')}
       ${statCard('Đã hủy',d.cancelled||0,'Trạng thái CANCELLED','stat-cancelled')}
     </div>
     <div class="sp"></div>
@@ -2003,6 +2018,10 @@ function openStatDetail(period, label){
   let arr=[];
   if(period==='today'){
     arr=meetings.filter(m=>isToday(m));
+  } else if(period==='tomorrow'){
+    const tomorrowStart=new Date(today); tomorrowStart.setDate(today.getDate()+1); tomorrowStart.setHours(0,0,0,0);
+    const tomorrowEnd=new Date(tomorrowStart); tomorrowEnd.setHours(23,59,59,999);
+    arr=meetings.filter(m=>{const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;return s&&e&&s<=tomorrowEnd&&e>=tomorrowStart;});
   } else if(period==='week'){
     arr=nonTrucBan.filter(m=>{const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;return s&&e&&s<=wEnd&&e>=wStart;});
   } else if(period==='month'){
@@ -2581,7 +2600,7 @@ function renderLibrary(){
   el.innerHTML=`
     <div class="panel library-panel">
       <div class="panel-h">
-        <h3>📚 Thư viện văn bản</h3>
+        <h3>📚 THƯ VIỆN VĂN BẢN</h3>
         <div class="library-head-actions">
           <div class="library-nav-actions" title="Điều hướng thư viện">
             <button id="libraryBackBtn" class="library-icon-btn" onclick="libraryBack()" title="Quay lại">↩</button>
@@ -2596,7 +2615,7 @@ function renderLibrary(){
           <span>🔎</span>
           <input id="librarySearchInput" value="${esc(APP.libraryKeyword||'')}" placeholder="Tìm tên file, số/ký hiệu văn bản, từ khóa..." onkeydown="if(event.key==='Enter')searchLibraryDrive(true)">
         </div>
-        <button class="btn sm primary" onclick="searchLibraryDrive(true)">Tìm file</button>
+        <button class="btn sm primary" onclick="searchLibraryDrive(true)" title="Tìm"><span class="desktop-search-label">Tìm file</span><span class="mobile-search-icon">🔍</span></button>
         <button class="btn sm ghost" onclick="clearLibrarySearch()">Xóa tìm</button>
       </div>
       <div id="librarySearchHelp" class="library-search-help"></div>
@@ -2619,7 +2638,7 @@ const SCOPE_CYCLE  = ['CURRENT','WEEK','MONTH','YEAR'];
 const KIND_CYCLE   = ['ALL','HOP','TRUC_BAN'];
 const LEADER_LABELS = {all:'LĐCC', Hưng:'Đ/c Hưng', Dương:'Đ/c Dương', Lợi:'Đ/c Lợi', Thắng:'Đ/c Thắng'};
 const SCOPE_LABELS  = {CURRENT:'THỜI GIAN', WEEK:'TUẦN', MONTH:'THÁNG', YEAR:'NĂM'};
-const KIND_LABELS   = {ALL:'LỊCH HỌP', HOP:'LỊCH HỌP', TRUC_BAN:'TRỰC BAN'};
+const KIND_LABELS   = {ALL:'ALL', HOP:'LỊCH HỌP', TRUC_BAN:'TRỰC BAN'};
 
 function cycleLeader(){
   const idx=LEADER_CYCLE.indexOf(APP.filters.leader);
