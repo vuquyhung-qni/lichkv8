@@ -1466,6 +1466,26 @@ function statusLabel(v){const a=setupItems(['MEETING_STATUS','TRANG_THAI_LICH'])
 function optionsAny(keys,selected){return setupItems(keys).map(x=>`<option value="${esc(x.value)}"${x.value===selected?' selected':''}>${esc(x.label)}</option>`).join('')}
 function normText(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/[^a-z0-9]+/g,' ').trim()}
 
+function toHHmm(v){
+  let s=String(v||'').trim();
+  if(!s)return'';
+  s=s.toLowerCase().replace(/giờ/g,'h').replace(/[：.]/g,':').replace(/\s+/g,' ').trim();
+  const isPm=/\bpm\b|\bch\b/.test(s), isAm=/\bam\b|\bsa\b/.test(s);
+  s=s.replace(/\b(am|pm|sa|ch)\b/g,'').trim();
+  let m=s.match(/^(\d{1,2})\s*[h:]\s*(\d{1,2})(?::\d{1,2})?$/) || s.match(/^(\d{1,2})(\d{2})$/);
+  if(m){let hh=Number(m[1]), mm=Number(m[2]); if(isPm&&hh<12)hh+=12; if(isAm&&hh===12)hh=0; if(hh>=0&&hh<24&&mm>=0&&mm<60)return String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');}
+  m=s.match(/^(\d{1,2})$/);
+  if(m){let hh=Number(m[1]); if(isPm&&hh<12)hh+=12; if(isAm&&hh===12)hh=0; if(hh>=0&&hh<24)return String(hh).padStart(2,'0')+':00';}
+  return'';
+}
+function requireHHmm(inputId,label){
+  const el=$(inputId); const val=toHHmm(el?.value||'');
+  if(!val){ if(el)el.focus(); throw new Error(label+' không đúng định dạng. Vui lòng nhập HH:mm, ví dụ 14:45 hoặc 14h45.'); }
+  if(el)el.value=val;
+  return val;
+}
+
+
 function compactText(s){return normText(s).replace(/\s+/g,'')}
 function levenshteinWithin(a,b,maxDist){
   a=String(a||''); b=String(b||'');
@@ -2493,8 +2513,8 @@ function openMeetingForm(id){
     <div class="field"><label>Ngày bắt đầu</label><input id="fStart" type="date" value="${esc(m.ngayBatDau||'')}"></div>
     <div class="field"><label>Ngày kết thúc</label><input id="fEnd" type="date" value="${esc(m.ngayKetThuc||m.ngayBatDau||'')}"></div>
     <div class="field"><label>Loại lịch</label><select id="fType">${optionsAny(['MEETING_TYPE','LOAI_LICH'],m.loaiLich||'HOP')}</select></div>
-    <div class="field"><label>Giờ bắt đầu</label><input id="fTimeStart" type="time" value="${esc(m.gioBatDau||'08:00')}"></div>
-    <div class="field"><label>Giờ kết thúc</label><input id="fTimeEnd" type="time" value="${esc(m.gioKetThuc||'17:30')}"></div>
+    <div class="field"><label>Giờ bắt đầu</label><input id="fTimeStart" type="text" inputmode="numeric" placeholder="HH:mm" value="${esc(toHHmm(m.gioBatDau)||'08:00')}" onblur="this.value=toHHmm(this.value)||this.value"><div class="hint">Nhập 14:45 hoặc 14h45</div></div>
+    <div class="field"><label>Giờ kết thúc</label><input id="fTimeEnd" type="text" inputmode="numeric" placeholder="HH:mm" value="${esc(toHHmm(m.gioKetThuc)||'17:30')}" onblur="this.value=toHHmm(this.value)||this.value"><div class="hint">Nhập 16:10 hoặc 16h10</div></div>
     <div class="field"><label>Trạng thái</label><select id="fStatus">${optionsAny(['MEETING_STATUS','TRANG_THAI_LICH'],m.trangThai||'DRAFT')}</select></div>
     <div class="field full"><label>Nội dung cuộc họp</label><textarea id="fContent">${esc(m.noiDung||'')}</textarea></div>
     <div class="field"><label>Địa điểm</label><input id="fPlace" value="${esc(m.diaDiem||'')}"></div>
@@ -2542,7 +2562,12 @@ function renderQueuedFiles(){
   el.innerHTML=APP.pendingFormFiles.map((f,i)=>`<div class="queued-file"><span>📎 ${esc(f.name)} <span class="muted">(${Math.round(f.size/1024)} KB)</span></span><button onclick="removeQueuedFile(${i})">✕ Bỏ</button></div>`).join('');
 }
 async function saveMeeting(id){
-  const form={meetingId:id,ngayBatDau:$('fStart').value,ngayKetThuc:$('fEnd').value,gioBatDau:$('fTimeStart').value,gioKetThuc:$('fTimeEnd').value,loaiLich:$('fType').value,trangThai:$('fStatus').value,noiDung:$('fContent').value,diaDiem:$('fPlace').value,chuTri:$('fChair').value,lanhDaoLienQuan:$('fLeader').value,thanhPhan:$('fPart').value,donViChuanBi:$('fUnit').value,deptLeadUser:$('fDeptLead').value,soVanBan:$('fDoc').value,ghiChu:$('fNote').value};
+  let gioBatDau, gioKetThuc;
+  try{
+    gioBatDau=requireHHmm('fTimeStart','Giờ bắt đầu');
+    gioKetThuc=requireHHmm('fTimeEnd','Giờ kết thúc');
+  }catch(e){ alert(e.message); return; }
+  const form={meetingId:id,ngayBatDau:$('fStart').value,ngayKetThuc:$('fEnd').value,gioBatDau,gioKetThuc,loaiLich:$('fType').value,trangThai:$('fStatus').value,noiDung:$('fContent').value,diaDiem:$('fPlace').value,chuTri:$('fChair').value,lanhDaoLienQuan:$('fLeader').value,thanhPhan:$('fPart').value,donViChuanBi:$('fUnit').value,deptLeadUser:$('fDeptLead').value,soVanBan:$('fDoc').value,ghiChu:$('fNote').value};
   const btn=$('btnSaveMeeting');if(btn){btn.disabled=true;btn.textContent='Đang lưu...'}
   try{
     const res=await api(id?'updateMeeting':'createMeeting',{meetingId:id,form});
