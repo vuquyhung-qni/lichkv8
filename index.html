@@ -554,6 +554,36 @@
 
     .library-browser { height: 100%; min-height: 0; overflow: auto; padding: 16px 18px 22px; background: #f7f9fc; }
     .library-statusbar { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; color:var(--text2); font-size:.82rem; }
+
+    .library-uploadbox { margin-bottom: 12px; }
+    .library-dropzone {
+      border: 2px dashed #bcd2ea;
+      background: linear-gradient(180deg, #ffffff 0%, #f2f7ff 100%);
+      border-radius: 12px;
+      padding: 14px 16px;
+      min-height: 74px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      text-align: center;
+      color: var(--text2);
+      font-size: .84rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .18s;
+    }
+    .library-dropzone:hover, .library-dropzone.drag {
+      border-color: var(--blue2);
+      background: #eff6ff;
+      color: var(--blue);
+      box-shadow: 0 8px 22px rgba(11,103,178,.10);
+    }
+    .library-dropzone .drop-ico { font-size: 1.45rem; }
+    .library-upload-msg { margin-top: 7px; font-size: .78rem; color: var(--muted); }
+    .library-upload-msg.err { color: #991b1b; }
+    .library-upload-msg.ok { color: #166534; }
+
     .library-statusbar b { color:var(--navy); }
     .library-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
     .library-item {
@@ -1252,6 +1282,8 @@
       #screen-library .library-search-help,
       #screen-library .library-statusbar { display: none !important; }
       #screen-library .library-browser { padding-top: 14px; }
+      #screen-library .library-dropzone { min-height: 58px; padding: 10px 12px; font-size: .78rem; }
+      #screen-library .library-dropzone .drop-hint { display: none; }
 
       /* Bottom navigation bar */
       body.logged-in .bottom-nav {
@@ -1607,7 +1639,7 @@ function api(action, payload={}) {
   payload.token = APP.token;
 
   // Upload file (base64 lớn) → dùng fetch POST để tránh giới hạn URL
-  if (action === 'uploadMeetingFile') {
+  if (['uploadMeetingFile','uploadLibraryFile'].includes(action)) {
     return fetch(GAS_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -2343,6 +2375,8 @@ function openDriveFolderPopup(folderIdOrUrl,title){
   drivePopupFolderLoad(id,title||'Thư mục tài liệu');
 }
 async function drivePopupFolderLoad(folderId,title){
+  APP.popupDriveFolderId = folderId;
+  APP.popupDriveFolderTitle = title || 'Thư mục tài liệu';
   const body=document.getElementById('driveFolderPopupBody');
   const titleEl=document.getElementById('driveFolderPopupTitle');
   if(titleEl)titleEl.textContent='📁 '+(title||'Thư mục tài liệu');
@@ -2353,20 +2387,21 @@ async function drivePopupFolderLoad(folderId,title){
     if(titleEl)titleEl.textContent='📁 '+(folder.name||title||'Thư mục tài liệu');
     APP.popupDriveFolderItems=res.items||[];
     if(body){
-      body.innerHTML=drivePopupFolderRender(APP.popupDriveFolderItems, folder.name||'Thư mục tài liệu');
+      body.innerHTML=drivePopupFolderRender(APP.popupDriveFolderItems, folder.name||'Thư mục tài liệu', folder.id||folderId);
       body.onclick=drivePopupFolderClick;
     }
   }catch(e){
     if(body)body.innerHTML=`<div class="library-error-box" style="width:calc(100% - 36px)">Không tải được thư mục trong web app: ${esc((e&&e.message)||String(e||''))}<br><span class="muted">Cần cập nhật đúng Code.gs v18 và Deploy New version. Hãy chạy thử hàm <b>testDriveListFolder</b> trong Apps Script để kiểm tra action mở thư mục.</span></div>`;
   }
 }
-function drivePopupFolderRender(items,title){
+function drivePopupFolderRender(items,title,folderId){
   items=Array.isArray(items)?items:[];
   const folders=items.filter(x=>x.type==='folder'||x.mimeType==='application/vnd.google-apps.folder');
   const files=items.filter(x=>!(x.type==='folder'||x.mimeType==='application/vnd.google-apps.folder'));
   const sorted=[...folders,...files];
   return `<div class="library-browser" style="width:100%;height:100%;background:#f7f9fc">
-    <div class="library-statusbar"><span>${esc(title||'Thư mục')}: <b>${sorted.length}</b> mục</span><span class="muted">Bấm file để xem trong popup</span></div>
+    <div class="library-statusbar"><span>${esc(title||'Thư mục')}: <b>${sorted.length}</b> mục</span><span class="muted">Kéo thả file để upload vào thư mục này</span></div>
+    ${libraryDropzoneHtml(folderId||APP.popupDriveFolderId||'')}
     ${sorted.length?`<div class="library-grid">${sorted.map(libraryItemCard).join('')}</div>`:'<div class="library-empty">Thư mục chưa có file.</div>'}
   </div>`;
 }
@@ -2406,13 +2441,66 @@ function libraryBodyClick(ev){
   if(type==='folder') libraryOpenFolder(id);
   else libraryOpenFile(id);
 }
-function libraryRenderItems(items, title){
+function libraryDropzoneHtml(folderId){
+  if(!folderId) return '';
+  return `<div class="library-uploadbox" onclick="event.stopPropagation()">
+    <div class="library-dropzone" onclick="librarySelectUploadFiles(event,this)" ondragover="libraryUploadDragOver(event,this)" ondragleave="libraryUploadDragLeave(event,this)" ondrop="libraryDropToFolder(event,this,${jss(folderId)})">
+      <span class="drop-ico">☁️</span>
+      <span><b>Kéo thả tài liệu vào đây để đưa lên Drive</b><br><span class="muted drop-hint">Upload trực tiếp vào thư mục đang mở; hỗ trợ PDF, Word, Excel, PowerPoint, ảnh, file nén.</span></span>
+      <input type="file" multiple class="hide" onchange="libraryUploadToFolder(${jss(folderId)},this.files,this)">
+    </div>
+    <div class="library-upload-msg"></div>
+  </div>`;
+}
+function librarySelectUploadFiles(ev,box){
+  ev.preventDefault(); ev.stopPropagation();
+  const input=box&&box.querySelector?box.querySelector('input[type=file]'):null;
+  if(input) input.click();
+}
+function libraryUploadDragOver(ev,box){ ev.preventDefault(); ev.stopPropagation(); if(box)box.classList.add('drag'); }
+function libraryUploadDragLeave(ev,box){ ev.preventDefault(); ev.stopPropagation(); if(box)box.classList.remove('drag'); }
+function libraryDropToFolder(ev,box,folderId){
+  ev.preventDefault(); ev.stopPropagation();
+  if(box)box.classList.remove('drag');
+  libraryUploadToFolder(folderId, ev.dataTransfer ? ev.dataTransfer.files : null, box);
+}
+function librarySetUploadMsg(source,text,type){
+  const wrap=source&&source.closest?source.closest('.library-uploadbox'):null;
+  const el=wrap?wrap.querySelector('.library-upload-msg'):null;
+  if(el){ el.textContent=text||''; el.className='library-upload-msg '+(type||''); }
+  if(text) showLibraryHelp(text,type==='err'?'err':'');
+}
+async function libraryUploadToFolder(folderId,files,source){
+  try{
+    const valid=filterValidUploadFiles(files);
+    if(!valid.length)return;
+    librarySetUploadMsg(source,`Đang upload ${valid.length} file vào Drive...`,'');
+    for(let i=0;i<valid.length;i++){
+      const file=valid[i];
+      librarySetUploadMsg(source,`Đang upload ${i+1}/${valid.length}: ${file.name}`,'');
+      const base64=await readFile(file);
+      await api('uploadLibraryFile',{folderId,rootFolderId:DRIVE_LIBRARY_FOLDER_ID,fileName:file.name,mimeType:file.type,base64});
+    }
+    librarySetUploadMsg(source,'Đã upload xong. Đang tải lại thư mục...','ok');
+    if(source && source.value!==undefined) source.value='';
+    if(APP.popupDriveFolderId && String(APP.popupDriveFolderId)===String(folderId) && document.getElementById('driveFolderPopupBody')){
+      await drivePopupFolderLoad(folderId,APP.popupDriveFolderTitle||'Thư mục tài liệu');
+    }
+    if(APP.libraryMode==='folder' && String(APP.libraryFolderId||'')===String(folderId||'')){
+      await libraryLoadFolder(folderId,false);
+    }
+  }catch(e){
+    librarySetUploadMsg(source,(e&&e.message)||String(e||'Upload lỗi'),'err');
+  }
+}
+function libraryRenderItems(items, title, folderId){
   items=Array.isArray(items)?items:[];
   const folders=items.filter(x=>x.type==='folder'||x.mimeType==='application/vnd.google-apps.folder');
   const files=items.filter(x=>!(x.type==='folder'||x.mimeType==='application/vnd.google-apps.folder'));
   const sorted=[...folders,...files];
   return `<div class="library-browser">
-    <div class="library-statusbar"><span>${title||'Danh sách thư viện'}: <b>${sorted.length}</b> mục</span><span class="muted">Bấm thư mục để mở trực tiếp trong web app</span></div>
+    <div class="library-statusbar"><span>${title||'Danh sách thư viện'}: <b>${sorted.length}</b> mục</span><span class="muted">${folderId?'Kéo thả file để upload vào thư mục đang mở':'Bấm thư mục/file để xem'}</span></div>
+    ${folderId?libraryDropzoneHtml(folderId):''}
     ${sorted.length?`<div class="library-grid">${sorted.map(libraryItemCard).join('')}</div>`:'<div class="library-empty">Không tìm thấy file/thư mục phù hợp.</div>'}
   </div>`;
 }
@@ -2441,7 +2529,7 @@ function renderLibraryContent(){
   }
   if(APP.libraryMode==='search'){
     const items=(APP.libraryData&&APP.libraryData.items)||[];
-    body.innerHTML=libraryRenderItems(items, `Kết quả tìm “${esc(APP.libraryKeyword)}”`);
+    body.innerHTML=libraryRenderItems(items, `Kết quả tìm “${esc(APP.libraryKeyword)}”`, '');
     return;
   }
   if(APP.libraryMode==='fallback'){
@@ -2449,7 +2537,7 @@ function renderLibraryContent(){
     return;
   }
   const items=(APP.libraryData&&APP.libraryData.items)||[];
-  body.innerHTML=libraryRenderItems(items, 'Thư viện văn bản');
+  body.innerHTML=libraryRenderItems(items, 'Thư viện văn bản', APP.libraryFolderId||DRIVE_LIBRARY_FOLDER_ID);
 }
 function showLibraryHelp(text,type){
   const help=$('librarySearchHelp');
