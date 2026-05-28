@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://*.google.com https://*.googleusercontent.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://drive.google.com https://docs.google.com https://*.googleusercontent.com https://*.gstatic.com; frame-src https://drive.google.com https://docs.google.com https://script.google.com https://script.googleusercontent.com https://*.google.com https://*.googleusercontent.com; object-src 'none'; base-uri 'self'; form-action 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://*.google.com https://*.googleusercontent.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://drive.google.com https://docs.google.com https://*.googleusercontent.com https://*.gstatic.com; frame-src https://drive.google.com https://docs.google.com https://script.google.com https://script.googleusercontent.com https://*.google.com https://*.googleusercontent.com; object-src 'none'; base-uri 'self'; form-action 'self' https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com;">
   <title>Quản lý lịch công tác HQKV8</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -1616,7 +1616,7 @@ function hasRole(list){
   return list.some(x=>x.toLowerCase()===r);
 }
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = "v26-library-direct-file-picker-20260528";
+const APP_VERSION = 'HTML_v25_library_upload_iframe_fix';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
@@ -1663,6 +1663,48 @@ function apiViaGoogleScriptRun(payload){
     }catch(e){ reject(e); }
   });
 }
+function apiViaHiddenUploadPost(payload){
+  // Dùng form POST + hidden iframe để upload từ GitHub Pages/trang ngoài mà không phụ thuộc CORS.
+  // Không đọc được JSON trả về do khác domain, nên coi là đã gửi sau khi form submit thành công và tải lại thư mục sau vài giây.
+  return new Promise((resolve,reject)=>{
+    try{
+      if(!GAS_URL) throw new Error('Thiếu GAS_URL để gửi upload.');
+      const iframeName='gasUploadFrame_'+Date.now()+Math.random().toString(36).slice(2);
+      const iframe=document.createElement('iframe');
+      iframe.name=iframeName;
+      iframe.style.cssText='position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;border:0;';
+      const form=document.createElement('form');
+      form.method='POST';
+      form.action=GAS_URL;
+      form.target=iframeName;
+      form.enctype='text/plain';
+      form.acceptCharset='UTF-8';
+      form.style.display='none';
+      const input=document.createElement('input');
+      input.type='hidden';
+      input.name='payload';
+      input.value=JSON.stringify(payload);
+      form.appendChild(input);
+      document.body.appendChild(iframe);
+      document.body.appendChild(form);
+      let settled=false;
+      const cleanup=()=>setTimeout(()=>{try{form.remove();iframe.remove();}catch(_){ }},2500);
+      iframe.onload=()=>{
+        if(settled)return;
+        settled=true;
+        cleanup();
+        resolve({ok:true,msg:'Đã gửi yêu cầu upload tới Apps Script.'});
+      };
+      form.submit();
+      setTimeout(()=>{
+        if(settled)return;
+        settled=true;
+        cleanup();
+        resolve({ok:true,msg:'Đã gửi yêu cầu upload tới Apps Script; đang chờ Drive xử lý.'});
+      },4200);
+    }catch(e){ reject(e); }
+  });
+}
 function api(action, payload={}) {
   payload.action = action;
   payload.token = APP.token;
@@ -1671,29 +1713,10 @@ function api(action, payload={}) {
   // tránh lỗi CORS/redirect khi gọi fetch POST tới Web App.
   if (canUseGoogleScriptRun()) return apiViaGoogleScriptRun(payload);
 
-  // Khi chạy từ GitHub Pages/trang ngoài: action thường dùng JSONP; upload file lớn bằng POST
-  // có thể bị trình duyệt chặn CORS. Vẫn giữ POST để tương thích môi trường cho phép CORS,
-  // đồng thời trả lỗi rõ để người dùng biết cần chạy bản Index trong Apps Script.
+  // Khi chạy từ GitHub Pages/trang ngoài, không dùng fetch POST vì thường bị CORS/redirect chặn.
+  // Chuyển sang form POST + hidden iframe: request vẫn đến Apps Script và Drive vẫn nhận file.
   if (['uploadMeetingFile','uploadLibraryFile'].includes(action)) {
-    return fetch(GAS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload),
-      redirect: 'follow'
-    })
-    .then(r => r.text())
-    .then(text => {
-      try {
-        const res = JSON.parse(text);
-        if (!res || res.ok === false) throw new Error((res && res.msg) || 'Lỗi upload');
-        return res;
-      } catch(e) {
-        throw new Error('Không đọc được phản hồi upload từ Apps Script. Nếu phần mềm đang chạy trên GitHub Pages, hãy dùng bản Index.html chạy trong Apps Script để kéo thả tài liệu. Chi tiết: ' + text.slice(0,100));
-      }
-    })
-    .catch(err=>{
-      throw new Error(((err&&err.message)||String(err)) + ' — Upload kéo thả cần chạy trang HTML trong Apps Script hoặc môi trường cho phép POST tới Apps Script; GitHub Pages thường bị chặn CORS khi upload file.');
-    });
+    return apiViaHiddenUploadPost(payload);
   }
 
   // Các action thông thường → dùng JSONP (GET)
@@ -2540,15 +2563,19 @@ async function libraryUploadToFolder(folderId,files,source){
   try{
     const valid=filterValidUploadFiles(files);
     if(!valid.length)return;
+    if(!APP.token){ librarySetUploadMsg(source,'Phiên đăng nhập không còn hiệu lực, vui lòng đăng nhập lại rồi upload.','err'); return; }
     librarySetUploadMsg(source,`Đang upload ${valid.length} file vào Drive...`,'');
+    const usingIframe=!canUseGoogleScriptRun();
     for(let i=0;i<valid.length;i++){
       const file=valid[i];
       librarySetUploadMsg(source,`Đang upload ${i+1}/${valid.length}: ${file.name}`,'');
       const base64=await readFile(file);
       await api('uploadLibraryFile',{folderId,rootFolderId:DRIVE_LIBRARY_FOLDER_ID,fileName:file.name,mimeType:file.type,base64});
+      if(usingIframe) await sleep(900);
     }
-    librarySetUploadMsg(source,'Đã upload xong. Đang tải lại thư mục...','ok');
+    librarySetUploadMsg(source, usingIframe ? 'Đã gửi file lên Apps Script. Đợi vài giây rồi tải lại thư mục...' : 'Đã upload xong. Đang tải lại thư mục...','ok');
     if(source && source.value!==undefined) source.value='';
+    if(usingIframe) await sleep(5200);
     if(APP.popupDriveFolderId && String(APP.popupDriveFolderId)===String(folderId) && document.getElementById('driveFolderPopupBody')){
       await drivePopupFolderLoad(folderId,APP.popupDriveFolderTitle||'Thư mục tài liệu');
     }
@@ -2556,7 +2583,9 @@ async function libraryUploadToFolder(folderId,files,source){
       await libraryLoadFolder(folderId,false);
     }
   }catch(e){
-    librarySetUploadMsg(source,(e&&e.message)||String(e||'Upload lỗi'),'err');
+    const msg=(e&&e.message)||String(e||'Upload lỗi');
+    librarySetUploadMsg(source,msg,'err');
+    showLibraryHelp('Upload không thành công: '+msg+'. Hãy kiểm tra đã dán Code.gs V25, Deploy New version và tài khoản triển khai có quyền sửa thư mục Drive.', 'err');
   }
 }
 function libraryRenderItems(items, title, folderId){
@@ -3222,6 +3251,7 @@ async function uploadFiles(id,files){
   msg(el,'Đã upload xong. Đang tải lại...','ok');await refreshAll();setTimeout(()=>openDetail(id),500);
 }
 function readFile(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)})}
+function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
 function logList(logs){
   if(!logs||!logs.length)return'<div class="empty">Chưa có nhật ký.</div>';
   return logs.map(l=>`<div class="log-item"><b>${esc(l.action)}</b> · <span class="muted">${esc(l.byUser)}</span> · <span class="muted">${esc(l.atTime)}</span><br>${l.fieldName?`<span class="muted">${esc(l.fieldName)}${l.oldValue||l.newValue?': '+esc(l.oldValue)+' → '+esc(l.newValue):''}</span>`:''} ${l.note?'<span class="muted">· '+esc(l.note)+'</span>':''}</div>`).join('')
