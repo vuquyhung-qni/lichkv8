@@ -4231,6 +4231,34 @@ function setupNoteAttachZone(){
   zone.ondragleave=()=>zone.classList.remove('drag');
   zone.ondrop=e=>{e.preventDefault();zone.classList.remove('drag');try{addNoteQueuedFiles(e.dataTransfer.files);}catch(err){msg($('noteSaveMsg'),err.message,'err');}};
 }
+async function openMeetingNote(meetingId='', meetingTitle=''){
+  meetingId = String(meetingId||'').trim();
+  meetingTitle = String(meetingTitle||'');
+  if(!meetingId){
+    openNoteEditor('', '', null);
+    return;
+  }
+  showModal('<h3>📒 Ghi chú cuộc họp</h3>','<div class="loading"><div class="spin"></div><span>Đang kiểm tra ghi chú đã có...</span></div>');
+  $('modal').classList.add('note-modal-open');
+  try{
+    const res = await api('getNotes',{meetingId});
+    const notes = (res.notes||[]).filter(n=>String(n.status||'Active')!=='Deleted');
+    if(notes.length){
+      notes.sort((a,b)=>String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||'')));
+      closeModal();
+      openNoteEditor(meetingId, meetingTitle, notes[0].noteId);
+    }else{
+      closeModal();
+      openNoteEditor(meetingId, meetingTitle, null);
+    }
+  }catch(e){
+    $('modalBody').innerHTML=`<div class="msg err">${esc(e.message||String(e))}</div>
+      <div style="display:flex;justify-content:flex-end;margin-top:12px">
+        <button type="button" class="btn ghost" onclick="closeModal()">Đóng</button>
+      </div>`;
+  }
+}
+
 async function openNoteEditor(meetingId='', meetingTitle='', noteId=null){
   APP.noteUploadQueue=[];
   let note=null;
@@ -4355,7 +4383,7 @@ async function openDetail(id){
       ${res.canNote?`<div class="panel" style="box-shadow:none;border-color:var(--border2)">
         <div class="panel-h">
           <h3>📒 Ghi chú cuộc họp</h3>
-          <button type="button" class="btn xs note-btn" onclick='openNoteEditor(${jss(id)},${jss(m.noiDung)},null)'>＋ Thêm note</button>
+          <button type="button" class="btn xs note-btn" onclick='openMeetingNote(${jss(id)},${jss(m.noiDung)})'>📒 Mở/Ghi tiếp note</button>
         </div>
         <div class="panel-b" id="detailNotesBox"><div class="muted">Đang tải ghi chú...</div></div>
       </div>
@@ -4794,7 +4822,7 @@ function handleDelegatedMeetingAction_(ev){
   if(!id) return;
   if(action === 'open-detail') openDetail(id);
   if(action === 'edit-meeting') openMeetingForm(id);
-  if(action === 'open-note') openNoteEditor(id, btn.getAttribute('data-meeting-title')||'', null);
+  if(action === 'open-note') openMeetingNote(id, btn.getAttribute('data-meeting-title')||'');
 }
 document.addEventListener('click', handleDelegatedMeetingAction_, true);
 document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:true, passive:false});
