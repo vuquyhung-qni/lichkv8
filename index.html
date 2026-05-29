@@ -1692,6 +1692,32 @@
       #screen-dashboard .stat-v { font-size: 1.72rem; }
     }
 
+    /* ===== V47: Bỏ panel Theo trạng thái, thay bằng biểu đồ cột lãnh đạo ===== */
+    .leader-bar-panel .panel-b { padding-top: 12px; }
+    .leader-bar-chart { display:flex; flex-direction:column; gap:12px; }
+    .leader-bar-legend { display:flex; flex-wrap:wrap; gap:14px; align-items:center; font-size:.82rem; color:var(--muted); }
+    .leader-bar-legend .legend-item { display:inline-flex; align-items:center; gap:6px; font-weight:600; }
+    .leader-bar-legend .legend-swatch { width:12px; height:12px; border-radius:4px; display:inline-block; }
+    .leader-bar-grid { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:14px; align-items:end; min-height:240px; }
+    .leader-bar-item { background:#f8fbff; border:1px solid #e0ebf6; border-radius:14px; padding:12px 10px 10px; }
+    .leader-bar-bars { height:190px; display:flex; align-items:flex-end; justify-content:center; gap:12px; }
+    .leader-bar-col { width:36%; min-width:34px; max-width:50px; position:relative; border-radius:12px 12px 6px 6px; cursor:pointer; display:flex; align-items:flex-start; justify-content:center; transition:transform .16s ease, filter .16s ease, box-shadow .16s ease; }
+    .leader-bar-col:hover { transform: translateY(-2px); filter: brightness(1.03); box-shadow: 0 10px 16px rgba(18,59,110,.10); }
+    .leader-bar-col.year { background: linear-gradient(180deg, #6fb0ff 0%, #0b67b2 100%); }
+    .leader-bar-col.month { background: linear-gradient(180deg, #ffd98a 0%, #f2a007 100%); }
+    .leader-bar-col .bar-value { position:absolute; top:-26px; left:50%; transform:translateX(-50%); background:#fff; color:var(--navy); border:1px solid #dce9f6; border-radius:999px; min-width:28px; padding:2px 7px; font-size:.78rem; font-weight:800; line-height:1.15; box-shadow:0 4px 10px rgba(18,59,110,.08); }
+    .leader-bar-label { margin-top:10px; text-align:center; color:var(--navy); }
+    .leader-bar-name { font-size:.88rem; font-weight:700; line-height:1.25; }
+    .leader-bar-meta { margin-top:4px; font-size:.74rem; color:var(--muted); line-height:1.35; }
+    @media (max-width: 768px) {
+      .leader-bar-grid { grid-template-columns: repeat(2, minmax(0,1fr)); min-height:auto; }
+      .leader-bar-item { padding:10px 8px 8px; }
+      .leader-bar-bars { height:150px; gap:10px; }
+      .leader-bar-col { min-width:28px; }
+      .leader-bar-name { font-size:.82rem; }
+      .leader-bar-meta { font-size:.70rem; }
+    }
+
   </style>
 </head>
 <body>
@@ -2435,9 +2461,46 @@ function renderDashboard(){
     <div class="sp"></div>
     <div class="two-col">
       <div class="panel"><div class="panel-h"><h3>Theo loại lịch</h3></div><div class="panel-b">${miniCountTable(d.byType||{},typeLabel,'type')}</div></div>
-      <div class="panel"><div class="panel-h"><h3>Theo trạng thái</h3></div><div class="panel-b">${miniCountTable(d.byStatus||{},statusLabel,'status')}</div></div>
+      <div class="panel leader-bar-panel"><div class="panel-h"><h3>Biểu đồ số cuộc họp lãnh đạo</h3></div><div class="panel-b">${leaderMeetingBarChart(leaderRows)}</div></div>
     </div>`;
 }
+function leaderMeetingBarChart(rows){
+  rows=Array.isArray(rows)?rows:[];
+  const maxVal=Math.max(1,...rows.map(x=>Math.max(Number(x.year)||0, Number(x.month)||0)));
+  return `
+    <div class="leader-bar-chart">
+      <div class="leader-bar-legend">
+        <span class="legend-item"><span class="legend-swatch" style="background:linear-gradient(180deg,#6fb0ff 0%, #0b67b2 100%)"></span>Trong năm</span>
+        <span class="legend-item"><span class="legend-swatch" style="background:linear-gradient(180deg,#ffd98a 0%, #f2a007 100%)"></span>Trong tháng</span>
+      </div>
+      <div class="leader-bar-grid">
+        ${rows.map(x=>{
+          const year=Number(x.year)||0;
+          const month=Number(x.month)||0;
+          const hYear=Math.max(year>0?18:8, Math.round((year/maxVal)*150)+10);
+          const hMonth=Math.max(month>0?18:8, Math.round((month/maxVal)*150)+10);
+          const shortName=esc(x.short || x.name.split(' ').pop());
+          const fullName=esc('Đ/c '+x.name);
+          return `
+            <div class="leader-bar-item">
+              <div class="leader-bar-bars">
+                <div class="leader-bar-col year" style="height:${hYear}px" title="${fullName} - Trong năm: ${year}" onclick="openLeaderStatDetail('${esc(x.name)}','Đ/c ${esc(x.name)}','year')">
+                  <span class="bar-value">${year}</span>
+                </div>
+                <div class="leader-bar-col month" style="height:${hMonth}px" title="${fullName} - Trong tháng: ${month}" onclick="openLeaderStatDetail('${esc(x.name)}','Đ/c ${esc(x.name)}','month')">
+                  <span class="bar-value">${month}</span>
+                </div>
+              </div>
+              <div class="leader-bar-label">
+                <div class="leader-bar-name">${shortName}</div>
+                <div class="leader-bar-meta">Năm: <b>${year}</b> &nbsp;|&nbsp; Tháng: <b>${month}</b></div>
+              </div>
+            </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
+
 function statCard(k,v,sub,cls,period){
   const isActive=period&&APP.dashPeriod===period;
   const extra=cls?` ${cls}`:'';
