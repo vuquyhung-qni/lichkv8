@@ -3310,6 +3310,34 @@ function isToday(m){
   today.setHours(0,0,0,0);
   return s<=today&&e>=today;
 }
+
+function meetingFolderRef(m){return (m&&(m.fileFolderId||m.folderId||m.linkFolder))||'';}
+function meetingAttachHtml(m){
+  const count=Number((m&&m.fileCount)||0);
+  const folderRef=meetingFolderRef(m);
+  if(count>0){
+    if(count===1 && m.firstFileUrl){
+      return `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><button type="button" class="btn xs primary" onclick='openDriveFilePopup(${jss(m.firstFileUrl)},${jss('Tài liệu '+m.meetingId)},${jss('')})'>1 file</button></div>`;
+    }
+    if(folderRef){
+      return `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><button type="button" class="btn xs primary" onclick='openDriveFolderPopup(${jss(folderRef)},${jss(m.fileFolderName||('Thư mục tài liệu '+m.meetingId))})'>${count} file</button></div>`;
+    }
+    return `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><span style="font-weight:700">${count} file</span><span class="muted" style="font-size:.76rem;margin-left:4px">(chưa có link Drive)</span></div>`;
+  }
+  // V45: sau đồng bộ tài liệu cũ, có thể server chưa trả fileCount kịp nhưng lịch vẫn có FOLDER_ID/LINK_FOLDER.
+  // Khi đó vẫn hiện nút mở thư mục để người dùng không bị mất truy cập tài liệu.
+  if(folderRef){
+    return `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><button type="button" class="btn xs ghost" onclick='openDriveFolderPopup(${jss(folderRef)},${jss(m.fileFolderName||('Thư mục tài liệu '+m.meetingId))})'>Mở tài liệu</button></div>`;
+  }
+  return `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><span class="muted">0 file</span></div>`;
+}
+function manageFileBadgeHtml(m){
+  const count=Number((m&&m.fileCount)||0);
+  const folderRef=meetingFolderRef(m);
+  if(count>0) return `<br><span class="manage-file-badge">📎 ${esc(count)} file</span>`;
+  if(folderRef) return `<br><span class="manage-file-badge">📎 Có thư mục tài liệu</span>`;
+  return '';
+}
 function meetingCards(arr,compact){
   if(!arr||!arr.length)return'<div class="empty">Không có lịch phù hợp.</div>';
   return'<div class="cards">'+arr.map(m=>{
@@ -3335,7 +3363,7 @@ function meetingCards(arr,compact){
         ${m.chuTri?`<div class="m-meta-row"><span class="label">👤 Chủ trì</span><span>${esc(m.chuTri)}</span></div>`:''}
         ${m.thanhPhan&&!compact?`<div class="m-meta-row"><span class="label">👥 Thành phần</span><span>${esc(m.thanhPhan)}</span></div>`:''}
         ${m.ghiChu&&!compact?`<div class="m-meta-row"><span class="label">📝 Ghi chú</span><span>${esc(m.ghiChu)}</span></div>`:''}
-        ${m.fileCount>0 ? (m.fileCount===1 && m.firstFileUrl ? `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><button type="button" class="btn xs primary" onclick='openDriveFilePopup(${jss(m.firstFileUrl)},${jss('Tài liệu '+m.meetingId)},${jss('')})'>1 file</button></div>` : (m.fileFolderId||m.folderId||m.linkFolder ? `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><button type="button" class="btn xs primary" onclick='openDriveFolderPopup(${jss(m.fileFolderId||m.folderId||m.linkFolder)},${jss(m.fileFolderName||('Thư mục tài liệu '+m.meetingId))})'>${m.fileCount} file</button></div>` : `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><span style="font-weight:700">${m.fileCount} file</span><span class="muted" style="font-size:.76rem;margin-left:4px">(chưa có link Drive)</span></div>`)) : `<div class="m-meta-row"><span class="label">📎 Tài liệu</span><span class="muted">0 file</span></div>`}
+        ${meetingAttachHtml(m)}
       </div>
       <div class="m-actions">
         <button type="button" class="btn sm js-open-detail" data-action="open-detail" data-meeting-id="${esc(m.meetingId)}">👁 Xem chi tiết</button>
@@ -3472,7 +3500,7 @@ function renderManageTable(){
       <td class="nowrap">${esc(dateVNShort(m.ngayHienThi||m.ngayBatDau))}<br><span class="manage-time">${esc(m.gioBatDau||'')}${m.gioKetThuc?'–'+esc(m.gioKetThuc):''}</span></td>
       <td><b class="manage-title">${esc(m.noiDung)}</b>
         <span class="manage-meta">📍 ${esc(m.diaDiem||'Chưa cập nhật địa điểm')}</span>
-        ${m.fileCount>0?`<br><span class="manage-file-badge">📎 ${esc(m.fileCount)} file</span>`:''}
+        ${manageFileBadgeHtml(m)}
       </td>
       <td>${esc(m.chuTri||'')}</td>
       <td><span class="pill status-${esc(m.trangThai||'DRAFT')}">${esc(statusLabel(m.trangThai||'DRAFT'))}</span></td>
