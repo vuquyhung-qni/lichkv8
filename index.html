@@ -1938,6 +1938,7 @@
       filter: none;
       text-shadow: 0 1px 2px rgba(116,81,0,.24);
     }
+    .prep-rating button.star { cursor: pointer; }
     .prep-rating .star:hover {
       transform: scale(1.13);
     }
@@ -2196,7 +2197,8 @@ function canRatePrepClient(){
 }
 function prepRatingStarsHtml(m, context='card'){
   if(!m || !m.showPrepRating) return '';
-  const canRate = !!m.canRatePrep && canRatePrepClient();
+  // Quyền chấm sao lấy theo server trả về để tránh lệch tên role giữa client/server.
+  const canRate = !!m.canRatePrep;
   const score = Math.max(0, Math.min(5, Number(m.prepRatingVisibleScore)||0));
   const count = Number(m.publicPrepRatingCount)||0;
   const title = score
@@ -2210,14 +2212,28 @@ function prepRatingStarsHtml(m, context='card'){
   </span>`;
 }
 function updateLocalMeetingRating(meetingId, score){
-  (APP.meetings||[]).forEach(m=>{ if(String(m.meetingId)===String(meetingId)) m.myPrepRating=score; });
+  const apply = (m)=>{
+    if(String(m.meetingId)!==String(meetingId)) return;
+    const s = Math.max(0, Math.min(5, Number(score)||0));
+    m.myPrepRating = s;
+    m.publicPrepRating = s;
+    m.prepRatingVisibleScore = s;
+    m.showPrepRating = true;
+    m.canRatePrep = true;
+    m.publicPrepRatingCount = Math.max(1, Number(m.publicPrepRatingCount)||0);
+  };
+  (APP.meetings||[]).forEach(apply);
+  (APP.allMeetings||[]).forEach(apply);
 }
 async function setPrepRating(ev, meetingId, score){
   if(ev){ ev.preventDefault(); ev.stopPropagation(); }
   const box = ev && ev.target ? ev.target.closest('.prep-rating') : null;
-  if(box) box.classList.add('saving');
+  if(box) {
+    box.classList.add('saving');
+    box.querySelectorAll('.star').forEach((st,idx)=>st.classList.toggle('on', idx < Number(score)));
+  }
 
-  // Cập nhật hiển thị ngay để người dùng biết đã bấm sao; server sẽ lưu/ghi đè kết quả.
+  // Cập nhật dữ liệu client ngay để đổi màu sao tức thời; server sẽ lưu/ghi đè kết quả.
   updateLocalMeetingRating(meetingId, Number(score)||0);
   renderCalendar();
   if(APP.currentScreen==='manage') renderManage();
@@ -2260,7 +2276,7 @@ function msgToast(text){
   }catch(e){}
 }
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v59_admin_star_click_update';
+const APP_VERSION = 'HTML_v60_star_rating_click_save_fix';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
