@@ -1758,7 +1758,7 @@
       font-size: .86rem;
     }
     .dashboard-leader-num:hover { text-decoration: underline; }
-    /* V65: Mỗi dòng lãnh đạo là một dải màu thống nhất, tên lãnh đạo không in đậm */
+    /* V66: Nền từng dòng theo màu phong thủy nhẹ của từng lãnh đạo */
     .dashboard-leader-table tbody tr.dashboard-leader-row {
       transition: filter .18s ease, box-shadow .18s ease;
     }
@@ -1769,17 +1769,21 @@
       filter: brightness(.992);
       box-shadow: inset 3px 0 0 rgba(15,76,129,.18);
     }
-    .dashboard-leader-table tbody tr.leader-bg-today {
-      background: linear-gradient(90deg, #ffffff 0%, #f8fbff 55%, #eff6ff 100%);
+    /* Hưng 1973 - Tang Đố Mộc: xanh lá nhẹ */
+    .dashboard-leader-table tbody tr.leader-bg-moc {
+      background: linear-gradient(90deg, #ffffff 0%, #f5fff7 54%, #e9f8ec 100%);
     }
-    .dashboard-leader-table tbody tr.leader-bg-tomorrow {
-      background: linear-gradient(90deg, #ffffff 0%, #f6fcff 55%, #edfaff 100%);
+    /* Dương 1969 - Đại Trạch Thổ: vàng đất/kem nhẹ */
+    .dashboard-leader-table tbody tr.leader-bg-tho {
+      background: linear-gradient(90deg, #ffffff 0%, #fffdf5 54%, #fff1d6 100%);
     }
-    .dashboard-leader-table tbody tr.leader-bg-week {
-      background: linear-gradient(90deg, #ffffff 0%, #fbf8ff 55%, #f5efff 100%);
+    /* Lợi 1974 - Đại Khê Thủy: xanh nước nhẹ */
+    .dashboard-leader-table tbody tr.leader-bg-thuy {
+      background: linear-gradient(90deg, #ffffff 0%, #f5fbff 54%, #e7f4ff 100%);
     }
-    .dashboard-leader-table tbody tr.leader-bg-month {
-      background: linear-gradient(90deg, #ffffff 0%, #f5fff9 55%, #ecfbf3 100%);
+    /* Thắng 1970 - Thoa Xuyến Kim: trắng bạc/xám ánh kim nhẹ */
+    .dashboard-leader-table tbody tr.leader-bg-kim {
+      background: linear-gradient(90deg, #ffffff 0%, #fbfcfe 54%, #eef3f8 100%);
     }
     .dashboard-leader-table td.dashboard-leader-name,
     .dashboard-leader-table td.dashboard-leader-name .leader-full,
@@ -3028,10 +3032,10 @@ function renderDashboard(){
   const countYear=nonTrucBan.filter(m=>{const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;return s&&e&&s<=yEnd&&e>=yStart;}).length;
   // Danh sách 4 lãnh đạo cố định theo thứ tự ưu tiên
   const LEADERS = [
-    { name: 'Phạm Quốc Hưng',    display: 'Đ/c Phạm Quốc Hưng – Chi cục trưởng', short: 'Đ/c Hưng' },
-    { name: 'Ngô Tùng Dương',    display: 'Đ/c Ngô Tùng Dương', short: 'Đ/c Dương' },
-    { name: 'Bùi Ngọc Lợi',      display: 'Đ/c Bùi Ngọc Lợi', short: 'Đ/c Lợi' },
-    { name: 'Nguyễn Cảnh Thắng', display: 'Đ/c Nguyễn Cảnh Thắng', short: 'Đ/c Thắng' },
+    { name: 'Phạm Quốc Hưng',    display: 'Đ/c Phạm Quốc Hưng – Chi cục trưởng', short: 'Đ/c Hưng',  birthYear: 1973, menh: 'Mộc',  bgClass: 'leader-bg-moc' },
+    { name: 'Ngô Tùng Dương',    display: 'Đ/c Ngô Tùng Dương', short: 'Đ/c Dương', birthYear: 1969, menh: 'Thổ',  bgClass: 'leader-bg-tho' },
+    { name: 'Bùi Ngọc Lợi',      display: 'Đ/c Bùi Ngọc Lợi', short: 'Đ/c Lợi',   birthYear: 1974, menh: 'Thủy', bgClass: 'leader-bg-thuy' },
+    { name: 'Nguyễn Cảnh Thắng', display: 'Đ/c Nguyễn Cảnh Thắng', short: 'Đ/c Thắng', birthYear: 1970, menh: 'Kim', bgClass: 'leader-bg-kim' },
   ];
   // Hàm chuẩn hoá: bỏ dấu, bỏ prefix "đ/c", "c ", chữ thường
   function normName(s){
@@ -3096,7 +3100,7 @@ function renderDashboard(){
             <thead><tr><th>Lãnh đạo</th><th class="${APP.dashPeriod==='today'?'th-active':''}">NAY</th><th class="${APP.dashPeriod==='tomorrow'?'th-active':''}">MAI</th><th class="${APP.dashPeriod==='week'?'th-active':''}">TUẦN</th><th class="${APP.dashPeriod==='month'?'th-active':''}">THÁNG</th><th class="${APP.dashPeriod==='year'?'th-active':''}">NĂM</th></tr></thead>
             <tbody>
               ${leaderRows.map((x,i)=>{
-                const _bg=['leader-bg-today','leader-bg-tomorrow','leader-bg-week','leader-bg-month'][i%4];
+                const _bg=x.bgClass||['leader-bg-moc','leader-bg-tho','leader-bg-thuy','leader-bg-kim'][i%4];
                 return`<tr class="dashboard-leader-row ${_bg}">
                 <td class="dashboard-leader-name"><span class="leader-full">Đ/c ${esc(x.name)}</span><span class="leader-short">${esc(x.short||('Đ/c '+x.name.split(' ').pop()))}</span></td>
                 <td class="dashboard-leader-num" onclick="openLeaderStatDetail('${esc(x.name)}','Đ/c ${esc(x.name)}','today')" title="Hôm nay">${x.today}</td>
