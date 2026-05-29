@@ -1732,7 +1732,18 @@
     .note-card-actions { display:flex; gap:6px; flex-wrap:wrap; margin-top:12px; padding-top:10px; border-top:1px solid var(--border2); }
     .note-meeting-pill { display:inline-flex; align-items:center; gap:4px; border-radius:999px; background:#eef6ff; color:var(--blue); font-size:.72rem; font-weight:800; padding:3px 8px; }
     .note-editor-title { width:100%; border:1.5px solid var(--border); border-radius:10px; padding:10px 12px; outline:none; font-weight:700; color:var(--navy); }
-    .note-editor-content { width:100%; min-height:260px; border:1.5px solid var(--border); border-radius:12px; padding:12px 14px; outline:none; resize:vertical; color:var(--text); line-height:1.55; }
+    .note-editor-content { width:100%; min-height:54vh; border:1.5px solid var(--border); border-radius:12px; padding:14px 16px; outline:none; resize:vertical; color:var(--text); line-height:1.65; font-size:.95rem; }
+    .note-modal-open .modal-card { width:min(1280px, 96vw); max-height:94svh; }
+    .note-modal-open .modal-b { padding:22px 24px; }
+    .note-attach-zone { position:relative; border:2px dashed #bfd3ea; border-radius:14px; background:#f7fbff; padding:18px; text-align:center; color:var(--text2); transition:.16s; }
+    .note-attach-zone.drag { background:#eff6ff; border-color:var(--blue2); color:var(--blue); }
+    .note-attach-zone input { position:absolute; inset:0; opacity:0; cursor:pointer; }
+    .note-attach-list { display:grid; gap:8px; margin-top:10px; }
+    .note-attach-item { display:flex; align-items:center; justify-content:space-between; gap:10px; border:1px solid var(--border2); background:#fff; border-radius:10px; padding:9px 11px; font-size:.84rem; }
+    .note-attach-item b { color:var(--navy); }
+    .note-attach-files { display:flex; flex-wrap:wrap; gap:7px; margin-top:8px; }
+    .note-file-chip { display:inline-flex; align-items:center; gap:5px; border:1px solid #cfe0f2; background:#f8fbff; color:var(--navy); border-radius:999px; padding:5px 9px; font-size:.76rem; font-weight:700; }
+    .note-file-chip:hover { background:#edf6ff; }
     .note-editor-title:focus, .note-editor-content:focus { border-color:var(--blue2); box-shadow:0 0 0 3px rgba(45,120,239,.12); }
     .notebook-toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
     .notebook-toolbar .search-wrap { min-width:260px; }
@@ -1743,7 +1754,7 @@
     @media (max-width: 768px) {
       .notes-grid { grid-template-columns: 1fr; }
       .notebook-toolbar .search-wrap { min-width:0; width:100%; }
-      .note-editor-content { min-height:220px; }
+      .note-editor-content { min-height:55vh; }
     }
 
   </style>
@@ -1913,7 +1924,7 @@ const APP = {
   filters:{kw:'', leader:'all', scope:'CURRENT', kind:'ALL'},
   manageFilters:{kw:'', leader:'all', scope:'CURRENT', kind:'ALL', status:'all'},
   loadedAll:false, pendingFormFiles:[],
-  libraryStack:[], libraryCurrentUrl:'', detailFiles:[], notebook:{kw:'', notes:[], loaded:false}
+  libraryStack:[], libraryCurrentUrl:'', detailFiles:[], noteUploadQueue:[], notebook:{kw:'', notes:[], loaded:false}
 };
 
 // ===== PHÂN QUYỀN =====
@@ -1936,7 +1947,7 @@ function hasRole(list){
   return list.some(x=>x.toLowerCase()===r);
 }
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v37A_manual_single_legacy_sync';
+const APP_VERSION = 'HTML_v50_notebook_long_note_attachments';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
@@ -2035,7 +2046,7 @@ function api(action, payload={}) {
 
   // Khi chạy từ GitHub Pages/trang ngoài, không dùng fetch POST vì thường bị CORS/redirect chặn.
   // Chuyển sang form POST + hidden iframe: request vẫn đến Apps Script và Drive vẫn nhận file.
-  if (['uploadMeetingFile','uploadLibraryFile'].includes(action)) {
+  if (['uploadMeetingFile','uploadLibraryFile','uploadNoteFile'].includes(action) || (action==='saveNote' && payload.uploadId)) {
     return apiViaHiddenUploadPost(payload);
   }
 
@@ -3821,19 +3832,39 @@ async function cancelMeetingPrompt(id){
 
 
 // ===== NOTEBOOK / GHI CHÚ =====
+const NOTE_ALLOWED_EXT = new Set(['pdf','doc','docx','xls','xlsx','jpg','jpeg','png','gif','webp']);
 function notePlainText(s, max=220){
   const t=String(s||'').replace(/\s+/g,' ').trim();
   return t.length>max ? t.slice(0,max-1)+'…' : t;
 }
 function noteTimeLabel(n){return esc(n.updatedAt||n.createdAt||'');}
+function noteFileIcon(name,mime){
+  const n=String(name||'').toLowerCase(); const m=String(mime||'').toLowerCase();
+  if(m.startsWith('image/')||n.match(/\.(png|jpg|jpeg|gif|webp)$/))return '🖼️';
+  if(m.includes('pdf')||n.endsWith('.pdf'))return '📕';
+  if(n.match(/\.(xls|xlsx)$/)||m.includes('spreadsheet')||m.includes('excel'))return '📊';
+  if(n.match(/\.(doc|docx)$/)||m.includes('word'))return '📝';
+  return '📎';
+}
+function noteFilesHtml(files=[], canEdit=false){
+  files=Array.isArray(files)?files:[];
+  if(!files.length)return '';
+  return `<div class="note-attach-files">${files.map(f=>`
+    <span class="note-file-chip" title="${esc(f.fileName||'File đính kèm')}">
+      <a href="javascript:void(0)" onclick='openDriveFilePopup(${jss(f.fileUrl||f.openUrl||'')},${jss(f.fileName||'File đính kèm')},${jss(f.mimeType||'')})'>${noteFileIcon(f.fileName,f.mimeType)} ${esc(notePlainText(f.fileName||'File',34))}</a>
+      ${canEdit?`<button type="button" class="btn xs danger" style="padding:2px 6px" onclick='deleteNoteFile(${jss(f.noteFileId)})'>×</button>`:''}
+    </span>`).join('')}</div>`;
+}
 function noteCardHtml(n){
   const linked=n.meetingId?`<span class="note-meeting-pill">📅 ${esc(n.meetingId)}</span>`:'<span class="note-meeting-pill" style="background:#fff7ed;color:#9a3412">📝 Ghi chú độc lập</span>';
   const meetingTitle=n.meeting&&n.meeting.title?`<div class="muted" style="font-size:.76rem;margin-bottom:6px">${esc(n.meeting.date||'')} ${esc(n.meeting.time||'')} · ${esc(notePlainText(n.meeting.title,90))}</div>`:'';
+  const fileBadge=(n.fileCount||0)>0?`<span class="note-meeting-pill" style="background:#f0fdf4;color:#166534">📎 ${n.fileCount} file</span>`:'';
   return `<div class="note-card">
     <div class="note-card-title">${esc(n.title||'Ghi chú không tiêu đề')}</div>
-    <div class="note-card-meta">${linked}<span>${noteTimeLabel(n)}</span></div>
+    <div class="note-card-meta">${linked}${fileBadge}<span>${noteTimeLabel(n)}</span></div>
     ${meetingTitle}
-    <div class="note-card-content">${esc(notePlainText(n.content,360))}</div>
+    <div class="note-card-content">${esc(notePlainText(n.content,420))}</div>
+    ${noteFilesHtml(n.files||[], false)}
     <div class="note-card-actions">
       <button type="button" class="btn xs" onclick='openNoteViewer(${jss(n.noteId)})'>👁 Xem</button>
       ${n.canEdit?`<button type="button" class="btn primary xs" onclick='openNoteEditor(${jss(n.meetingId)},${jss((n.meeting&&n.meeting.title)||'')},${jss(n.noteId)})'>✏️ Sửa</button>
@@ -3857,7 +3888,7 @@ async function renderNotebook(){
           <input id="noteKw" value="${esc(kw)}" placeholder="Tìm tiêu đề, nội dung ghi chú, mã lịch...">
           <button onclick="searchNotebook()">🔍</button>
         </div>
-        <button class="btn ghost" onclick="APP.notebook.kw='';renderNotebook()">Làm mới</button>
+        <button class="btn ghost" onclick="APP.notebook.kw='';APP.notebook.loaded=false;renderNotebook()">Làm mới</button>
       </div>
       <div id="notebookList"><div class="loading"><div class="spin"></div><span>Đang tải ghi chú...</span></div></div>
     </div>
@@ -3889,8 +3920,9 @@ async function loadDetailNotes(meetingId){
           ${n.canEdit?`<button type="button" class="btn primary xs" onclick='openNoteEditor(${jss(meetingId)},${jss('')},${jss(n.noteId)})'>✏️ Sửa</button>`:''}
         </div>
       </div>
-      <div class="note-card-meta"><span>${esc(n.ownerFullname||n.ownerUsername||'')}</span><span>${noteTimeLabel(n)}</span></div>
-      <div class="detail-note-content">${esc(notePlainText(n.content,420))}</div>
+      <div class="note-card-meta"><span>${esc(n.ownerFullname||n.ownerUsername||'')}</span><span>${noteTimeLabel(n)}</span>${(n.fileCount||0)>0?`<span>📎 ${n.fileCount} file</span>`:''}</div>
+      <div class="detail-note-content">${esc(notePlainText(n.content,520))}</div>
+      ${noteFilesHtml(n.files||[], false)}
     </div>`).join('')}</div>`;
   }catch(e){ box.innerHTML=`<div class="msg err">${esc(e.message)}</div>`; }
 }
@@ -3906,56 +3938,118 @@ async function fetchNoteById(noteId){
 }
 async function openNoteViewer(noteId){
   showModal('<h3>📒 Xem ghi chú</h3>','<div class="loading"><div class="spin"></div><span>Đang tải ghi chú...</span></div>');
+  $('modal').classList.add('note-modal-open');
   try{
     const n=await fetchNoteById(noteId);
     if(!n){$('modalBody').innerHTML='<div class="msg err">Không tìm thấy ghi chú.</div>';return;}
-    $('modalBody').innerHTML=`<div style="display:grid;gap:10px">
+    $('modalBody').innerHTML=`<div style="display:grid;gap:12px">
       <div class="note-meeting-pill">${n.meetingId?'📅 '+esc(n.meetingId):'📝 Ghi chú độc lập'}</div>
-      <h2 style="color:var(--navy);font-size:1.12rem">${esc(n.title||'Ghi chú')}</h2>
+      <h2 style="color:var(--navy);font-size:1.2rem">${esc(n.title||'Ghi chú')}</h2>
       ${n.meeting&&n.meeting.title?`<div class="msg">Lịch: <b>${esc(n.meeting.title)}</b><br>${esc(n.meeting.date||'')} ${esc(n.meeting.time||'')}</div>`:''}
       <div class="muted">Người ghi: ${esc(n.ownerFullname||n.ownerUsername||'')} · ${noteTimeLabel(n)}</div>
-      <div class="panel" style="box-shadow:none"><div class="panel-b" style="white-space:pre-wrap;line-height:1.65;color:var(--text2)">${esc(n.content)}</div></div>
-      <div style="display:flex;gap:8px;justify-content:flex-end">
+      <div class="panel" style="box-shadow:none"><div class="panel-b" style="white-space:pre-wrap;line-height:1.75;color:var(--text2);font-size:.98rem;min-height:240px">${esc(n.content)}</div></div>
+      ${noteFilesHtml(n.files||[], n.canEdit)}
+      <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
         ${n.canEdit?`<button type="button" class="btn primary" onclick='openNoteEditor(${jss(n.meetingId)},${jss((n.meeting&&n.meeting.title)||'')},${jss(n.noteId)})'>✏️ Sửa</button>`:''}
         <button type="button" class="btn ghost" onclick="closeModal()">Đóng</button>
       </div>
     </div>`;
   }catch(e){$('modalBody').innerHTML=`<div class="msg err">${esc(e.message)}</div>`;}
 }
+function validateNoteAttachmentFile(file){
+  if(!file)throw new Error('Không có file đính kèm.');
+  const ext=getFileExt(file.name);
+  if(!NOTE_ALLOWED_EXT.has(ext))throw new Error('Notebook chỉ nhận ảnh, PDF, Word, Excel. File không hợp lệ: '+file.name);
+  if(file.size>MAX_UPLOAD_SIZE)throw new Error('File "'+file.name+'" vượt quá giới hạn 50MB.');
+}
+function renderNoteQueue(){
+  const box=$('noteQueuedFiles'); if(!box)return;
+  const q=APP.noteUploadQueue||[];
+  box.innerHTML=q.length?`<div class="note-attach-list">${q.map((f,i)=>`<div class="note-attach-item"><div>${noteFileIcon(f.name,f.type)} <b>${esc(f.name)}</b><br><span class="muted">${Math.round((f.size||0)/1024)} KB</span></div><button type="button" class="btn xs danger" onclick="removeNoteQueuedFile(${i})">Bỏ</button></div>`).join('')}</div>`:'';
+}
+function removeNoteQueuedFile(i){APP.noteUploadQueue.splice(i,1);renderNoteQueue();}
+function addNoteQueuedFiles(files){
+  const arr=Array.from(files||[]);
+  arr.forEach(validateNoteAttachmentFile);
+  APP.noteUploadQueue.push(...arr);
+  renderNoteQueue();
+}
+function setupNoteAttachZone(){
+  const zone=$('noteAttachZone'), input=$('noteAttachInput'); if(!zone||!input)return;
+  input.onchange=()=>{try{addNoteQueuedFiles(input.files);input.value='';}catch(e){msg($('noteSaveMsg'),e.message,'err');}};
+  zone.ondragover=e=>{e.preventDefault();zone.classList.add('drag')};
+  zone.ondragleave=()=>zone.classList.remove('drag');
+  zone.ondrop=e=>{e.preventDefault();zone.classList.remove('drag');try{addNoteQueuedFiles(e.dataTransfer.files);}catch(err){msg($('noteSaveMsg'),err.message,'err');}};
+}
 async function openNoteEditor(meetingId='', meetingTitle='', noteId=null){
+  APP.noteUploadQueue=[];
   let note=null;
   if(noteId){ note=await fetchNoteById(noteId); }
   const titleVal=note?note.title:(meetingId?('Ghi chú '+meetingId):'');
   const contentVal=note?note.content:'';
   showModal(`<h3>📒 ${noteId?'Sửa ghi chú':'Tạo ghi chú'}</h3>`,`
-    <div style="display:grid;gap:12px">
-      ${meetingId?`<div class="msg">Ghi chú gắn với lịch <b>${esc(meetingId)}</b>${meetingTitle?': '+esc(notePlainText(meetingTitle,120)):''}</div>`:'<div class="msg">Ghi chú độc lập, không gắn với lịch công tác.</div>'}
+    <div style="display:grid;gap:14px">
+      ${meetingId?`<div class="msg">Ghi chú gắn với lịch <b>${esc(meetingId)}</b>${meetingTitle?': '+esc(notePlainText(meetingTitle,140)):''}</div>`:'<div class="msg">Ghi chú độc lập, không gắn với lịch công tác.</div>'}
       <div class="field"><label>Tiêu đề</label><input id="noteTitle" class="note-editor-title" value="${esc(titleVal)}" placeholder="Nhập tiêu đề ghi chú"></div>
-      <div class="field"><label>Nội dung ghi chú</label><textarea id="noteContent" class="note-editor-content" placeholder="Ghi nội dung cuộc họp, ý kiến chỉ đạo, việc cần theo dõi...">${esc(contentVal)}</textarea></div>
+      <div class="field"><label>Nội dung ghi chú</label><textarea id="noteContent" class="note-editor-content" placeholder="Ghi nội dung cuộc họp, ý kiến chỉ đạo, việc cần theo dõi...">${esc(contentVal)}</textarea><div class="hint">Ghi chú dài sẽ tự lưu phần nội dung đầy đủ vào Drive để tránh giới hạn ô Google Sheet.</div></div>
+      ${noteFilesHtml((note&&note.files)||[], !!(note&&note.canEdit))}
+      <div class="field"><label>File đính kèm</label><div id="noteAttachZone" class="note-attach-zone">📎 Kéo thả hoặc bấm để chọn ảnh/PDF/Word/Excel<br><span class="muted" style="font-size:.78rem">Hỗ trợ: ảnh, PDF, DOC/DOCX, XLS/XLSX; tối đa 50MB/file</span><input id="noteAttachInput" type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"></div><div id="noteQueuedFiles"></div></div>
       <div id="noteSaveMsg"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
         <button type="button" class="btn ghost" onclick="closeModal()">Đóng</button>
         <button type="button" id="btnSaveNote" class="btn primary" onclick='saveNoteFromEditor(${jss(meetingId)},${jss(noteId||'')})'>💾 Lưu ghi chú</button>
       </div>
     </div>`);
+  $('modal').classList.add('note-modal-open');
+  setupNoteAttachZone();
   setTimeout(()=>{const el=$('noteContent'); if(el) el.focus();},80);
+}
+function readFileAsBase64(file){
+  return new Promise((resolve,reject)=>{
+    const r=new FileReader();
+    r.onload=()=>resolve(String(r.result||'').split(',')[1]||'');
+    r.onerror=()=>reject(new Error('Không đọc được file: '+file.name));
+    r.readAsDataURL(file);
+  });
+}
+async function uploadNoteQueuedFiles(noteId){
+  const q=APP.noteUploadQueue||[];
+  if(!q.length)return {ok:true,count:0};
+  for(let i=0;i<q.length;i++){
+    const f=q[i];
+    msg($('noteSaveMsg'),`Đang upload file ${i+1}/${q.length}: ${f.name}`,'');
+    const uploadId=makeUploadId();
+    const base64=await readFileAsBase64(f);
+    let res=await api('uploadNoteFile',{uploadId,noteId,fileName:f.name,mimeType:f.type||'',data:base64});
+    if(uploadId && (!res || !res.noteFileId)) res=await waitUploadStatus(uploadId,f.name);
+  }
+  APP.noteUploadQueue=[];
+  return {ok:true,count:q.length};
 }
 async function saveNoteFromEditor(meetingId, noteId){
   const btn=$('btnSaveNote'); if(btn){btn.disabled=true;btn.textContent='Đang lưu...';}
   try{
+    const uploadId=makeUploadId();
     const form={noteId,meetingId,title:($('noteTitle')?.value||'').trim(),content:($('noteContent')?.value||'').trim()};
-    const res=await api('saveNote',{noteId,meetingId,form});
-    msg($('noteSaveMsg'),res.msg||'Đã lưu ghi chú.','ok');
+    let res=await api('saveNote',{uploadId,noteId,meetingId,form});
+    if(uploadId && (!res || !res.noteId)) res=await waitUploadStatus(uploadId,'ghi chú');
+    const savedNoteId=res.noteId||noteId;
+    await uploadNoteQueuedFiles(savedNoteId);
+    msg($('noteSaveMsg'),(res.msg||'Đã lưu ghi chú.') + ((APP.noteUploadQueue||[]).length?'':'') ,'ok');
     APP.notebook.loaded=false;
     setTimeout(async()=>{
       closeModal();
       if(meetingId && APP.currentScreen!=='notebook') openDetail(meetingId);
       else await renderNotebook();
-    },450);
+    },650);
   }catch(e){
     msg($('noteSaveMsg'),e.message||String(e),'err');
     if(btn){btn.disabled=false;btn.textContent='💾 Lưu ghi chú';}
   }
+}
+async function deleteNoteFile(noteFileId){
+  if(!confirm('Xóa file đính kèm khỏi ghi chú?'))return;
+  try{await api('deleteNoteFile',{noteFileId});APP.notebook.loaded=false;const cur=Array.from(document.querySelectorAll('.modal')).some(m=>!m.classList.contains('hide'));alert('Đã xóa file đính kèm. Mở lại ghi chú để cập nhật.');}catch(e){alert(e.message||String(e));}
 }
 async function deleteNote(noteId){
   if(!confirm('Xóa ghi chú này?'))return;
@@ -4408,7 +4502,7 @@ function showModal(title,body){
   $('modal').innerHTML=`<div class="modal-card"><div class="modal-h">${title}<button class="modal-close" onclick="closeModal()">✕</button></div><div id="modalBody" class="modal-b">${body}</div></div>`;
   $('modal').classList.remove('hide');
 }
-function closeModal(){APP.detailFiles=[];$('modal').classList.add('hide');$('modal').innerHTML=''}
+function closeModal(){APP.detailFiles=[];APP.noteUploadQueue=[];$('modal').classList.remove('note-modal-open');$('modal').classList.add('hide');$('modal').innerHTML=''}
 
 // ===== V30: EVENT DELEGATION CHO NÚT XEM CHI TIẾT / SỬA =====
 // Lý do: các nút lịch được render động bằng data-action. Nếu không gắn bộ lắng nghe
