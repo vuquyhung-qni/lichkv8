@@ -1968,11 +1968,12 @@ function isCurrentUserChair(m){
   return names.some(n=>n && (chair.includes(n)||n.includes(chair)));
 }
 function canUseMeetingNote(m){
-  // Chỉ lãnh đạo Chi cục là chủ trì lịch mới thấy/gửi note theo lịch; SuperAdmin được giữ để hỗ trợ kỹ thuật.
-  return isSuperAdmin() || (isLanhDaoChiCuc() && isCurrentUserChair(m));
+  // V52: mọi tài khoản đã đăng nhập đều thấy nút Note và được ghi note theo lịch.
+  // Note vẫn là riêng tư cá nhân: ai tạo thì chỉ người đó xem/sửa/xóa.
+  return !!(APP && APP.user && APP.user.username);
 }
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v51_private_chair_notes';
+const APP_VERSION = 'HTML_v52_private_notes_all_users_attachment_proxy';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
@@ -3871,12 +3872,69 @@ function noteFileIcon(name,mime){
   if(n.match(/\.(doc|docx)$/)||m.includes('word'))return '📝';
   return '📎';
 }
+async function openNoteAttachmentPopup(noteFileId, fileName, mimeType, openUrl){
+  if(!noteFileId){
+    openDriveFilePopup(openUrl||'', fileName||'File đính kèm', mimeType||'');
+    return;
+  }
+  libraryCloseFilePopup();
+  const overlay=document.createElement('div');
+  overlay.id='libraryFilePopup';
+  overlay.className='library-popup-overlay';
+  overlay.onclick=function(ev){ if(ev.target===overlay) libraryCloseFilePopup(); };
+  overlay.innerHTML=`<div class="library-popup-card file-popup" role="dialog" aria-modal="true" aria-label="Xem file ghi chú">
+    <div class="library-popup-head">
+      <div class="library-popup-title">📎 ${esc(fileName||'File đính kèm')}</div>
+      ${openUrl?`<a class="btn sm ghost" href="${esc(openUrl)}" target="_blank" rel="noopener">↗ Mở ngoài Drive</a>`:''}
+      <button type="button" class="library-popup-close" onclick="libraryCloseFilePopup()" title="Đóng">✕</button>
+    </div>
+    <div class="library-popup-viewer" id="noteAttachmentViewer" style="background:#f7f9fc">
+      <div class="library-loading-box" style="width:100%"><div class="spin" style="margin:0 auto 10px"></div>Đang tải file ghi chú...</div>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  document.addEventListener('keydown', libraryPopupEscHandler);
+  try{
+    const res=await api('getNoteFileData',{noteFileId});
+    const body=document.getElementById('noteAttachmentViewer');
+    if(!body)return;
+    const name=res.fileName||fileName||'File đính kèm';
+    const mt=String(res.mimeType||mimeType||'').toLowerCase();
+    const safeName=esc(name);
+    if(res.tooLarge){
+      body.innerHTML=`<div class="library-error-box" style="width:calc(100% - 36px)">File quá lớn để xem trực tiếp trong web app.<br>${res.openUrl?`<a class="btn primary sm" style="margin-top:10px" href="${esc(res.openUrl)}" target="_blank" rel="noopener">↗ Mở ngoài Drive</a>`:''}</div>`;
+      return;
+    }
+    if(mt.startsWith('image/')){
+      body.innerHTML=`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f7f9fc;overflow:auto;padding:14px">
+        <img src="${res.dataUrl}" alt="${safeName}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:10px;box-shadow:0 8px 24px rgba(6,58,99,.12);background:#fff">
+      </div>`;
+      return;
+    }
+    if(mt==='application/pdf' || name.toLowerCase().endsWith('.pdf')){
+      body.innerHTML=`<iframe class="library-popup-frame" src="${res.dataUrl}" title="${safeName}" style="background:#fff"></iframe>`;
+      return;
+    }
+    body.innerHTML=`<div class="library-error-box" style="width:calc(100% - 36px);text-align:center">
+      <div style="font-weight:800;color:var(--navy);margin-bottom:8px">${safeName}</div>
+      <div class="muted" style="margin-bottom:12px">Loại file này không xem trực tiếp trong trình duyệt. Có thể tải xuống hoặc mở ngoài Drive.</div>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        <a class="btn primary sm" href="${res.dataUrl}" download="${safeName}">⬇ Tải xuống</a>
+        ${res.openUrl?`<a class="btn ghost sm" href="${esc(res.openUrl)}" target="_blank" rel="noopener">↗ Mở ngoài Drive</a>`:''}
+      </div>
+    </div>`;
+  }catch(e){
+    const body=document.getElementById('noteAttachmentViewer');
+    if(body)body.innerHTML=`<div class="library-error-box" style="width:calc(100% - 36px)">Không xem được file ghi chú: ${esc((e&&e.message)||String(e||''))}</div>`;
+  }
+}
+
 function noteFilesHtml(files=[], canEdit=false){
   files=Array.isArray(files)?files:[];
   if(!files.length)return '';
   return `<div class="note-attach-files">${files.map(f=>`
     <span class="note-file-chip" title="${esc(f.fileName||'File đính kèm')}">
-      <a href="javascript:void(0)" onclick='openDriveFilePopup(${jss(f.fileUrl||f.openUrl||'')},${jss(f.fileName||'File đính kèm')},${jss(f.mimeType||'')})'>${noteFileIcon(f.fileName,f.mimeType)} ${esc(notePlainText(f.fileName||'File',34))}</a>
+      <a href="javascript:void(0)" onclick='openNoteAttachmentPopup(${jss(f.noteFileId)},${jss(f.fileName||'File đính kèm')},${jss(f.mimeType||'')},${jss(f.openUrl||f.fileUrl||'')})'>${noteFileIcon(f.fileName,f.mimeType)} ${esc(notePlainText(f.fileName||'File',34))}</a>
       ${canEdit?`<button type="button" class="btn xs danger" style="padding:2px 6px" onclick='deleteNoteFile(${jss(f.noteFileId)})'>×</button>`:''}
     </span>`).join('')}</div>`;
 }
@@ -3934,7 +3992,7 @@ async function loadDetailNotes(meetingId){
     const res=await api('getNotes',{meetingId});
     const notes=res.notes||[];
     if(!notes.length){
-      box.innerHTML=`<div class="empty" style="padding:12px">Chưa có ghi chú cho lịch này. Bấm <b>Thêm note</b> để ghi nội dung cuộc họp.</div>`;
+      box.innerHTML=`<div class="empty" style="padding:12px">Bạn chưa có ghi chú nào cho lịch này. Bấm <b>Thêm note</b> để ghi nội dung riêng của bạn.</div>`;
       return;
     }
     box.innerHTML=`<div class="detail-note-list">${notes.map(n=>`<div class="detail-note-item">
