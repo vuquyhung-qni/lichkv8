@@ -1943,9 +1943,11 @@
       transform: scale(1.13);
     }
     .prep-rating.saving {
-      opacity: .55;
+      opacity: 1;
       pointer-events: none;
+      box-shadow: 0 0 0 2px rgba(246,196,0,.18) inset;
     }
+    .prep-rating.saving .star { opacity: 1; }
     .prep-rating.readonly .star { cursor: default; pointer-events: none; }
     .prep-rating.readonly .star:hover { transform: none; }
     .detail-rating-row {
@@ -2227,6 +2229,58 @@ function prepRatingStarsHtml(m, context='card'){
     ).join('')}
   </span>`;
 }
+
+const PREP_RATING_SAVE = Object.create(null);
+function getPrepRatingScore(meetingId){
+  const id = String(meetingId||'');
+  const fromData = (APP.meetings||[]).concat(APP.allMeetings||[]).find(m=>String(m.meetingId)===id);
+  if(fromData) return Math.max(0, Math.min(5, Number(fromData.prepRatingVisibleScore || fromData.myPrepRating || fromData.publicPrepRating)||0));
+  const box = document.querySelector(`.prep-rating[data-meeting-id="${CSS.escape(id)}"]`);
+  return box ? Math.max(0, Math.min(5, Number(box.dataset.score)||0)) : 0;
+}
+function markPrepRatingSaving(meetingId, saving){
+  const id = String(meetingId||'');
+  document.querySelectorAll(`.prep-rating[data-meeting-id="${CSS.escape(id)}"]`).forEach(box=>{
+    box.classList.toggle('saving', !!saving);
+    box.setAttribute('aria-busy', saving ? 'true' : 'false');
+    if(saving) box.title = 'Đã đổi sao trên giao diện, đang lưu ngầm...';
+  });
+}
+async function flushPrepRatingSave(meetingId){
+  const id = String(meetingId||'');
+  const st = PREP_RATING_SAVE[id];
+  if(!st || st.saving) return;
+  const score = Math.max(1, Math.min(5, Number(st.pending)||0));
+  if(!score){ markPrepRatingSaving(id, false); return; }
+  st.pending = null;
+  st.saving = true;
+  markPrepRatingSaving(id, true);
+  try{
+    const res = await api('setMeetingRating',{meetingId:id, score});
+    const savedScore = Math.max(1, Math.min(5, Number(res.score)||score));
+    st.lastGood = savedScore;
+    updateLocalMeetingRating(id, savedScore);
+    paintPrepRatingDom(id, savedScore);
+    // Không gọi getMeetings/refreshAll/render lại toàn bộ. Các màn hình đang mở giữ nguyên trạng thái nhanh.
+    msgToast(res.msg || ('Đã lưu đánh giá '+savedScore+' sao.'));
+  }catch(e){
+    // Chỉ hoàn tác nếu người dùng chưa bấm mức mới trong lúc request đang chạy.
+    if(!st.pending){
+      const back = Math.max(0, Math.min(5, Number(st.lastGood)||0));
+      updateLocalMeetingRating(id, back);
+      paintPrepRatingDom(id, back);
+      msgToastError('Chưa lưu được đánh giá sao: '+((e&&e.message)||String(e||'')));
+    }
+  }finally{
+    st.saving = false;
+    if(st.pending){
+      setTimeout(()=>flushPrepRatingSave(id), 0);
+    }else{
+      markPrepRatingSaving(id, false);
+    }
+  }
+}
+
 function updateLocalMeetingRating(meetingId, score){
   const apply = (m)=>{
     if(String(m.meetingId)!==String(meetingId)) return;
@@ -2249,45 +2303,29 @@ function paintPrepRatingDom(meetingId, score){
     box.querySelectorAll('.star').forEach((st,idx)=>st.classList.toggle('on', idx < s));
   });
 }
-async function setPrepRating(ev, meetingId, score){
+function setPrepRating(ev, meetingId, score){
   if(ev){ ev.preventDefault(); ev.stopPropagation(); }
   meetingId = String(meetingId||'').trim();
   score = Math.max(1, Math.min(5, Number(score)||0));
   if(!meetingId || !score) return;
 
-  const box = ev && ev.target ? ev.target.closest('.prep-rating') : null;
-  if(box) box.classList.add('saving');
+  // Optimistic UI: sao sáng ngay, không chờ Apps Script lưu xong.
+  const oldScore = getPrepRatingScore(meetingId);
+  const st = PREP_RATING_SAVE[meetingId] || (PREP_RATING_SAVE[meetingId] = {
+    lastGood: oldScore,
+    pending: null,
+    saving: false,
+    timer: null
+  });
+  if(!st.lastGood) st.lastGood = oldScore;
 
-  // Đổi màu ngay trên DOM trước, không chờ render lại.
+  st.pending = score;
   paintPrepRatingDom(meetingId, score);
   updateLocalMeetingRating(meetingId, score);
+  markPrepRatingSaving(meetingId, true);
 
-  try{
-    const res = await api('setMeetingRating',{meetingId, score});
-    const savedScore = Number(res.score)||score;
-    updateLocalMeetingRating(meetingId, savedScore);
-    paintPrepRatingDom(meetingId, savedScore);
-
-    // Tải nhẹ lại danh sách để lần mở sau vẫn giữ màu sao đã lưu.
-    try{
-      const cur = await api('getMeetings',{showPast:false,limit:1000});
-      APP.meetings = cur.meetings || APP.meetings;
-      if(APP.allMeetings){
-        const all = await api('getMeetings',{showPast:true,limit:5000});
-        APP.allMeetings = all.meetings || APP.allMeetings;
-      }
-    }catch(e){}
-
-    renderCalendar();
-    if(APP.currentScreen==='manage') renderManage();
-    msgToast(res.msg || ('Đã đánh giá '+savedScore+' sao.'));
-  }catch(e){
-    alert(e.message || String(e));
-    // Nếu lưu lỗi, tải lại để không giữ màu sai.
-    try{ await refreshAll(); }catch(_){}
-  }finally{
-    if(box) box.classList.remove('saving');
-  }
+  if(st.timer) clearTimeout(st.timer);
+  st.timer = setTimeout(()=>flushPrepRatingSave(meetingId), 180);
 }
 // Bắt sự kiện tập trung cho sao để chắc chắn bấm được, kể cả khi inline onclick bị trình duyệt/HTML render chặn.
 document.addEventListener('click', function(ev){
@@ -2310,8 +2348,20 @@ function msgToast(text){
     setTimeout(()=>t.remove(),1800);
   }catch(e){}
 }
+
+function msgToastError(text){
+  try{
+    const t=document.createElement('div');
+    t.className='msg err';
+    t.style.cssText='position:fixed;right:18px;bottom:18px;z-index:9999;box-shadow:0 10px 30px rgba(0,0,0,.18);max-width:420px';
+    t.textContent=text;
+    document.body.appendChild(t);
+    setTimeout(()=>t.remove(),3200);
+  }catch(e){ alert(text); }
+}
+
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v61_star_rating_delegate_force_paint';
+const APP_VERSION = 'HTML_v62_optimistic_star_save_no_reload';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
@@ -2418,10 +2468,10 @@ function api(action, payload={}) {
   return new Promise((resolve, reject) => {
     const cbName = '_cb_' + Date.now() + Math.random().toString(36).slice(2);
     const script = document.createElement('script');
-    const timeoutMs = ['migrateMeetingLegacyFiles','migrateOneMeetingLegacyFiles'].includes(action) ? 330000 : (['migrateAllMeetingLegacyFiles','getLegacyMigrationStatus'].includes(action) ? 180000 : (action === 'librarySearchFiles' ? 90000 : 30000));
+    const timeoutMs = (action === 'librarySearchFiles' ? 90000 : 30000);
     const timer = setTimeout(() => {
       cleanup();
-      reject(new Error('Timeout — GAS không phản hồi. Với đồng bộ tài liệu cũ, hãy dùng bản V35 và chạy lô nhỏ.'));
+      reject(new Error('Timeout — GAS không phản hồi. Vui lòng kiểm tra kết nối hoặc triển khai Web App.'));
     }, timeoutMs);
     function cleanup() {
       clearTimeout(timer);
@@ -3295,7 +3345,7 @@ async function drivePopupFolderLoad(folderId,title){
       body.onclick=drivePopupFolderClick;
     }
   }catch(e){
-    if(body)body.innerHTML=`<div class="library-error-box" style="width:calc(100% - 36px)">Không tải được thư mục trong web app: ${esc((e&&e.message)||String(e||''))}<br><span class="muted">Cần cập nhật đúng Code.gs v18 và Deploy New version. Hãy chạy thử hàm <b>testDriveListFolder</b> trong Apps Script để kiểm tra action mở thư mục.</span></div>`;
+    if(body)body.innerHTML=`<div class="library-error-box" style="width:calc(100% - 36px)">Không tải được thư mục trong web app: ${esc((e&&e.message)||String(e||''))}<br><span class="muted">Cần cập nhật đúng Code.gs v18 và Deploy New version. Vui lòng kiểm tra lại cấu hình Web App, quyền Drive và triển khai phiên bản mới.</span></div>`;
   }
 }
 function drivePopupFolderRender(items,title,folderId){
@@ -3445,7 +3495,7 @@ function renderLibraryContent(){
         <a class="btn sm ghost" href="${esc(libraryOpenUrl(item))}" target="_blank" rel="noopener">↗ Mở ngoài Drive</a>
       </div>
       <iframe class="library-preview-frame" src="${esc(src)}" loading="lazy" allow="autoplay"></iframe>
-      <div class="library-note">Nếu khung xem trước báo không có quyền, chạy hàm <b>fixLibraryPermissions</b> trong Apps Script hoặc cấp quyền xem cho thư mục/file.</div>
+      <div class="library-note">Nếu khung xem trước báo không có quyền, vui lòng cấp quyền xem cho thư mục/file trên Drive.</div>
     </div>`;
     return;
   }
@@ -3487,7 +3537,7 @@ async function libraryLoadFolder(folderId, push=true){
     APP.libraryLoading=false;
     APP.libraryMode='fallback';
     APP.libraryError=(e&&e.message)||String(e||'Không tải được thư viện');
-    showLibraryHelp('Không gọi được action libraryListFolder từ Web App. Nếu test trong Apps Script đã OK, hãy Deploy → New version và thay index.html trên GitHub bằng bản mới.', 'err');
+    showLibraryHelp('Không gọi được action libraryListFolder từ Web App. Hãy Deploy → New version và thay index.html trên GitHub bằng bản mới nếu đang dùng GitHub Pages.', 'err');
   }
   renderLibraryContent();
   updateLibraryButtons();
@@ -3559,7 +3609,7 @@ async function searchLibraryDrive(push=true){
     APP.libraryLoading=false;
     APP.libraryMode='fallback';
     APP.libraryError=(e&&e.message)||String(e||'Không tìm được');
-    showLibraryHelp('Không gọi được action librarySearchFiles từ Web App. Nếu test trong Apps Script đã OK, hãy Deploy → New version và thay index.html trên GitHub bằng bản mới.', 'err');
+    showLibraryHelp('Không gọi được action librarySearchFiles từ Web App. Hãy Deploy → New version và thay index.html trên GitHub bằng bản mới nếu đang dùng GitHub Pages.', 'err');
   }
   renderLibraryContent();
   updateLibraryButtons();
@@ -3595,7 +3645,7 @@ function renderLibraryFallback(){
     <div class="library-error-box" style="text-align:left;line-height:1.65">
       <b>Chưa tải được Thư viện văn bản nội bộ.</b><br>
       Lỗi trả về: <span class="mono">${err}</span><br><br>
-      Nguyên nhân thường gặp: đã chạy test trong Apps Script được nhưng <b>chưa Deploy phiên bản mới</b>, hoặc file HTML trên GitHub vẫn là bản cũ nên còn dùng iframe Google Drive.
+      Nguyên nhân thường gặp: <b>chưa Deploy phiên bản mới</b>, hoặc file HTML trên GitHub vẫn là bản cũ.
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
         <button class="btn sm primary" onclick="libraryLoadFolder(DRIVE_LIBRARY_FOLDER_ID,false)">↻ Thử tải lại thư viện nội bộ</button>
         <a class="btn sm ghost" href="${DRIVE_LIBRARY_URL}" target="_blank" rel="noopener">↗ Mở tạm trên Drive</a>
@@ -4577,7 +4627,7 @@ async function openDetail(id){
       <div class="sp"></div>`:''}
       <div class="panel" style="box-shadow:none;border-color:var(--border2)">
         <div class="panel-h"><h3>📎 Tài liệu</h3></div>
-        <div class="panel-b">${legacySyncBox(id,res)}${fileList(res.files)}${res.canUpload?uploadBox(id):''}</div>
+        <div class="panel-b">${fileList(res.files)}${res.canUpload?uploadBox(id):''}</div>
       </div>
       <div class="sp"></div>
       <div class="panel" style="box-shadow:none;border-color:var(--border2)">
