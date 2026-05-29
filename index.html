@@ -323,6 +323,7 @@
     .side-foot {
       padding: 14px 10px;
       border-top: 1px solid rgba(255,255,255,.1);
+      position: relative;
     }
     .userbox {
       display: flex;
@@ -331,8 +332,19 @@
       background: rgba(255,255,255,.08);
       border-radius: var(--r-sm);
       padding: 10px 12px;
-      cursor: default;
+      cursor: pointer;
+      position: relative;
+      transition: background .18s, box-shadow .18s;
     }
+    .userbox:hover { background: rgba(255,255,255,.13); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
+    .userbox::after {
+      content: '⌄';
+      margin-left: auto;
+      color: rgba(255,255,255,.68);
+      font-weight: 900;
+      transition: transform .18s;
+    }
+    .userbox.open::after { transform: rotate(180deg); }
     .avatar {
       width: 34px; height: 34px;
       border-radius: 50%;
@@ -361,6 +373,40 @@
     .side-actions button:hover { background: rgba(255,255,255,.18); color: #fff; }
     .side-actions button.logout-btn { background: rgba(220,50,50,.2); color: #fca5a5; }
     .side-actions button.logout-btn:hover { background: rgba(220,50,50,.35); }
+    .side-user-menu {
+      display: none;
+      position: absolute;
+      left: 10px;
+      right: 10px;
+      bottom: calc(100% - 14px);
+      z-index: 65;
+      background: #fff;
+      color: var(--text);
+      border: 1px solid rgba(15,76,129,.16);
+      border-radius: 14px;
+      box-shadow: 0 18px 42px rgba(0,0,0,.28);
+      overflow: hidden;
+      padding: 6px;
+    }
+    .side-user-menu.show { display: block; animation: sideUserMenuIn .16s ease-out; }
+    @keyframes sideUserMenuIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .side-user-menu button {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      color: var(--text2);
+      border-radius: 10px;
+      padding: 10px 11px;
+      text-align: left;
+      font-size: .86rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .side-user-menu button:hover { background: #eef6ff; color: var(--blue); }
+    .side-user-menu button.logout-btn { color: #dc2626; }
+    .side-user-menu button.logout-btn:hover { background: #fee2e2; color: #b91c1c; }
 
     /* ===== MAIN ===== */
     .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -472,6 +518,22 @@
     .library-panel { height: calc(100svh - 126px); display: flex; flex-direction: column; }
     .library-panel .panel-h { flex-shrink: 0; }
     .library-head-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .library-title-back {
+      display: none;
+      width: 34px;
+      height: 34px;
+      flex: 0 0 34px;
+      border: 1.5px solid #cfe0f2;
+      background: #fff;
+      color: var(--blue);
+      border-radius: 10px;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      font-weight: 900;
+      box-shadow: 0 2px 8px rgba(6,58,99,.07);
+    }
+    .library-title-back:active { transform: scale(.97); }
     .library-nav-actions { display:flex; gap:6px; align-items:center; margin-right:6px; }
     .library-icon-btn {
       width: 34px; height: 34px;
@@ -1983,6 +2045,52 @@
       text-shadow: 0 1px 2px rgba(116,81,0,.26) !important;
     }
 
+  
+
+    /* ===== V63: User menu gọn + mobile card/library tiết kiệm diện tích ===== */
+    @media (max-width: 768px) {
+      #screen-library .panel-h { align-items: center; gap: 10px; }
+      #screen-library .library-title-back { display: inline-flex !important; }
+      #screen-library .panel-h h3 { flex: 1; min-width: 0; }
+
+      .meeting-card .m-top,
+      .meeting-card .m-badges,
+      .meeting-card .m-dateline {
+        display: flex !important;
+        align-items: center !important;
+        flex-wrap: wrap !important;
+      }
+      .meeting-card .m-top { gap: 5px 6px !important; justify-content: flex-start !important; }
+      .meeting-card .m-badges { gap: 5px !important; }
+      .meeting-card .m-dateline { gap: 5px !important; margin-top: 0 !important; }
+      .meeting-card .pill.mono,
+      .meeting-card .date-pill {
+        font-size: .78rem !important;
+        line-height: 1.15 !important;
+        padding: 4px 8px !important;
+      }
+      .meeting-card .pill.mono {
+        min-height: 26px;
+        align-items: center;
+      }
+      .meeting-card .m-title { margin-top: 8px; }
+      .meeting-card .m-actions { align-items: center; gap: 7px; }
+      .meeting-card .m-actions .prep-rating {
+        width: auto !important;
+        flex: 0 0 auto !important;
+        justify-content: flex-start !important;
+        margin: 0 !important;
+        padding: 5px 8px !important;
+        gap: 2px !important;
+      }
+      .meeting-card .m-actions .prep-rating .star { font-size: 1.34rem !important; }
+      .meeting-card .m-actions .note-btn { flex: 0 0 auto; }
+    }
+    @media (max-width: 480px) {
+      .m-top { display: flex !important; }
+      .m-dateline { margin-top: 0 !important; }
+    }
+
   </style>
 </head>
 <body>
@@ -2061,17 +2169,17 @@
       </button>
     </nav>
     <div class="side-foot">
-      <div class="userbox">
+      <div class="userbox" id="sideUserBox" onclick="toggleSideUserMenu(event)" title="Mở menu người dùng">
         <div class="avatar" id="avatar">U</div>
         <div class="userbox-info">
           <b id="uName">Người dùng</b>
           <span id="uRole">Role</span>
         </div>
       </div>
-      <div class="side-actions">
-        <button onclick="refreshAll()">↻ Tải lại</button>
-        <button onclick="openChangePassword()">🔑 Đổi MK</button>
-        <button class="logout-btn" onclick="logout()">⏻ Đăng xuất</button>
+      <div class="side-user-menu" id="sideUserMenu" onclick="event.stopPropagation()">
+        <button type="button" onclick="closeSideUserMenu();refreshAll()">↻ Tải lại</button>
+        <button type="button" onclick="closeSideUserMenu();openChangePassword()">🔑 Đổi MK</button>
+        <button type="button" class="logout-btn" onclick="closeSideUserMenu();logout()">⏻ Đăng xuất</button>
       </div>
     </div>
   </aside>
@@ -2111,6 +2219,9 @@
         <div id="uRolePopup" style="font-size:.78rem;color:var(--muted)"></div>
       </div>
     </div>
+    <button class="user-popup-btn" onclick="closeUserPopup();refreshAll()">
+      ↻ Tải lại
+    </button>
     <button class="user-popup-btn" onclick="closeUserPopup();openChangePassword()">
       🔑 Đổi mật khẩu
     </button>
@@ -2361,7 +2472,7 @@ function msgToastError(text){
 }
 
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v62_optimistic_star_save_no_reload';
+const APP_VERSION = 'HTML_v63_user_menu_compact_mobile_library_back';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
@@ -2756,7 +2867,27 @@ function toggleUserPopup(){
 function closeUserPopup(){
   const p=$('userPopup'); if(p)p.classList.add('hide');
 }
+function toggleSideUserMenu(ev){
+  if(ev)ev.stopPropagation();
+  const m=$('sideUserMenu'), b=$('sideUserBox');
+  if(!m)return;
+  const show=!m.classList.contains('show');
+  m.classList.toggle('show', show);
+  if(b)b.classList.toggle('open', show);
+}
+function closeSideUserMenu(){
+  const m=$('sideUserMenu'), b=$('sideUserBox');
+  if(m)m.classList.remove('show');
+  if(b)b.classList.remove('open');
+}
+document.addEventListener('click', function(ev){
+  const menu=$('sideUserMenu'), box=$('sideUserBox');
+  if(!menu || !menu.classList.contains('show'))return;
+  if((box&&box.contains(ev.target)) || menu.contains(ev.target))return;
+  closeSideUserMenu();
+}, true);
 function showLogin(){
+  closeSideUserMenu();
   document.body.classList.remove('logged-in');
   $('app').classList.add('hide');
   $('login').classList.remove('hide');
@@ -2772,7 +2903,7 @@ function toggleSide(){
   s.classList.toggle('open');
   o.classList.toggle('show',s.classList.contains('open'));
 }
-function closeSide(){$('sidebar').classList.remove('open');$('sidebarOverlay').classList.remove('show')}
+function closeSide(){closeSideUserMenu();$('sidebar').classList.remove('open');$('sidebarOverlay').classList.remove('show')}
 
 async function go(screen){
   APP.currentScreen=screen;
@@ -3149,6 +3280,8 @@ function updateLibraryButtons(){
   libraryEnsureState();
   const backBtn=$('libraryBackBtn');
   if(backBtn)backBtn.disabled=!(APP.libraryStack&&APP.libraryStack.length);
+  const titleBack=$('libraryTitleBackBtn');
+  if(titleBack) titleBack.title = (APP.libraryStack&&APP.libraryStack.length) ? 'Quay lại thư mục trước' : 'Quay lại lịch công tác';
   const crumb=$('libraryCrumbText');
   if(crumb){
     let html='Đang xem: <b>Thư mục gốc thư viện văn bản</b>';
@@ -3173,6 +3306,11 @@ function libraryBack(){
   const prev=APP.libraryStack.pop();
   if(prev) libraryRestore(prev);
   else updateLibraryButtons();
+}
+function libraryBackSmart(){
+  libraryEnsureState();
+  if(APP.libraryStack && APP.libraryStack.length) return libraryBack();
+  go('calendar');
 }
 function closeLibraryViewer(){
   APP.libraryStack=[];
@@ -3661,6 +3799,7 @@ function renderLibrary(){
   el.innerHTML=`
     <div class="panel library-panel">
       <div class="panel-h">
+        <button id="libraryTitleBackBtn" type="button" class="library-title-back" onclick="libraryBackSmart()" title="Quay lại">↩</button>
         <h3>📚 THƯ VIỆN VĂN BẢN</h3>
         <div class="library-head-actions">
           <div class="library-nav-actions" title="Điều hướng thư viện">
