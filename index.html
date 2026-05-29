@@ -1719,6 +1719,33 @@
       .leader-bar-meta { font-size:.70rem; }
     }
 
+
+    /* ===== V49: Notebook / Ghi chú cuộc họp ===== */
+    .note-btn { background:#fff7ed; color:#9a3412; border:1.5px solid #fed7aa; }
+    .note-btn:hover { background:#ffedd5; color:#7c2d12; }
+    .notes-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:12px; }
+    .note-card { background:#fff; border:1px solid var(--border2); border-radius:14px; box-shadow:var(--shadow-sm); padding:14px 14px 12px; transition:transform .16s, box-shadow .16s, border-color .16s; }
+    .note-card:hover { transform:translateY(-1px); box-shadow:var(--shadow); border-color:#c8d8ea; }
+    .note-card-title { font-weight:800; color:var(--navy); line-height:1.35; margin-bottom:6px; }
+    .note-card-meta { font-size:.74rem; color:var(--muted); display:flex; flex-wrap:wrap; gap:6px; margin-bottom:9px; }
+    .note-card-content { color:var(--text2); font-size:.86rem; line-height:1.55; white-space:pre-wrap; max-height:132px; overflow:hidden; }
+    .note-card-actions { display:flex; gap:6px; flex-wrap:wrap; margin-top:12px; padding-top:10px; border-top:1px solid var(--border2); }
+    .note-meeting-pill { display:inline-flex; align-items:center; gap:4px; border-radius:999px; background:#eef6ff; color:var(--blue); font-size:.72rem; font-weight:800; padding:3px 8px; }
+    .note-editor-title { width:100%; border:1.5px solid var(--border); border-radius:10px; padding:10px 12px; outline:none; font-weight:700; color:var(--navy); }
+    .note-editor-content { width:100%; min-height:260px; border:1.5px solid var(--border); border-radius:12px; padding:12px 14px; outline:none; resize:vertical; color:var(--text); line-height:1.55; }
+    .note-editor-title:focus, .note-editor-content:focus { border-color:var(--blue2); box-shadow:0 0 0 3px rgba(45,120,239,.12); }
+    .notebook-toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
+    .notebook-toolbar .search-wrap { min-width:260px; }
+    .detail-note-list { display:grid; gap:8px; }
+    .detail-note-item { border:1px solid var(--border2); border-radius:12px; padding:10px 12px; background:#f9fcff; }
+    .detail-note-title { font-weight:800; color:var(--navy); margin-bottom:3px; }
+    .detail-note-content { color:var(--text2); white-space:pre-wrap; font-size:.86rem; line-height:1.5; }
+    @media (max-width: 768px) {
+      .notes-grid { grid-template-columns: 1fr; }
+      .notebook-toolbar .search-wrap { min-width:0; width:100%; }
+      .note-editor-content { min-height:220px; }
+    }
+
   </style>
 </head>
 <body>
@@ -1782,6 +1809,10 @@
         <span class="nav-icon">📚</span>
         <span class="nav-label">Thư viện văn bản</span>
       </button>
+      <button class="nav-btn" data-screen="notebook" onclick="go('notebook')">
+        <span class="nav-icon">📒</span>
+        <span class="nav-label">Notebook</span>
+      </button>
       <div class="nav-section-label" id="navAdminSection">Quản trị</div>
       <button class="nav-btn" data-screen="users" id="navUsers" onclick="go('users')">
         <span class="nav-icon">👥</span>
@@ -1825,6 +1856,7 @@
       <section id="screen-calendar"></section>
       <section id="screen-manage" class="hide"></section>
       <section id="screen-library" class="hide"></section>
+      <section id="screen-notebook" class="hide"></section>
       <section id="screen-users" class="hide"></section>
       <section id="screen-settings" class="hide"></section>
     </div>
@@ -1881,7 +1913,7 @@ const APP = {
   filters:{kw:'', leader:'all', scope:'CURRENT', kind:'ALL'},
   manageFilters:{kw:'', leader:'all', scope:'CURRENT', kind:'ALL', status:'all'},
   loadedAll:false, pendingFormFiles:[],
-  libraryStack:[], libraryCurrentUrl:'', detailFiles:[]
+  libraryStack:[], libraryCurrentUrl:'', detailFiles:[], notebook:{kw:'', notes:[], loaded:false}
 };
 
 // ===== PHÂN QUYỀN =====
@@ -2323,7 +2355,7 @@ async function go(screen){
   document.querySelectorAll('.bn-item').forEach(b=>b.classList.toggle('active',b.dataset.screen===screen));
   document.querySelectorAll('[id^="screen-"]').forEach(s=>s.classList.add('hide'));
   $('screen-'+screen).classList.remove('hide');
-  const titles={dashboard:'TỔNG QUAN',calendar:'LỊCH CÔNG TÁC',manage:'QUẢN LÝ LỊCH',library:'THƯ VIỆN VĂN BẢN',users:'NGƯỜI DÙNG',settings:'DANH MỤC'};
+  const titles={dashboard:'TỔNG QUAN',calendar:'LỊCH CÔNG TÁC',manage:'QUẢN LÝ LỊCH',library:'THƯ VIỆN VĂN BẢN',notebook:'NOTEBOOK',users:'NGƯỜI DÙNG',settings:'DANH MỤC'};
   $('pageTitle').textContent=titles[screen]||'';
   if(window.innerWidth<768)closeSide();
   await render();
@@ -2342,10 +2374,10 @@ async function refreshAll(){
   render();
 }
 function setLoading(){
-  ['screen-dashboard','screen-calendar','screen-manage','screen-library','screen-users','screen-settings']
+  ['screen-dashboard','screen-calendar','screen-manage','screen-library','screen-notebook','screen-users','screen-settings']
     .forEach(id=>$(id).innerHTML='<div class="loading"><div class="spin"></div><span>Đang tải...</span></div>');
 }
-async function render(){renderDashboard();renderCalendar();renderManage();renderLibrary();await renderUsers();renderSettings();}
+async function render(){renderDashboard();renderCalendar();renderManage();renderLibrary();await renderNotebook();await renderUsers();renderSettings();}
 
 // ===== DASHBOARD =====
 function renderDashboard(){
@@ -3473,6 +3505,7 @@ function meetingCards(arr,compact){
       </div>
       <div class="m-actions">
         <button type="button" class="btn sm js-open-detail" data-action="open-detail" data-meeting-id="${esc(m.meetingId)}">👁 Xem chi tiết</button>
+        <button type="button" class="btn sm note-btn" data-action="open-note" data-meeting-id="${esc(m.meetingId)}" data-meeting-title="${esc(m.noiDung)}">📒 Note</button>
         ${hasRole(ROLE_EDIT)?`<button type="button" class="btn primary sm js-edit-meeting" data-action="edit-meeting" data-meeting-id="${esc(m.meetingId)}">✏️ Sửa</button>`:''}
       </div>
     </div>`;
@@ -3612,6 +3645,7 @@ function renderManageTable(){
       <td><span class="pill status-${esc(m.trangThai||'DRAFT')}">${esc(statusLabel(m.trangThai||'DRAFT'))}</span></td>
       <td class="nowrap"><div class="manage-actions">
         <button type="button" class="btn xs js-open-detail" data-action="open-detail" data-meeting-id="${esc(m.meetingId)}">👁 Xem</button>
+        <button type="button" class="btn xs note-btn" data-action="open-note" data-meeting-id="${esc(m.meetingId)}" data-meeting-title="${esc(m.noiDung)}">📒 Note</button>
         ${hasRole(ROLE_EDIT)?`<button type="button" class="btn primary xs js-edit-meeting" data-action="edit-meeting" data-meeting-id="${esc(m.meetingId)}">✏️ Sửa</button>`:''}
         ${canBulkLegacySync()?`<button type="button" class="btn warn xs" id="btnSyncLegacy_${esc(m.meetingId)}" onclick="syncLegacyFilesFromManage('${esc(m.meetingId)}')">Đồng bộ TL</button>`:''}
       </div></td>
@@ -3785,6 +3819,149 @@ async function cancelMeetingPrompt(id){
   try{await api('cancelMeeting',{meetingId:id,reason});closeModal();await refreshAll();}catch(e){alert(e.message)}
 }
 
+
+// ===== NOTEBOOK / GHI CHÚ =====
+function notePlainText(s, max=220){
+  const t=String(s||'').replace(/\s+/g,' ').trim();
+  return t.length>max ? t.slice(0,max-1)+'…' : t;
+}
+function noteTimeLabel(n){return esc(n.updatedAt||n.createdAt||'');}
+function noteCardHtml(n){
+  const linked=n.meetingId?`<span class="note-meeting-pill">📅 ${esc(n.meetingId)}</span>`:'<span class="note-meeting-pill" style="background:#fff7ed;color:#9a3412">📝 Ghi chú độc lập</span>';
+  const meetingTitle=n.meeting&&n.meeting.title?`<div class="muted" style="font-size:.76rem;margin-bottom:6px">${esc(n.meeting.date||'')} ${esc(n.meeting.time||'')} · ${esc(notePlainText(n.meeting.title,90))}</div>`:'';
+  return `<div class="note-card">
+    <div class="note-card-title">${esc(n.title||'Ghi chú không tiêu đề')}</div>
+    <div class="note-card-meta">${linked}<span>${noteTimeLabel(n)}</span></div>
+    ${meetingTitle}
+    <div class="note-card-content">${esc(notePlainText(n.content,360))}</div>
+    <div class="note-card-actions">
+      <button type="button" class="btn xs" onclick='openNoteViewer(${jss(n.noteId)})'>👁 Xem</button>
+      ${n.canEdit?`<button type="button" class="btn primary xs" onclick='openNoteEditor(${jss(n.meetingId)},${jss((n.meeting&&n.meeting.title)||'')},${jss(n.noteId)})'>✏️ Sửa</button>
+      <button type="button" class="btn danger xs" onclick='deleteNote(${jss(n.noteId)})'>🗑 Xóa</button>`:''}
+      ${n.meetingId?`<button type="button" class="btn ghost xs" onclick='openDetail(${jss(n.meetingId)})'>📋 Lịch</button>`:''}
+    </div>
+  </div>`;
+}
+async function renderNotebook(){
+  const box=$('screen-notebook'); if(!box)return;
+  if(APP.currentScreen!=='notebook' && APP.notebook.loaded) return;
+  const kw=APP.notebook.kw||'';
+  box.innerHTML=`<div class="panel">
+    <div class="panel-h">
+      <h3>📒 Notebook</h3>
+      <button type="button" class="btn primary sm" onclick="openNoteEditor('', '', null)">＋ Tạo ghi chú độc lập</button>
+    </div>
+    <div class="panel-b">
+      <div class="notebook-toolbar">
+        <div class="search-wrap">
+          <input id="noteKw" value="${esc(kw)}" placeholder="Tìm tiêu đề, nội dung ghi chú, mã lịch...">
+          <button onclick="searchNotebook()">🔍</button>
+        </div>
+        <button class="btn ghost" onclick="APP.notebook.kw='';renderNotebook()">Làm mới</button>
+      </div>
+      <div id="notebookList"><div class="loading"><div class="spin"></div><span>Đang tải ghi chú...</span></div></div>
+    </div>
+  </div>`;
+  try{
+    const res=await api('getNotes',{keyword:kw});
+    APP.notebook.notes=res.notes||[]; APP.notebook.loaded=true;
+    const list=$('notebookList'); if(!list)return;
+    list.innerHTML=APP.notebook.notes.length?`<div class="notes-grid">${APP.notebook.notes.map(noteCardHtml).join('')}</div>`:'<div class="empty">Chưa có ghi chú nào.</div>';
+  }catch(e){
+    const list=$('notebookList'); if(list) list.innerHTML=`<div class="msg err">${esc(e.message)}</div>`;
+  }
+}
+function searchNotebook(){APP.notebook.kw=($('noteKw')?.value||'').trim();APP.notebook.loaded=false;renderNotebook();}
+async function loadDetailNotes(meetingId){
+  const box=$('detailNotesBox'); if(!box)return;
+  try{
+    const res=await api('getNotes',{meetingId});
+    const notes=res.notes||[];
+    if(!notes.length){
+      box.innerHTML=`<div class="empty" style="padding:12px">Chưa có ghi chú cho lịch này. Bấm <b>Thêm note</b> để ghi nội dung cuộc họp.</div>`;
+      return;
+    }
+    box.innerHTML=`<div class="detail-note-list">${notes.map(n=>`<div class="detail-note-item">
+      <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+        <div class="detail-note-title">${esc(n.title||'Ghi chú')}</div>
+        <div style="display:flex;gap:6px">
+          <button type="button" class="btn xs" onclick='openNoteViewer(${jss(n.noteId)})'>👁 Xem</button>
+          ${n.canEdit?`<button type="button" class="btn primary xs" onclick='openNoteEditor(${jss(meetingId)},${jss('')},${jss(n.noteId)})'>✏️ Sửa</button>`:''}
+        </div>
+      </div>
+      <div class="note-card-meta"><span>${esc(n.ownerFullname||n.ownerUsername||'')}</span><span>${noteTimeLabel(n)}</span></div>
+      <div class="detail-note-content">${esc(notePlainText(n.content,420))}</div>
+    </div>`).join('')}</div>`;
+  }catch(e){ box.innerHTML=`<div class="msg err">${esc(e.message)}</div>`; }
+}
+function findCachedNote(noteId){
+  return (APP.notebook.notes||[]).find(n=>n.noteId===noteId) || null;
+}
+async function fetchNoteById(noteId){
+  let n=findCachedNote(noteId);
+  if(n)return n;
+  const res=await api('getNotes',{});
+  APP.notebook.notes=res.notes||[];
+  return findCachedNote(noteId);
+}
+async function openNoteViewer(noteId){
+  showModal('<h3>📒 Xem ghi chú</h3>','<div class="loading"><div class="spin"></div><span>Đang tải ghi chú...</span></div>');
+  try{
+    const n=await fetchNoteById(noteId);
+    if(!n){$('modalBody').innerHTML='<div class="msg err">Không tìm thấy ghi chú.</div>';return;}
+    $('modalBody').innerHTML=`<div style="display:grid;gap:10px">
+      <div class="note-meeting-pill">${n.meetingId?'📅 '+esc(n.meetingId):'📝 Ghi chú độc lập'}</div>
+      <h2 style="color:var(--navy);font-size:1.12rem">${esc(n.title||'Ghi chú')}</h2>
+      ${n.meeting&&n.meeting.title?`<div class="msg">Lịch: <b>${esc(n.meeting.title)}</b><br>${esc(n.meeting.date||'')} ${esc(n.meeting.time||'')}</div>`:''}
+      <div class="muted">Người ghi: ${esc(n.ownerFullname||n.ownerUsername||'')} · ${noteTimeLabel(n)}</div>
+      <div class="panel" style="box-shadow:none"><div class="panel-b" style="white-space:pre-wrap;line-height:1.65;color:var(--text2)">${esc(n.content)}</div></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        ${n.canEdit?`<button type="button" class="btn primary" onclick='openNoteEditor(${jss(n.meetingId)},${jss((n.meeting&&n.meeting.title)||'')},${jss(n.noteId)})'>✏️ Sửa</button>`:''}
+        <button type="button" class="btn ghost" onclick="closeModal()">Đóng</button>
+      </div>
+    </div>`;
+  }catch(e){$('modalBody').innerHTML=`<div class="msg err">${esc(e.message)}</div>`;}
+}
+async function openNoteEditor(meetingId='', meetingTitle='', noteId=null){
+  let note=null;
+  if(noteId){ note=await fetchNoteById(noteId); }
+  const titleVal=note?note.title:(meetingId?('Ghi chú '+meetingId):'');
+  const contentVal=note?note.content:'';
+  showModal(`<h3>📒 ${noteId?'Sửa ghi chú':'Tạo ghi chú'}</h3>`,`
+    <div style="display:grid;gap:12px">
+      ${meetingId?`<div class="msg">Ghi chú gắn với lịch <b>${esc(meetingId)}</b>${meetingTitle?': '+esc(notePlainText(meetingTitle,120)):''}</div>`:'<div class="msg">Ghi chú độc lập, không gắn với lịch công tác.</div>'}
+      <div class="field"><label>Tiêu đề</label><input id="noteTitle" class="note-editor-title" value="${esc(titleVal)}" placeholder="Nhập tiêu đề ghi chú"></div>
+      <div class="field"><label>Nội dung ghi chú</label><textarea id="noteContent" class="note-editor-content" placeholder="Ghi nội dung cuộc họp, ý kiến chỉ đạo, việc cần theo dõi...">${esc(contentVal)}</textarea></div>
+      <div id="noteSaveMsg"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+        <button type="button" class="btn ghost" onclick="closeModal()">Đóng</button>
+        <button type="button" id="btnSaveNote" class="btn primary" onclick='saveNoteFromEditor(${jss(meetingId)},${jss(noteId||'')})'>💾 Lưu ghi chú</button>
+      </div>
+    </div>`);
+  setTimeout(()=>{const el=$('noteContent'); if(el) el.focus();},80);
+}
+async function saveNoteFromEditor(meetingId, noteId){
+  const btn=$('btnSaveNote'); if(btn){btn.disabled=true;btn.textContent='Đang lưu...';}
+  try{
+    const form={noteId,meetingId,title:($('noteTitle')?.value||'').trim(),content:($('noteContent')?.value||'').trim()};
+    const res=await api('saveNote',{noteId,meetingId,form});
+    msg($('noteSaveMsg'),res.msg||'Đã lưu ghi chú.','ok');
+    APP.notebook.loaded=false;
+    setTimeout(async()=>{
+      closeModal();
+      if(meetingId && APP.currentScreen!=='notebook') openDetail(meetingId);
+      else await renderNotebook();
+    },450);
+  }catch(e){
+    msg($('noteSaveMsg'),e.message||String(e),'err');
+    if(btn){btn.disabled=false;btn.textContent='💾 Lưu ghi chú';}
+  }
+}
+async function deleteNote(noteId){
+  if(!confirm('Xóa ghi chú này?'))return;
+  try{await api('deleteNote',{noteId});APP.notebook.loaded=false;await renderNotebook();}catch(e){alert(e.message);}
+}
+
 // ===== DETAIL =====
 async function openDetail(id){
   showModal(`<h3>📋 Chi tiết ${esc(id)}</h3>`,'<div class="loading"><div class="spin"></div><span>Đang tải chi tiết...</span></div>');
@@ -3814,6 +3991,14 @@ async function openDetail(id){
           ${m.ghiChu?`<div class="m-meta-row"><span class="label" style="min-width:120px">📝 Ghi chú</span>${esc(m.ghiChu)}</div>`:''}
           ${(m.fileFolderId||m.folderId||m.linkFolder)?`<div class="m-meta-row"><span class="label" style="min-width:120px">📁 Thư mục</span><button type="button" class="btn xs primary" onclick='openDriveFolderPopup(${jss(m.fileFolderId||m.folderId||m.linkFolder)},${jss(m.fileFolderName||('Thư mục tài liệu '+m.meetingId))})'>Mở trong web app</button></div>`:''}
         </div>
+      </div>
+      <div class="sp"></div>
+      <div class="panel" style="box-shadow:none;border-color:var(--border2)">
+        <div class="panel-h">
+          <h3>📒 Ghi chú cuộc họp</h3>
+          <button type="button" class="btn xs note-btn" onclick='openNoteEditor(${jss(id)},${jss(m.noiDung)},null)'>＋ Thêm note</button>
+        </div>
+        <div class="panel-b" id="detailNotesBox"><div class="muted">Đang tải ghi chú...</div></div>
       </div>
       <div class="sp"></div>
       <div class="panel" style="box-shadow:none;border-color:var(--border2)">
@@ -4235,7 +4420,7 @@ function handleDelegatedMeetingAction_(ev){
   const btn = target.closest('[data-action]');
   if(!btn) return;
   const action = btn.getAttribute('data-action');
-  if(action !== 'open-detail' && action !== 'edit-meeting') return;
+  if(action !== 'open-detail' && action !== 'edit-meeting' && action !== 'open-note') return;
 
   // Tránh mobile chạy 2 lần: touchend xong trình duyệt phát sinh click.
   const now = Date.now();
@@ -4249,6 +4434,7 @@ function handleDelegatedMeetingAction_(ev){
   if(!id) return;
   if(action === 'open-detail') openDetail(id);
   if(action === 'edit-meeting') openMeetingForm(id);
+  if(action === 'open-note') openNoteEditor(id, btn.getAttribute('data-meeting-title')||'', null);
 }
 document.addEventListener('click', handleDelegatedMeetingAction_, true);
 document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:true, passive:false});
