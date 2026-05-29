@@ -1968,6 +1968,19 @@
       .prep-rating .star { font-size: 1.45rem; }
     }
 
+
+    .prep-rating .star.on,
+    .prep-rating[data-score="1"] .star:nth-child(-n+1),
+    .prep-rating[data-score="2"] .star:nth-child(-n+2),
+    .prep-rating[data-score="3"] .star:nth-child(-n+3),
+    .prep-rating[data-score="4"] .star:nth-child(-n+4),
+    .prep-rating[data-score="5"] .star:nth-child(-n+5) {
+      color: #f6c400 !important;
+      filter: none !important;
+      opacity: 1 !important;
+      text-shadow: 0 1px 2px rgba(116,81,0,.26) !important;
+    }
+
   </style>
 </head>
 <body>
@@ -2197,16 +2210,19 @@ function canRatePrepClient(){
 }
 function prepRatingStarsHtml(m, context='card'){
   if(!m || !m.showPrepRating) return '';
-  // Quyền chấm sao lấy theo server trả về để tránh lệch tên role giữa client/server.
-  const canRate = !!m.canRatePrep;
+
+  // Cho phép bấm nếu server cho phép hoặc client nhận diện là Admin/SuperAdmin/useradmin/Lãnh đạo Chi cục.
+  // Cách này tránh trường hợp tên role trong sheet khác biến thể làm sao chỉ hiện mờ nhưng không bấm được.
+  const canRate = !!m.canRatePrep || canRatePrepClient();
   const score = Math.max(0, Math.min(5, Number(m.prepRatingVisibleScore)||0));
   const count = Number(m.publicPrepRatingCount)||0;
   const title = score
     ? `Đánh giá chuẩn bị tài liệu: ${score}/5 sao${count?` (${count} lượt đánh giá)`:''}${canRate?' - bấm để chấm/cập nhật':''}`
     : 'Chưa đánh giá chất lượng chuẩn bị hồ sơ tài liệu';
-  return `<span class="prep-rating prep-rating-${esc(context)} ${canRate?'':'readonly'}" data-meeting-id="${esc(m.meetingId)}" title="${esc(title)}">
+
+  return `<span class="prep-rating prep-rating-${esc(context)} ${canRate?'':'readonly'}" data-meeting-id="${esc(m.meetingId)}" data-score="${score}" title="${esc(title)}">
     ${[1,2,3,4,5].map(n=>canRate
-      ? `<button type="button" class="star ${n<=score?'on':''}" aria-label="${n} sao" onclick="setPrepRating(event, ${jss(m.meetingId)}, ${n})">★</button>`
+      ? `<button type="button" class="star ${n<=score?'on':''}" data-score="${n}" aria-label="${n} sao">★</button>`
       : `<span class="star ${n<=score?'on':''}" aria-hidden="true">★</span>`
     ).join('')}
   </span>`;
@@ -2225,33 +2241,40 @@ function updateLocalMeetingRating(meetingId, score){
   (APP.meetings||[]).forEach(apply);
   (APP.allMeetings||[]).forEach(apply);
 }
+function paintPrepRatingDom(meetingId, score){
+  const s = Math.max(0, Math.min(5, Number(score)||0));
+  document.querySelectorAll(`.prep-rating[data-meeting-id="${CSS.escape(String(meetingId))}"]`).forEach(box=>{
+    box.dataset.score = String(s);
+    box.classList.remove('readonly');
+    box.querySelectorAll('.star').forEach((st,idx)=>st.classList.toggle('on', idx < s));
+  });
+}
 async function setPrepRating(ev, meetingId, score){
   if(ev){ ev.preventDefault(); ev.stopPropagation(); }
-  const box = ev && ev.target ? ev.target.closest('.prep-rating') : null;
-  if(box) {
-    box.classList.add('saving');
-    box.querySelectorAll('.star').forEach((st,idx)=>st.classList.toggle('on', idx < Number(score)));
-  }
+  meetingId = String(meetingId||'').trim();
+  score = Math.max(1, Math.min(5, Number(score)||0));
+  if(!meetingId || !score) return;
 
-  // Cập nhật dữ liệu client ngay để đổi màu sao tức thời; server sẽ lưu/ghi đè kết quả.
-  updateLocalMeetingRating(meetingId, Number(score)||0);
-  renderCalendar();
-  if(APP.currentScreen==='manage') renderManage();
+  const box = ev && ev.target ? ev.target.closest('.prep-rating') : null;
+  if(box) box.classList.add('saving');
+
+  // Đổi màu ngay trên DOM trước, không chờ render lại.
+  paintPrepRatingDom(meetingId, score);
+  updateLocalMeetingRating(meetingId, score);
 
   try{
     const res = await api('setMeetingRating',{meetingId, score});
     const savedScore = Number(res.score)||score;
     updateLocalMeetingRating(meetingId, savedScore);
+    paintPrepRatingDom(meetingId, savedScore);
 
-    // Tải lại dữ liệu từ server để bảo đảm điểm đã lưu, bấm lại lần sau vẫn sửa được.
+    // Tải nhẹ lại danh sách để lần mở sau vẫn giữ màu sao đã lưu.
     try{
-      const fresh = await api('getMeetings',{showPast:true,limit:5000});
-      APP.allMeetings = fresh.meetings || APP.allMeetings;
-      if(APP.filters && APP.filters.scope === 'CURRENT'){
-        const cur = await api('getMeetings',{showPast:false,limit:1000});
-        APP.meetings = cur.meetings || APP.meetings;
-      }else{
-        APP.meetings = (fresh.meetings||APP.meetings).filter(m=>true);
+      const cur = await api('getMeetings',{showPast:false,limit:1000});
+      APP.meetings = cur.meetings || APP.meetings;
+      if(APP.allMeetings){
+        const all = await api('getMeetings',{showPast:true,limit:5000});
+        APP.allMeetings = all.meetings || APP.allMeetings;
       }
     }catch(e){}
 
@@ -2260,11 +2283,23 @@ async function setPrepRating(ev, meetingId, score){
     msgToast(res.msg || ('Đã đánh giá '+savedScore+' sao.'));
   }catch(e){
     alert(e.message || String(e));
-    await refreshAll();
+    // Nếu lưu lỗi, tải lại để không giữ màu sai.
+    try{ await refreshAll(); }catch(_){}
   }finally{
     if(box) box.classList.remove('saving');
   }
 }
+// Bắt sự kiện tập trung cho sao để chắc chắn bấm được, kể cả khi inline onclick bị trình duyệt/HTML render chặn.
+document.addEventListener('click', function(ev){
+  const star = ev.target && ev.target.closest ? ev.target.closest('.prep-rating:not(.readonly) .star') : null;
+  if(!star) return;
+  const box = star.closest('.prep-rating');
+  if(!box) return;
+  const meetingId = box.getAttribute('data-meeting-id');
+  const score = Number(star.getAttribute('data-score') || 0);
+  if(meetingId && score) setPrepRating(ev, meetingId, score);
+}, true);
+
 function msgToast(text){
   try{
     const t=document.createElement('div');
@@ -2276,7 +2311,7 @@ function msgToast(text){
   }catch(e){}
 }
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v60_star_rating_click_save_fix';
+const APP_VERSION = 'HTML_v61_star_rating_delegate_force_paint';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
