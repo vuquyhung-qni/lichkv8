@@ -1725,6 +1725,43 @@
       font-size: .86rem;
     }
     .dashboard-leader-num:hover { text-decoration: underline; }
+    /* V64: Thống nhất màu chữ tên lãnh đạo; phân biệt từng dòng bằng nền chuyển nhẹ */
+    .dashboard-leader-table tbody tr.dashboard-leader-row td {
+      transition: background .18s ease;
+    }
+    .dashboard-leader-table tbody tr.dashboard-leader-row:hover td {
+      filter: brightness(.992);
+    }
+    .dashboard-leader-table tbody tr.leader-bg-today td {
+      background: linear-gradient(90deg, #ffffff 0%, #f8fbff 46%, #eff6ff 100%);
+    }
+    .dashboard-leader-table tbody tr.leader-bg-tomorrow td {
+      background: linear-gradient(90deg, #ffffff 0%, #f6fcff 46%, #edfaff 100%);
+    }
+    .dashboard-leader-table tbody tr.leader-bg-week td {
+      background: linear-gradient(90deg, #ffffff 0%, #fbf8ff 46%, #f5efff 100%);
+    }
+    .dashboard-leader-table tbody tr.leader-bg-month td {
+      background: linear-gradient(90deg, #ffffff 0%, #f5fff9 46%, #ecfbf3 100%);
+    }
+    .dashboard-leader-name,
+    .dashboard-leader-name b,
+    .dashboard-leader-name .leader-full,
+    .dashboard-leader-name .leader-short {
+      color: var(--navy) !important;
+      font-weight: 800;
+    }
+    .dashboard-leader-dot {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--blue);
+      margin-right: 6px;
+      vertical-align: middle;
+      flex-shrink: 0;
+      box-shadow: 0 0 0 2px rgba(255,255,255,.95);
+    }
     .btn-export-excel {
       background: #e8f5ee;
       color: #0b7a4b;
@@ -3031,11 +3068,10 @@ function renderDashboard(){
           <table class="tbl leader-table dashboard-leader-table">
             <thead><tr><th>Lãnh đạo</th><th class="${APP.dashPeriod==='today'?'th-active':''}">NAY</th><th class="${APP.dashPeriod==='tomorrow'?'th-active':''}">MAI</th><th class="${APP.dashPeriod==='week'?'th-active':''}">TUẦN</th><th class="${APP.dashPeriod==='month'?'th-active':''}">THÁNG</th><th class="${APP.dashPeriod==='year'?'th-active':''}">NĂM</th></tr></thead>
             <tbody>
-              ${leaderRows.map(x=>{
-                const _dc={'Phạm Quốc Hưng':'#0f4c81','Ngô Tùng Dương':'#b76b00','Bùi Ngọc Lợi':'#0b67b2','Nguyễn Cảnh Thắng':'#38a3d1'};
-                const _dot=_dc[x.name]||'#5f6b76';
-                return`<tr>
-                <td style="color:${_dot};font-weight:800"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${_dot};margin-right:6px;vertical-align:middle;flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,.9)"></span><b style="color:${_dot}"><span class="leader-full">Đ/c ${esc(x.name)}</span><span class="leader-short">${esc(x.short||('Đ/c '+x.name.split(' ').pop()))}</span></b></td>
+              ${leaderRows.map((x,i)=>{
+                const _bg=['leader-bg-today','leader-bg-tomorrow','leader-bg-week','leader-bg-month'][i%4];
+                return`<tr class="dashboard-leader-row ${_bg}">
+                <td class="dashboard-leader-name"><span class="dashboard-leader-dot"></span><b><span class="leader-full">Đ/c ${esc(x.name)}</span><span class="leader-short">${esc(x.short||('Đ/c '+x.name.split(' ').pop()))}</span></b></td>
                 <td class="dashboard-leader-num" onclick="openLeaderStatDetail('${esc(x.name)}','Đ/c ${esc(x.name)}','today')" title="Hôm nay">${x.today}</td>
                 <td class="dashboard-leader-num" onclick="openLeaderStatDetail('${esc(x.name)}','Đ/c ${esc(x.name)}','tomorrow')" title="Ngày mai">${x.tomorrow}</td>
                 <td class="dashboard-leader-num" onclick="openLeaderStatDetail('${esc(x.name)}','Đ/c ${esc(x.name)}','week')" title="Tuần này">${x.week}</td>
