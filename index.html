@@ -1605,6 +1605,41 @@
     }
     #screen-manage .tbl tr:nth-child(even) td { background: #fbfdff; }
     #screen-manage .tbl tr:hover td { background: #f2f8ff; }
+
+    /* V46: Chuẩn hóa typography bảng Quản lý lịch desktop - bỏ chữ đậm, đồng bộ cỡ chữ các cột chính */
+    #screen-manage .manage-table td,
+    #screen-manage .manage-table td.mono,
+    #screen-manage .manage-table td.nowrap,
+    #screen-manage .manage-table td:nth-child(3),
+    #screen-manage .manage-table td:nth-child(4) {
+      font-family: "Be Vietnam Pro", "Segoe UI", Arial, sans-serif !important;
+      font-size: .86rem !important;
+      font-weight: 500 !important;
+      color: #2d4056 !important;
+      line-height: 1.42;
+    }
+    #screen-manage .manage-title {
+      display: block;
+      color: #20364f !important;
+      font-size: .86rem !important;
+      line-height: 1.42;
+      font-weight: 500 !important;
+      letter-spacing: 0;
+    }
+    #screen-manage .manage-time {
+      color: #2d4056 !important;
+      font-size: .86rem !important;
+      font-weight: 500 !important;
+      line-height: 1.42;
+    }
+    #screen-manage .manage-meta {
+      color: #60758a;
+      font-size: .78rem;
+      font-weight: 400;
+    }
+    #screen-manage .manage-file-badge {
+      font-weight: 600;
+    }
     @media (max-width: 768px) {
       .manage-toolbar { display: grid; grid-template-columns: 1fr; gap: 8px; }
       .manage-toolbar .manage-search { width: 100%; }
@@ -3498,7 +3533,7 @@ function renderManageTable(){
     <tbody>${arr.length?arr.map(m=>`<tr>
       <td class="mono">${esc(m.meetingId)}</td>
       <td class="nowrap">${esc(dateVNShort(m.ngayHienThi||m.ngayBatDau))}<br><span class="manage-time">${esc(m.gioBatDau||'')}${m.gioKetThuc?'–'+esc(m.gioKetThuc):''}</span></td>
-      <td><b class="manage-title">${esc(m.noiDung)}</b>
+      <td><span class="manage-title">${esc(m.noiDung)}</span>
         <span class="manage-meta">📍 ${esc(m.diaDiem||'Chưa cập nhật địa điểm')}</span>
         ${manageFileBadgeHtml(m)}
       </td>
