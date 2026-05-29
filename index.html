@@ -2159,7 +2159,24 @@
       .m-dateline { margin-top: 0 !important; }
     }
 
-  </style>
+  
+
+    /* ===== V68: Module Trắc nghiệm nhúng trong Portal ===== */
+    .module-shell { display:flex; flex-direction:column; min-height:calc(100svh - 132px); background:#fff; border:1px solid var(--border2); border-radius:var(--r); box-shadow:var(--shadow-sm); overflow:hidden; }
+    .module-head { display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid var(--border2); background:linear-gradient(90deg,#f7fbff,#fff); }
+    .module-head h3 { flex:1; margin:0; font-size:.96rem; font-weight:800; color:var(--navy); text-transform:uppercase; letter-spacing:.35px; }
+    .module-frame-wrap { flex:1; min-height:680px; background:#f0f4fa; }
+    .module-frame { width:100%; height:100%; min-height:680px; border:0; display:block; background:#f0f4fa; }
+    .module-note { font-size:.76rem; color:var(--muted); padding:7px 14px; border-top:1px solid var(--border2); background:#f8fbff; }
+    @media(max-width:768px){
+      .module-shell { min-height:calc(100svh - 82px); border-radius:0; border-left:0; border-right:0; }
+      .module-head { padding:10px 12px; }
+      .module-head h3 { font-size:.88rem; }
+      .module-head .btn.sm { padding:7px 9px; font-size:.76rem; }
+      .module-frame-wrap, .module-frame { min-height:calc(100svh - 156px); }
+      .module-note { display:none; }
+    }
+</style>
 </head>
 <body>
 
@@ -2204,7 +2221,6 @@
       </div>
     </div>
     <nav class="nav">
-      <div class="nav-section-label">Chính</div>
       <button class="nav-btn" data-screen="dashboard" onclick="go('dashboard')">
         <span class="nav-icon">📊</span>
         <span class="nav-label">Tổng quan</span>
@@ -2226,14 +2242,17 @@
         <span class="nav-icon">📒</span>
         <span class="nav-label">Notebook</span>
       </button>
-      <div class="nav-section-label" id="navAdminSection">Quản trị</div>
+      <button class="nav-btn" data-screen="quiz" id="navQuiz" onclick="go('quiz')">
+        <span class="nav-icon">🧠</span>
+        <span class="nav-label">Trắc nghiệm kiến thức</span>
+      </button>
       <button class="nav-btn" data-screen="users" id="navUsers" onclick="go('users')">
         <span class="nav-icon">👥</span>
-        <span class="nav-label">Người dùng</span>
+        <span class="nav-label">Quản trị người dùng</span>
       </button>
       <button class="nav-btn" data-screen="settings" id="navSettings" onclick="go('settings')">
         <span class="nav-icon">⚙️</span>
-        <span class="nav-label">Danh mục</span>
+        <span class="nav-label">Quản trị danh mục</span>
       </button>
     </nav>
     <div class="side-foot">
@@ -2270,6 +2289,7 @@
       <section id="screen-manage" class="hide"></section>
       <section id="screen-library" class="hide"></section>
       <section id="screen-notebook" class="hide"></section>
+      <section id="screen-quiz" class="hide"></section>
       <section id="screen-users" class="hide"></section>
       <section id="screen-settings" class="hide"></section>
     </div>
@@ -2329,7 +2349,8 @@ const APP = {
   filters:{kw:'', leader:'all', scope:'CURRENT', kind:'ALL'},
   manageFilters:{kw:'', leader:'all', scope:'CURRENT', kind:'ALL', status:'all'},
   loadedAll:false, pendingFormFiles:[],
-  libraryStack:[], libraryCurrentUrl:'', detailFiles:[], noteUploadQueue:[], notebook:{kw:'', notes:[], loaded:false}
+  libraryStack:[], libraryCurrentUrl:'', detailFiles:[], noteUploadQueue:[], notebook:{kw:'', notes:[], loaded:false},
+  quizLoaded:false
 };
 
 // ===== PHÂN QUYỀN =====
@@ -2540,8 +2561,9 @@ function msgToastError(text){
 }
 
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v65_dashboard_row_band_folder_back_right';
+const APP_VERSION = 'HTML_v68_portal_quiz_module';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
+const QUIZ_MODULE_URL = 'https://vuquyhung-qni.github.io/tracnghiem/';
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
 function driveFolderEmbedUrl(folderId=DRIVE_LIBRARY_FOLDER_ID){
@@ -2890,7 +2912,12 @@ window.addEventListener('load',()=>{
   try{localStorage.removeItem('lct_token');localStorage.removeItem('lct_user');}catch(e){}
   APP.token=sessionStorage.getItem('lct_token')||'';
   const u=sessionStorage.getItem('lct_user');
-  if(APP.token&&u){APP.user=JSON.parse(u);showApp();refreshAll().catch(()=>showLogin())}
+  if(APP.token&&u){
+    APP.user=JSON.parse(u);
+    writePortalBridge();
+    showApp();
+    refreshAll().then(()=>handleInitialRoute()).catch(()=>showLogin());
+  }
   $('lgPass').addEventListener('keydown',e=>{if(e.key==='Enter')login()})
 });
 
@@ -2902,7 +2929,9 @@ async function login(){
     APP.token=res.token;APP.user=res.user;
     sessionStorage.setItem('lct_token',APP.token);
     sessionStorage.setItem('lct_user',JSON.stringify(APP.user));
+    writePortalBridge();
     showApp();await refreshAll();
+    await handleInitialRoute();
     if(res.user.isDefaultPass)alert('Tài khoản đang dùng mật khẩu mặc định. Vui lòng đổi mật khẩu.')
   }catch(e){msg($('loginMsg'),'Đăng nhập thất bại. Vui lòng kiểm tra lại tài khoản, mật khẩu hoặc thử lại sau.','err')}
 }
@@ -2979,7 +3008,7 @@ async function go(screen){
   document.querySelectorAll('.bn-item').forEach(b=>b.classList.toggle('active',b.dataset.screen===screen));
   document.querySelectorAll('[id^="screen-"]').forEach(s=>s.classList.add('hide'));
   $('screen-'+screen).classList.remove('hide');
-  const titles={dashboard:'TỔNG QUAN',calendar:'LỊCH CÔNG TÁC',manage:'QUẢN LÝ LỊCH',library:'THƯ VIỆN VĂN BẢN',notebook:'NOTEBOOK',users:'NGƯỜI DÙNG',settings:'DANH MỤC'};
+  const titles={dashboard:'TỔNG QUAN',calendar:'LỊCH CÔNG TÁC',manage:'QUẢN LÝ LỊCH',library:'THƯ VIỆN VĂN BẢN',notebook:'NOTEBOOK',quiz:'TRẮC NGHIỆM KIẾN THỨC',users:'QUẢN TRỊ NGƯỜI DÙNG',settings:'QUẢN TRỊ DANH MỤC'};
   $('pageTitle').textContent=titles[screen]||'';
   if(window.innerWidth<768)closeSide();
   await render();
@@ -3001,7 +3030,78 @@ function setLoading(){
   ['screen-dashboard','screen-calendar','screen-manage','screen-library','screen-notebook','screen-users','screen-settings']
     .forEach(id=>$(id).innerHTML='<div class="loading"><div class="spin"></div><span>Đang tải...</span></div>');
 }
-async function render(){renderDashboard();renderCalendar();renderManage();renderLibrary();await renderNotebook();await renderUsers();renderSettings();}
+
+function writePortalBridge(){
+  try{
+    if(!APP.user || !APP.token) return;
+    const bridge={
+      user: APP.user,
+      token: APP.token,
+      exp: Date.now()+2*60*60*1000,
+      source:'lichkv8'
+    };
+    localStorage.setItem('hqkv8_portal_bridge', JSON.stringify(bridge));
+  }catch(e){}
+}
+function getInitialRoute(){
+  try{
+    const p=new URLSearchParams(window.location.search||'');
+    const next=(p.get('next')||'').toLowerCase();
+    if(next==='quiz'||next==='tracnghiem') return 'quiz';
+    const h=(window.location.hash||'').replace(/^#/,'').toLowerCase();
+    if(h==='quiz'||h==='tracnghiem') return 'quiz';
+  }catch(e){}
+  return '';
+}
+async function handleInitialRoute(){
+  if(APP._handledInitialRoute) return;
+  const route=getInitialRoute();
+  if(!route) return;
+  APP._handledInitialRoute=true;
+  if(route==='quiz'){
+    writePortalBridge();
+    await go('quiz');
+    try{
+      const url=new URL(window.location.href);
+      url.searchParams.delete('next');
+      history.replaceState(null,'',url.pathname+url.search+url.hash);
+    }catch(e){}
+  }
+}
+function makeQuizUrl(){
+  writePortalBridge();
+  const u=new URL(QUIZ_MODULE_URL);
+  u.searchParams.set('embed','1');
+  u.searchParams.set('from','lichkv8');
+  return u.toString();
+}
+function reloadQuizModule(){
+  const f=$('quizFrame');
+  if(f){ f.src=makeQuizUrl()+'&_r='+Date.now(); }
+}
+function openQuizNewTab(){
+  writePortalBridge();
+  window.open(makeQuizUrl(), '_blank');
+}
+function renderQuizPortal(){
+  const box=$('screen-quiz'); if(!box) return;
+  if(APP.quizLoaded) return;
+  box.innerHTML=`<div class="module-shell">
+    <div class="module-head">
+      <button type="button" class="btn ghost sm" onclick="go('calendar')">← Lịch công tác</button>
+      <h3>🧠 Trắc nghiệm kiến thức</h3>
+      <button type="button" class="btn ghost sm" onclick="reloadQuizModule()">↻ Tải lại</button>
+      <button type="button" class="btn primary sm" onclick="openQuizNewTab()">↗ Tab mới</button>
+    </div>
+    <div class="module-frame-wrap">
+      <iframe id="quizFrame" class="module-frame" src="${makeQuizUrl()}" title="Trắc nghiệm kiến thức" loading="lazy"></iframe>
+    </div>
+    <div class="module-note">Module Trắc nghiệm chạy độc lập, được mở trong Portal Lịch công tác và nhận phiên đăng nhập nội bộ.</div>
+  </div>`;
+  APP.quizLoaded=true;
+}
+
+async function render(){renderDashboard();renderCalendar();renderManage();renderLibrary();await renderNotebook();renderQuizPortal();await renderUsers();renderSettings();}
 
 // ===== DASHBOARD =====
 function renderDashboard(){
@@ -4975,7 +5075,7 @@ function renderUsersTable(){
   $('screen-users').innerHTML=`
     <div class="panel">
       <div class="panel-h" style="flex-wrap:wrap;gap:8px">
-        <h3>👥 Người dùng (${filtered.length}/${users.length})</h3>
+        <h3>👥 Quản trị người dùng (${filtered.length}/${users.length})</h3>
         ${isSA?'<button class="btn primary sm" onclick="openUserForm()">＋ Thêm user</button>':''}
       </div>
       <div class="panel-b">
