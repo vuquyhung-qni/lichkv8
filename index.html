@@ -1434,6 +1434,229 @@
       .m-dateline { justify-content: flex-start; margin-top: 6px; }
       .login-body { padding: 20px 20px 26px; }
     }
+
+    /* ===== V43: Đồng bộ bộ lọc desktop và tinh chỉnh Quản lý lịch ===== */
+    @media (min-width: 769px) {
+      .cal-toolbar, .manage-toolbar {
+        display: flex !important;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: nowrap;
+        width: 100%;
+      }
+      .cal-toolbar .cal-search, .manage-toolbar .manage-search {
+        flex: 1 1 300px;
+        min-width: 240px;
+      }
+      .cal-toolbar .cal-leader-select, .manage-toolbar .manage-leader-select { width: 176px; min-width: 176px; }
+      .cal-toolbar .cal-scope-select, .manage-toolbar .manage-scope-select { width: 138px; min-width: 138px; }
+      .manage-toolbar .manage-status-select { width: 142px; min-width: 142px; }
+      .cal-toolbar .kind-seg, .manage-toolbar .kind-seg { flex: 0 0 auto; }
+      .cal-toolbar .kind-btn, .manage-toolbar .kind-btn { padding: 0 11px; min-width: 82px; }
+      .cal-toolbar .btn-add, .manage-toolbar .btn-add { min-width: 92px; justify-content: center; }
+    }
+    .manage-toolbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 13px;
+    }
+    .manage-toolbar .manage-search {
+      display: flex;
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-sm);
+      background: #fff;
+      overflow: hidden;
+      height: 38px;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .manage-toolbar .manage-search:focus-within {
+      border-color: var(--blue2);
+      box-shadow: 0 0 0 3px rgba(45,120,239,.12);
+    }
+    .manage-toolbar .manage-search input {
+      flex: 1;
+      min-width: 0;
+      border: 0;
+      outline: none;
+      background: transparent;
+      color: var(--text);
+      padding: 0 12px;
+      font-size: .88rem;
+      font-weight: 500;
+    }
+    .manage-toolbar .manage-search button {
+      border: 0;
+      background: linear-gradient(135deg, var(--blue), var(--blue2));
+      color: #fff;
+      padding: 0 13px;
+      font-size: .88rem;
+      font-weight: 800;
+    }
+    .manage-toolbar .manage-select {
+      height: 38px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-sm);
+      padding: 0 10px;
+      background: #fff;
+      color: var(--text2);
+      font-weight: 700;
+      font-size: .83rem;
+      outline: none;
+      cursor: pointer;
+      transition: border-color .2s;
+    }
+    .manage-toolbar .manage-select:focus { border-color: var(--blue2); }
+    .manage-toolbar .kind-seg {
+      display: inline-flex;
+      gap: 3px;
+      background: var(--bg2);
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-sm);
+      padding: 3px;
+      height: 38px;
+      flex-shrink: 0;
+    }
+    .manage-toolbar .kind-btn {
+      border: none;
+      border-radius: var(--r-xs);
+      height: 30px;
+      padding: 0 12px;
+      font-weight: 700;
+      font-size: .80rem;
+      background: transparent;
+      color: var(--text2);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all .18s;
+    }
+    .manage-toolbar .kind-btn:hover { background: rgba(21,86,200,.08); color: var(--blue); }
+    .manage-toolbar .kind-btn.active {
+      background: linear-gradient(135deg, var(--blue), var(--blue2));
+      color: #fff;
+      box-shadow: 0 3px 10px rgba(21,86,200,.25);
+    }
+    #screen-manage .panel-h {
+      background: linear-gradient(90deg, #f7fbff 0%, #ffffff 100%);
+      border-bottom: 1px solid #dbe8f5;
+    }
+    #screen-manage .panel-h h3 {
+      font-size: .98rem;
+      font-weight: 800;
+      color: var(--navy);
+      letter-spacing: .15px;
+    }
+    #screen-manage .tbl {
+      font-size: .86rem;
+      color: var(--text2);
+    }
+    #screen-manage .tbl th {
+      background: #edf5fc;
+      color: #47627d;
+      font-size: .69rem;
+      font-weight: 800;
+      letter-spacing: .45px;
+    }
+    #screen-manage .tbl td {
+      padding: 10px 11px;
+      color: #2d4056;
+      font-weight: 500;
+    }
+    #screen-manage .tbl td b.manage-title {
+      display: block;
+      color: var(--navy);
+      font-size: .88rem;
+      line-height: 1.35;
+      font-weight: 750;
+    }
+    #screen-manage .manage-meta {
+      display: inline-block;
+      color: #60758a;
+      font-size: .76rem;
+      line-height: 1.35;
+      margin-top: 3px;
+      font-weight: 500;
+    }
+    #screen-manage .manage-time {
+      color: #47627d;
+      font-size: .76rem;
+      font-weight: 650;
+    }
+    #screen-manage .manage-actions {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+      justify-content: flex-start;
+      align-items: center;
+    }
+    #screen-manage .manage-file-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--blue);
+      background: #eef6ff;
+      border: 1px solid #d7e9fb;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: .72rem;
+      font-weight: 800;
+      margin-top: 4px;
+    }
+    #screen-manage .tbl tr:nth-child(even) td { background: #fbfdff; }
+    #screen-manage .tbl tr:hover td { background: #f2f8ff; }
+    @media (max-width: 768px) {
+      .manage-toolbar { display: grid; grid-template-columns: 1fr; gap: 8px; }
+      .manage-toolbar .manage-search { width: 100%; }
+      .manage-toolbar .manage-select, .manage-toolbar .kind-seg { width: 100%; }
+      .manage-toolbar .kind-btn { flex: 1; }
+    }
+
+
+
+    /* ===== V44: Xuất Excel Quản lý lịch + tối ưu Tổng quan mobile ===== */
+    .desktop-only-inline { display: inline-flex !important; }
+    .dashboard-year-total-grid { grid-template-columns: repeat(4, 1fr); }
+    .dashboard-leader-table th,
+    .dashboard-leader-table td { text-align: center; }
+    .dashboard-leader-table th:first-child,
+    .dashboard-leader-table td:first-child { text-align: left; }
+    .dashboard-leader-num {
+      cursor: pointer;
+      color: var(--blue);
+      font-weight: 800;
+      font-size: .86rem;
+    }
+    .dashboard-leader-num:hover { text-decoration: underline; }
+    .btn-export-excel {
+      background: #e8f5ee;
+      color: #0b7a4b;
+      border: 1.5px solid #bfdfcf;
+      box-shadow: none;
+    }
+    .btn-export-excel:hover { background:#dff1e8; color:#075f3b; }
+    @media (max-width: 768px) {
+      .desktop-only-inline { display: none !important; }
+      .dashboard-year-total-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+      .dashboard-mobile-hide { display: none !important; }
+      .dashboard-leader-table th,
+      .dashboard-leader-table td {
+        font-size: .72rem;
+        padding: 8px 5px;
+        white-space: nowrap;
+      }
+      .dashboard-leader-table th:first-child,
+      .dashboard-leader-table td:first-child {
+        min-width: 72px;
+        max-width: 88px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .dashboard-leader-num { font-size: .78rem; }
+      #screen-dashboard .stat-card { min-height: 98px; display:flex; flex-direction:column; justify-content:center; }
+      #screen-dashboard .stat-v { font-size: 1.72rem; }
+    }
+
   </style>
 </head>
 <body>
@@ -1594,6 +1817,7 @@ const APP = {
   token:'', user:null, setup:{}, depts:[], usersLite:[], meetings:[],
   dashboard:null, currentScreen:'calendar', dashPeriod:'week',
   filters:{kw:'', leader:'all', scope:'CURRENT', kind:'ALL'},
+  manageFilters:{kw:'', leader:'all', scope:'CURRENT', kind:'ALL', status:'all'},
   loadedAll:false, pendingFormFiles:[],
   libraryStack:[], libraryCurrentUrl:'', detailFiles:[]
 };
@@ -1618,7 +1842,7 @@ function hasRole(list){
   return list.some(x=>x.toLowerCase()===r);
 }
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v35_bulk_migrate_no_timeout';
+const APP_VERSION = 'HTML_v37A_manual_single_legacy_sync';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
@@ -1725,7 +1949,7 @@ function api(action, payload={}) {
   return new Promise((resolve, reject) => {
     const cbName = '_cb_' + Date.now() + Math.random().toString(36).slice(2);
     const script = document.createElement('script');
-    const timeoutMs = ['migrateAllMeetingLegacyFiles','getLegacyMigrationStatus','migrateMeetingLegacyFiles'].includes(action) ? 180000 : (action === 'librarySearchFiles' ? 90000 : 30000);
+    const timeoutMs = ['migrateMeetingLegacyFiles','migrateOneMeetingLegacyFiles'].includes(action) ? 330000 : (['migrateAllMeetingLegacyFiles','getLegacyMigrationStatus'].includes(action) ? 180000 : (action === 'librarySearchFiles' ? 90000 : 30000));
     const timer = setTimeout(() => {
       cleanup();
       reject(new Error('Timeout — GAS không phản hồi. Với đồng bộ tài liệu cũ, hãy dùng bản V35 và chạy lô nhỏ.'));
@@ -2105,7 +2329,7 @@ function renderDashboard(){
       .replace(/\s+/g,' ').trim();
   }
   const leaderMap={};
-  LEADERS.forEach(l=>{ leaderMap[l.name]={...l,week:0,month:0,year:0}; });
+  LEADERS.forEach(l=>{ leaderMap[l.name]={...l,today:0,tomorrow:0,week:0,month:0,year:0}; });
   nonTrucBan.forEach(m=>{
     const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;
     if(!s)return;
@@ -2118,9 +2342,13 @@ function renderDashboard(){
         if(matched.has(l.name))return;
         if(pn===normName(l.name)||pn.includes(normName(l.name))||normName(l.name).includes(pn)){
           matched.add(l.name);
+          const inToday=s<=now&&e>=now;
+          const inTomorrow=s<=tomorrowEnd&&e>=tomorrowStart;
           const inWeek=s<=wEnd&&e>=wStart;
           const inMonth=s<=mEnd&&e>=mStart;
           const inYear=s<=yEnd&&e>=yStart;
+          if(inToday)leaderMap[l.name].today++;
+          if(inTomorrow)leaderMap[l.name].tomorrow++;
           if(inWeek)leaderMap[l.name].week++;
           if(inMonth)leaderMap[l.name].month++;
           if(inYear)leaderMap[l.name].year++;
@@ -2139,29 +2367,30 @@ function renderDashboard(){
       ${statCardClickable('Trong tháng',countMonth,'Lịch họp tháng '+String(now.getMonth()+1)+'/'+now.getFullYear(),'month')}
     </div>
     <div class="sp"></div>
-    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
+    <div class="stats-grid dashboard-year-total-grid">
       ${statCardClickable('Trong năm',countYear,(isFullData?'':'⏳ ')+'Năm '+now.getFullYear(),'year')}
       ${statCard('Tổng',d.total||0,'Tất cả lịch','stat-total')}
-      ${statCard('Đã duyệt',d.published||0,'Trạng thái PUBLISHED','stat-published')}
-      ${statCard('Đã hủy',d.cancelled||0,'Trạng thái CANCELLED','stat-cancelled')}
+      <div class="dashboard-mobile-hide">${statCard('Đã duyệt',d.published||0,'Trạng thái PUBLISHED','stat-published')}</div>
+      <div class="dashboard-mobile-hide">${statCard('Đã hủy',d.cancelled||0,'Trạng thái CANCELLED','stat-cancelled')}</div>
     </div>
     <div class="sp"></div>
     <div class="panel">
       <div class="panel-h"><h3>📊 Thống kê lãnh đạo</h3></div>
       <div class="panel-b">
         <div class="table-wrap">
-          <table class="tbl leader-table">
-            <thead><tr><th>Lãnh đạo</th><th class="${APP.dashPeriod==='week'?'th-active':''}">Tuần</th><th class="${APP.dashPeriod==='month'?'th-active':''}">Tháng</th><th class="${APP.dashPeriod==='year'||APP.dashPeriod==='today'?'th-active':''}">Năm</th><th style="text-align:left;min-width:100px">Tỷ trọng</th></tr></thead>
+          <table class="tbl leader-table dashboard-leader-table">
+            <thead><tr><th>Lãnh đạo</th><th class="${APP.dashPeriod==='today'?'th-active':''}">NAY</th><th class="${APP.dashPeriod==='tomorrow'?'th-active':''}">MAI</th><th class="${APP.dashPeriod==='week'?'th-active':''}">TUẦN</th><th class="${APP.dashPeriod==='month'?'th-active':''}">THÁNG</th><th class="${APP.dashPeriod==='year'?'th-active':''}">NĂM</th></tr></thead>
             <tbody>
               ${leaderRows.map(x=>{
                 const _dc={'Phạm Quốc Hưng':'#0f4c81','Ngô Tùng Dương':'#b76b00','Bùi Ngọc Lợi':'#0b67b2','Nguyễn Cảnh Thắng':'#38a3d1'};
                 const _dot=_dc[x.name]||'#5f6b76';
                 return`<tr>
                 <td style="color:${_dot};font-weight:800"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${_dot};margin-right:6px;vertical-align:middle;flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,.9)"></span><b style="color:${_dot}"><span class="leader-full">Đ/c ${esc(x.name)}</span><span class="leader-short">${esc(x.short||('Đ/c '+x.name.split(' ').pop()))}</span></b></td>
-                <td style="cursor:pointer;color:var(--blue);font-weight:600" onclick="openLeaderStatDetail('${esc(x.name)}','Đ/c ${esc(x.name)}','week')" title="Bấm để xem danh sách">${x.week}</td>
-                <td style="cursor:pointer;color:var(--blue);font-weight:600" onclick="openLeaderStatDetail('${esc(x.name)}','Đ/c ${esc(x.name)}','month')" title="Bấm để xem danh sách">${x.month}</td>
-                <td style="cursor:pointer;color:var(--blue);font-weight:700" onclick="openLeaderStatDetail('${esc(x.name)}','Đ/c ${esc(x.name)}','year')" title="Bấm để xem danh sách"><b>${x.year}</b></td>
-                <td><div class="barline"><span style="width:${Math.min(100,Math.round(x.year*100/maxYear))}%"></span></div></td>
+                <td class="dashboard-leader-num" onclick="openLeaderStatDetail('${esc(x.name)}','Đ/c ${esc(x.name)}','today')" title="Hôm nay">${x.today}</td>
+                <td class="dashboard-leader-num" onclick="openLeaderStatDetail('${esc(x.name)}','Đ/c ${esc(x.name)}','tomorrow')" title="Ngày mai">${x.tomorrow}</td>
+                <td class="dashboard-leader-num" onclick="openLeaderStatDetail('${esc(x.name)}','Đ/c ${esc(x.name)}','week')" title="Tuần này">${x.week}</td>
+                <td class="dashboard-leader-num" onclick="openLeaderStatDetail('${esc(x.name)}','Đ/c ${esc(x.name)}','month')" title="Tháng này">${x.month}</td>
+                <td class="dashboard-leader-num" onclick="openLeaderStatDetail('${esc(x.name)}','Đ/c ${esc(x.name)}','year')" title="Năm nay"><b>${x.year}</b></td>
               </tr>`}).join('')}
             </tbody>
           </table>
@@ -2196,6 +2425,8 @@ function openStatDetail(period, label){
   APP.dashPeriod=period;
   renderDashboard();
   const today=new Date(); today.setHours(0,0,0,0);
+  const tomorrowStart=new Date(today); tomorrowStart.setDate(today.getDate()+1); tomorrowStart.setHours(0,0,0,0);
+  const tomorrowEnd=new Date(tomorrowStart); tomorrowEnd.setHours(23,59,59,999);
   const[wStart,wEnd]=weekRange(today);
   const mStart=new Date(today.getFullYear(),today.getMonth(),1);
   const mEnd=new Date(today.getFullYear(),today.getMonth()+1,0,23,59,59,999);
@@ -2245,6 +2476,8 @@ function miniCountTable(obj,labelFn,clickType){
 }
 function openLeaderStatDetail(leaderName, leaderShort, period){
   const today=new Date(); today.setHours(0,0,0,0);
+  const tomorrowStart=new Date(today); tomorrowStart.setDate(today.getDate()+1); tomorrowStart.setHours(0,0,0,0);
+  const tomorrowEnd=new Date(tomorrowStart); tomorrowEnd.setHours(23,59,59,999);
   const[wStart,wEnd]=weekRange(today);
   const mStart=new Date(today.getFullYear(),today.getMonth(),1);
   const mEnd=new Date(today.getFullYear(),today.getMonth()+1,0,23,59,59,999);
@@ -2273,13 +2506,15 @@ function openLeaderStatDetail(leaderName, leaderShort, period){
     if(!matchLeader(m))return false;
     const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;
     if(!s)return false;
+    if(period==='today')return s<=today&&e>=today;
+    if(period==='tomorrow')return s<=tomorrowEnd&&e>=tomorrowStart;
     if(period==='week')return s<=wEnd&&e>=wStart;
     if(period==='month')return s<=mEnd&&e>=mStart;
     if(period==='year')return s<=yEnd&&e>=yStart;
     return true;
   });
   arr.sort((a,b)=>{const sa=parseIsoDate(a.ngayBatDau)||new Date(0),sb=parseIsoDate(b.ngayBatDau)||new Date(0);return sa-sb;});
-  const periodLabel={week:'Tu\u1ea7n n\xe0y',month:'Th\xe1ng n\xe0y',year:'N\u0103m nay'}[period]||period;
+  const periodLabel={today:'Hôm nay',tomorrow:'Ngày mai',week:'Tuần này',month:'Tháng này',year:'Năm nay'}[period]||period;
   const cards=arr.length?meetingCards(arr,true):'<div class="empty">Kh\xf4ng c\xf3 l\u1ecbch.</div>';
   showModal('<h3>\ud83d\udccb '+esc(leaderShort)+' \u2014 '+periodLabel+' \u2014 '+arr.length+' l\u1ecbch</h3>',
     '<div style="max-height:60vh;overflow:auto">'+cards+'</div>'+
@@ -2940,7 +3175,6 @@ function renderCalendar(){
         <input id="calKwM" placeholder="Tìm nội dung, địa điểm, chủ trì..." value="${esc(f.kw)}" oninput="syncCalendarKw('calKwM');applyCalendarFilters(false)" onkeydown="if(event.key==='Enter')applyCalendarFilters()">
         <button onclick="applyCalendarFilters()">🔍</button>
       </div>
-      <button class="btn sm" onclick="clearCalendarFilters()" title="Xóa điều kiện lọc" style="white-space:nowrap">↺</button>
       ${hasRole(ROLE_EDIT)?'<button class="btn primary sm" onclick="openMeetingForm()" style="white-space:nowrap">＋ Thêm</button>':''}
     </div>
     <div class="cal-filter-row">
@@ -2955,11 +3189,11 @@ function renderCalendar(){
         <input id="calKw" placeholder="Tìm nội dung, địa điểm, chủ trì..." value="${esc(f.kw)}" oninput="syncCalendarKw('calKw');applyCalendarFilters(false)" onkeydown="if(event.key==='Enter')applyCalendarFilters()">
         <button onclick="applyCalendarFilters()">🔍</button>
       </div>
-      <select id="calLeader" class="cal-select" onchange="applyCalendarFilters()">
+      <select id="calLeader" class="cal-select cal-leader-select" onchange="applyCalendarFilters()">
         <option value="all">👤 Tất cả lãnh đạo</option>
         ${leaderOptions(f.leader)}
       </select>
-      <select id="calScope" class="cal-select" onchange="changeScope(this.value)">
+      <select id="calScope" class="cal-select cal-scope-select" onchange="changeScope(this.value)">
         <option value="CURRENT" ${f.scope==='CURRENT'?'selected':''}>⏳ Hiện thời</option>
         <option value="WEEK" ${f.scope==='WEEK'?'selected':''}>📅 Tuần này</option>
         <option value="MONTH" ${f.scope==='MONTH'?'selected':''}>🗓 Tháng này</option>
@@ -2970,7 +3204,6 @@ function renderCalendar(){
         <button class="kind-btn ${f.kind==='HOP'?'active':''}" onclick="setCalendarKind('HOP')">🏛 Lịch Họp</button>
         <button class="kind-btn ${f.kind==='TRUC_BAN'?'active':''}" onclick="setCalendarKind('TRUC_BAN')">📋 Trực ban</button>
       </div>
-      <button class="btn sm" onclick="clearCalendarFilters()" title="Xóa điều kiện lọc">↺ Xóa lọc</button>
       ${hasRole(ROLE_EDIT)?'<button class="btn-add" onclick="openMeetingForm()">＋ Thêm</button>':''}
     </div>
 
@@ -3030,6 +3263,8 @@ function applyCalendarFilters(read=true){
   }
   const f=APP.filters;
   const today=new Date();today.setHours(0,0,0,0);
+  const tomorrowStart=new Date(today); tomorrowStart.setDate(today.getDate()+1); tomorrowStart.setHours(0,0,0,0);
+  const tomorrowEnd=new Date(tomorrowStart); tomorrowEnd.setHours(23,59,59,999);
   const[wStart,wEnd]=weekRange(today);
   const mStart=new Date(today.getFullYear(),today.getMonth(),1);
   const mEnd=new Date(today.getFullYear(),today.getMonth()+1,0,23,59,59,999);
@@ -3113,44 +3348,196 @@ function meetingCards(arr,compact){
 // ===== MANAGE =====
 function renderManage(){
   const can=hasRole(ROLE_EDIT);
+  const f=APP.manageFilters||{kw:'',leader:'all',scope:'CURRENT',kind:'ALL',status:'all'};
   $('screen-manage').innerHTML=`
     <div class="panel">
       <div class="panel-h">
-        <h3>📋 Danh sách lịch</h3>
-        ${canBulkLegacySync()?'<button class="btn warn sm" onclick="openBulkLegacyMigration()">🔁 Đồng bộ TL cũ</button>':''}
+        <h3>📋 Quản lý lịch công tác</h3>
+        <button class="btn sm btn-export-excel desktop-only-inline" onclick="exportManageExcel()">📥 Xuất Excel</button>
+        ${canBulkLegacySync()?'<button class="btn ghost sm" onclick="openBulkLegacyMigration()">🔎 Rà soát TL cũ</button>':''}
         ${can?'<button class="btn primary sm" onclick="openMeetingForm()">＋ Thêm lịch</button>':''}
       </div>
       <div class="panel-b">
-        <div class="toolbar">
-          <input id="mgKw" placeholder="Tìm ID, nội dung, địa điểm, chủ trì..." oninput="renderManageTable()">
-          <select id="mgStatus" onchange="renderManageTable()">
-            <option value="all">Tất cả trạng thái</option>
-            ${options('TRANG_THAI_LICH')}
+        <div class="manage-toolbar">
+          <div class="manage-search">
+            <input id="mgKw" placeholder="Tìm ID, nội dung, địa điểm, chủ trì..." value="${esc(f.kw||'')}" oninput="applyManageFilters(false)" onkeydown="if(event.key==='Enter')applyManageFilters()">
+            <button onclick="applyManageFilters()">🔍</button>
+          </div>
+          <select id="mgLeader" class="manage-select manage-leader-select" onchange="applyManageFilters()">
+            <option value="all">👤 Tất cả lãnh đạo</option>
+            ${leaderOptions(f.leader||'all')}
           </select>
+          <select id="mgScope" class="manage-select manage-scope-select" onchange="changeManageScope(this.value)">
+            <option value="CURRENT" ${(f.scope||'CURRENT')==='CURRENT'?'selected':''}>⏳ Hiện thời</option>
+            <option value="WEEK" ${f.scope==='WEEK'?'selected':''}>📅 Tuần này</option>
+            <option value="MONTH" ${f.scope==='MONTH'?'selected':''}>🗓 Tháng này</option>
+            <option value="YEAR" ${f.scope==='YEAR'?'selected':''}>📆 Năm nay</option>
+            <option value="ALL" ${f.scope==='ALL'?'selected':''}>📂 Toàn bộ</option>
+          </select>
+          <div class="kind-seg">
+            <button class="kind-btn ${(f.kind||'ALL')==='ALL'?'active':''}" onclick="setManageKind('ALL')">📂 Tất cả</button>
+            <button class="kind-btn ${f.kind==='HOP'?'active':''}" onclick="setManageKind('HOP')">🏛 Lịch họp</button>
+            <button class="kind-btn ${f.kind==='TRUC_BAN'?'active':''}" onclick="setManageKind('TRUC_BAN')">📋 Trực ban</button>
+          </div>
+          <select id="mgStatus" class="manage-select manage-status-select" onchange="applyManageFilters()">
+            <option value="all">Tất cả trạng thái</option>
+            ${options('TRANG_THAI_LICH',f.status||'all')}
+          </select>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin:-4px 0 8px">
+          <span id="mgCount" class="filter-note"></span>
         </div>
         <div id="mgTable"></div>
       </div>
     </div>`;
   renderManageTable();
 }
+function readManageFilters(){
+  APP.manageFilters=APP.manageFilters||{kw:'',leader:'all',scope:'CURRENT',kind:'ALL',status:'all'};
+  const f=APP.manageFilters;
+  f.kw=($('mgKw')?.value||f.kw||'').trim();
+  f.leader=$('mgLeader')?.value||f.leader||'all';
+  f.scope=$('mgScope')?.value||f.scope||'CURRENT';
+  f.status=$('mgStatus')?.value||f.status||'all';
+  f.kind=f.kind||'ALL';
+  return f;
+}
+function applyManageFilters(read=true){
+  if(read)readManageFilters();
+  else{
+    APP.manageFilters=APP.manageFilters||{kw:'',leader:'all',scope:'CURRENT',kind:'ALL',status:'all'};
+    if($('mgKw'))APP.manageFilters.kw=$('mgKw').value.trim();
+  }
+  renderManageTable();
+}
+async function changeManageScope(scope){
+  APP.manageFilters=APP.manageFilters||{kw:'',leader:'all',scope:'CURRENT',kind:'ALL',status:'all'};
+  APP.manageFilters.scope=scope;
+  if(scope!=='CURRENT'&&!APP.allMeetings&&!APP._loadingAll){
+    APP._loadingAll=true;
+    if($('mgTable'))$('mgTable').innerHTML='<div class="loading"><div class="spin"></div><span>Đang tải dữ liệu lịch...</span></div>';
+    try{const res=await api('getMeetings',{showPast:true,limit:5000});APP.allMeetings=res.meetings||[];}
+    catch(e){alert(e.message||'Không tải được dữ liệu lịch.');}
+    finally{APP._loadingAll=false;}
+  }
+  renderManageTable();
+}
+function setManageKind(kind){
+  APP.manageFilters=APP.manageFilters||{kw:'',leader:'all',scope:'CURRENT',kind:'ALL',status:'all'};
+  APP.manageFilters.kind=kind;
+  if($('screen-manage')&&!$('screen-manage').classList.contains('hide'))renderManage();
+}
+function manageFilteredMeetings(){
+  const f=readManageFilters();
+  const today=new Date();today.setHours(0,0,0,0);
+  const tomorrowStart=new Date(today); tomorrowStart.setDate(today.getDate()+1); tomorrowStart.setHours(0,0,0,0);
+  const tomorrowEnd=new Date(tomorrowStart); tomorrowEnd.setHours(23,59,59,999);
+  const[wStart,wEnd]=weekRange(today);
+  const mStart=new Date(today.getFullYear(),today.getMonth(),1);
+  const mEnd=new Date(today.getFullYear(),today.getMonth()+1,0,23,59,59,999);
+  const yStart=new Date(today.getFullYear(),0,1);
+  const yEnd=new Date(today.getFullYear(),11,31,23,59,59,999);
+  const src=(f.scope==='CURRENT')?APP.meetings:(APP.allMeetings||APP.meetings);
+  if(f.scope!=='CURRENT'&&!APP.allMeetings&&!APP._loadingAll){
+    APP._loadingAll=true;
+    api('getMeetings',{showPast:true,limit:5000}).then(res=>{APP.allMeetings=res.meetings||[];APP._loadingAll=false;renderManageTable();}).catch(()=>{APP._loadingAll=false;});
+  }
+  return src.filter(m=>{
+    const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;
+    if(f.scope==='CURRENT'&&e&&e<today)return false;
+    if(f.scope==='WEEK'&&(!s||!e||e<wStart||s>wEnd))return false;
+    if(f.scope==='MONTH'&&(!s||!e||s>mEnd||e<mStart))return false;
+    if(f.scope==='YEAR'&&(!s||!e||s>yEnd||e<yStart))return false;
+    const isGB=isGiaoBanMeeting(m);
+    if(f.kind==='TRUC_BAN'&&!isGB)return false;
+    if(f.kind==='HOP'&&isGB)return false;
+    if(f.leader!=='all'&&!matchLeaderExact(m,f.leader))return false;
+    if(f.status!=='all'&&m.trangThai!==f.status)return false;
+    if(f.kw){
+      const hay=`${m.meetingId||''} ${m.noiDung||''} ${m.diaDiem||''} ${m.chuTri||''} ${m.lanhDaoLienQuan||''} ${m.thanhPhan||''} ${m.soVanBan||''} ${m.ghiChu||''}`;
+      if(!smartMatch(hay,f.kw))return false;
+    }
+    return true;
+  }).sort((a,b)=>dateKeyClient(a.ngayBatDau)-dateKeyClient(b.ngayBatDau)||(a.gioBatDau||'').localeCompare(b.gioBatDau||'')||(a.meetingId||'').localeCompare(b.meetingId||''));
+}
+function dateKeyClient(v){const d=parseIsoDate(v);return d?d.getTime():0;}
 function renderManageTable(){
-  const kw=($('mgKw')?.value||'').toLowerCase(),st=$('mgStatus')?.value||'all';
-  let arr=APP.meetings.filter(m=>(st==='all'||m.trangThai===st)&&(!kw||smartMatch(`${m.meetingId||''} ${m.noiDung||''} ${m.diaDiem||''} ${m.chuTri||''} ${m.lanhDaoLienQuan||''} ${m.thanhPhan||''} ${m.soVanBan||''}`,kw)));
-  $('mgTable').innerHTML=`<div class="table-wrap"><table class="tbl">
-    <thead><tr><th>ID</th><th>Ngày / Giờ</th><th>Nội dung</th><th>Chủ trì</th><th>Trạng thái</th><th></th></tr></thead>
-    <tbody>${arr.map(m=>`<tr>
+  const arr=manageFilteredMeetings();
+  const f=APP.manageFilters||{};
+  if($('mgCount'))$('mgCount').textContent=`${arr.length} lịch · ${scopeLabel(f.scope||'CURRENT')}`;
+  $('mgTable').innerHTML=`<div class="table-wrap"><table class="tbl manage-table">
+    <thead><tr><th style="width:86px">ID</th><th style="width:126px">Ngày / Giờ</th><th>Nội dung</th><th style="width:170px">Chủ trì</th><th style="width:120px">Trạng thái</th><th style="width:210px">Thao tác</th></tr></thead>
+    <tbody>${arr.length?arr.map(m=>`<tr>
       <td class="mono">${esc(m.meetingId)}</td>
-      <td class="nowrap">${esc(dateVNShort(m.ngayHienThi||m.ngayBatDau))}<br><span class="muted" style="font-size:.78rem">${esc(m.gioBatDau)}–${esc(m.gioKetThuc)}</span></td>
-      <td><b>${esc(m.noiDung)}</b><br><span class="muted" style="font-size:.8rem">📍 ${esc(m.diaDiem)}</span></td>
-      <td>${esc(m.chuTri)}</td>
-      <td></td>
-      <td class="nowrap">
-        <button type="button" class="btn xs js-open-detail" data-action="open-detail" data-meeting-id="${esc(m.meetingId)}">Xem</button>
-        ${hasRole(ROLE_EDIT)?`<button type="button" class="btn primary xs js-edit-meeting" data-action="edit-meeting" data-meeting-id="${esc(m.meetingId)}">Sửa</button>`:''}
+      <td class="nowrap">${esc(dateVNShort(m.ngayHienThi||m.ngayBatDau))}<br><span class="manage-time">${esc(m.gioBatDau||'')}${m.gioKetThuc?'–'+esc(m.gioKetThuc):''}</span></td>
+      <td><b class="manage-title">${esc(m.noiDung)}</b>
+        <span class="manage-meta">📍 ${esc(m.diaDiem||'Chưa cập nhật địa điểm')}</span>
+        ${m.fileCount>0?`<br><span class="manage-file-badge">📎 ${esc(m.fileCount)} file</span>`:''}
       </td>
-    </tr>`).join('')}</tbody>
+      <td>${esc(m.chuTri||'')}</td>
+      <td><span class="pill status-${esc(m.trangThai||'DRAFT')}">${esc(statusLabel(m.trangThai||'DRAFT'))}</span></td>
+      <td class="nowrap"><div class="manage-actions">
+        <button type="button" class="btn xs js-open-detail" data-action="open-detail" data-meeting-id="${esc(m.meetingId)}">👁 Xem</button>
+        ${hasRole(ROLE_EDIT)?`<button type="button" class="btn primary xs js-edit-meeting" data-action="edit-meeting" data-meeting-id="${esc(m.meetingId)}">✏️ Sửa</button>`:''}
+        ${canBulkLegacySync()?`<button type="button" class="btn warn xs" id="btnSyncLegacy_${esc(m.meetingId)}" onclick="syncLegacyFilesFromManage('${esc(m.meetingId)}')">Đồng bộ TL</button>`:''}
+      </div></td>
+    </tr>`).join(''):'<tr><td colspan="6"><div class="empty">Không có lịch phù hợp với điều kiện lọc.</div></td></tr>'}</tbody>
   </table></div>`;
 }
+
+function exportManageExcel(){
+  const arr=manageFilteredMeetings();
+  if(!arr.length){ alert('Không có lịch phù hợp để xuất Excel.'); return; }
+  const f=APP.manageFilters||{};
+  const filterText=[
+    'Từ khóa: '+(f.kw||'Tất cả'),
+    'Lãnh đạo: '+(f.leader==='all'?'Tất cả':leaderFullName(f.leader||'')),
+    'Phạm vi: '+scopeLabel(f.scope||'CURRENT'),
+    'Loại lịch: '+(f.kind==='TRUC_BAN'?'Trực ban':(f.kind==='HOP'?'Lịch họp':'Tất cả')),
+    'Trạng thái: '+(f.status==='all'?'Tất cả':statusLabel(f.status||''))
+  ].join(' | ');
+  const cols=['STT','Mã lịch','Ngày hiển thị','Ngày bắt đầu','Ngày kết thúc','Thứ','Giờ bắt đầu','Giờ kết thúc','Loại lịch','Nội dung','Thành phần','Địa điểm','Chủ trì','Lãnh đạo liên quan','Đơn vị chuẩn bị','Số văn bản','Ghi chú','Trạng thái','Số file','Thư mục tài liệu'];
+  const rows=arr.map((m,i)=>[
+    i+1,
+    m.meetingId||'',
+    m.ngayHienThi||'',
+    m.ngayBatDau||'',
+    m.ngayKetThuc||'',
+    m.thu||'',
+    m.gioBatDau||'',
+    m.gioKetThuc||'',
+    typeLabel(m.loaiLich||''),
+    m.noiDung||'',
+    m.thanhPhan||'',
+    m.diaDiem||'',
+    m.chuTri||'',
+    m.lanhDaoLienQuan||'',
+    m.donViChuanBi||'',
+    m.soVanBan||'',
+    m.ghiChu||'',
+    statusLabel(m.trangThai||''),
+    m.fileCount||0,
+    m.linkFolder||m.folderId||m.fileFolderId||''
+  ]);
+  const safe=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+  const cell=v=>'<td style="vertical-align:top;border:1px solid #d9e3ec;padding:5px 7px">'+safe(v)+'</td>';
+  const th=v=>'<th style="background:#0f4c81;color:#fff;border:1px solid #0f4c81;padding:6px 7px;text-align:center">'+safe(v)+'</th>';
+  const html='<!doctype html><html><head><meta charset="UTF-8"></head><body>'+
+    '<h2 style="font-family:Arial;color:#063a63">QUẢN LÝ LỊCH CÔNG TÁC HQKV8</h2>'+
+    '<p style="font-family:Arial">'+safe(filterText)+'</p>'+
+    '<table style="border-collapse:collapse;font-family:Arial;font-size:10pt"><thead><tr>'+cols.map(th).join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+r.map(cell).join('')+'</tr>').join('')+'</tbody></table>'+
+    '</body></html>';
+  const blob=new Blob(['\ufeff',html],{type:'application/vnd.ms-excel;charset=utf-8'});
+  const a=document.createElement('a');
+  const now=new Date();
+  const pad=n=>String(n).padStart(2,'0');
+  a.href=URL.createObjectURL(blob);
+  a.download='Quan_ly_lich_cong_tac_HQKV8_'+now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate())+'_'+pad(now.getHours())+pad(now.getMinutes())+'.xls';
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
+}
+
+function statusLabel(v){return({DRAFT:'Nháp',PUBLISHED:'Đã đăng',CANCELLED:'Đã hủy',COMPLETED:'Hoàn thành'}[v]||v||'');}
 function options(key,selected){return optionsAny([key],selected)}
 const DEPT_LIST = [
   'Văn phòng',
@@ -3336,6 +3723,27 @@ async function syncLegacyFiles(id){
     await refreshAll();
     setTimeout(()=>openDetail(id),300);
   }catch(e){alert((e&&e.message)||String(e||'Không đồng bộ được tài liệu cũ.'))}
+}
+async function syncLegacyFilesFromManage(id){
+  if(!canBulkLegacySync()) { alert('Chỉ tài khoản Admin/SuperAdmin được đồng bộ tài liệu cũ.'); return; }
+  if(!id) { alert('Thiếu mã lịch cần đồng bộ.'); return; }
+  if(!confirm('Đồng bộ tài liệu cũ riêng cho lịch '+id+'?\n\nHệ thống sẽ chờ tối đa khoảng 5 phút 30 giây cho lịch này. Nên để nguyên cửa sổ cho đến khi có thông báo kết quả.')) return;
+  const btn=$('btnSyncLegacy_'+id);
+  const oldText=btn?btn.textContent:'';
+  if(btn){ btn.disabled=true; btn.textContent='Đang đồng bộ...'; }
+  const started=Date.now();
+  try{
+    const res=await api('migrateMeetingLegacyFiles',{meetingId:id,mode:'copy',hideLegacy:true});
+    const copied=Number(res&&res.copied||0), moved=Number(res&&res.moved||0), skipped=Number(res&&res.skipped||0);
+    const elapsed=Math.round((Date.now()-started)/1000);
+    alert((res&&res.msg?res.msg:'Đã đồng bộ tài liệu cũ.')+'\nLịch: '+id+'\nSao chép: '+copied+'; di chuyển: '+moved+'; bỏ qua: '+skipped+'; thời gian: '+elapsed+' giây.');
+    await refreshAll();
+    renderManageTable();
+  }catch(e){
+    alert('Không đồng bộ được tài liệu cũ cho '+id+'.\n'+((e&&e.message)||String(e||'')));
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent=oldText||'Đồng bộ TL'; }
+  }
 }
 function fileList(files){
   if(!files||!files.length)return'<div class="empty">Chưa có tài liệu.</div>';
@@ -3619,13 +4027,13 @@ function canBulkLegacySync(){
 }
 async function openBulkLegacyMigration(){
   showModal('<h3>🔁 Đồng bộ tài liệu cũ</h3>', `
-    <div class="msg">Chức năng này rà soát các dòng tài liệu cũ đang trỏ tới thư mục Drive, sao chép file về thư mục chuẩn của từng lịch <b>LHxxxx</b>, sau đó ẩn dòng link thư mục cũ để không đếm trùng. Bản V35 chạy theo lô nhỏ để tránh timeout Apps Script.</div>
+    <div class="msg">Chức năng này chỉ dùng để rà soát các dòng tài liệu cũ đang trỏ tới thư mục Drive. Để an toàn, vui lòng đồng bộ từng lịch bằng nút <b>Đồng bộ TL</b> ngay tại từng dòng trong bảng Quản lý lịch.</div>
     <div id="bulkMigStatus" class="msg">Đang kiểm tra dữ liệu...</div>
     <div id="bulkMigSample"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap">
       <button class="btn" onclick="closeModal()">Đóng</button>
       <button id="btnBulkDryRun" class="btn ghost" onclick="runBulkLegacyMigration(true)">🔎 Rà soát thử</button>
-      <button id="btnBulkRun" class="btn primary" onclick="runBulkLegacyMigration(false)">▶ Bắt đầu đồng bộ tất cả</button>
+      
     </div>
   `);
   await refreshBulkLegacyStatus();
