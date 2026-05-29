@@ -1757,6 +1757,156 @@
       .note-editor-content { min-height:55vh; }
     }
 
+
+    /* ===== V54: Tối ưu diện tích cửa sổ ghi chú ===== */
+    .note-modal-open.modal { padding: 8px !important; }
+    .note-modal-open .modal-card {
+      width: min(1500px, 98vw) !important;
+      height: min(900px, 96svh) !important;
+      max-height: 96svh !important;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .note-modal-open .modal-h {
+      flex: 0 0 auto;
+      padding: 11px 18px;
+    }
+    .note-modal-open .modal-b {
+      flex: 1 1 auto;
+      min-height: 0;
+      padding: 12px 18px 14px !important;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .note-editor-form {
+      height: 100%;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+    .note-editor-context {
+      flex: 0 0 auto;
+      padding: 8px 12px;
+      border-radius: 10px;
+      background: #edf3f9;
+      color: var(--text2);
+      font-size: .86rem;
+      line-height: 1.35;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .note-title-field {
+      flex: 0 0 auto;
+      margin-bottom: 0 !important;
+    }
+    .note-title-field label,
+    .note-content-field label,
+    .note-attach-field label {
+      margin-bottom: 5px;
+      font-size: .70rem;
+      letter-spacing: .45px;
+    }
+    .note-editor-title {
+      height: 40px;
+      padding: 8px 12px !important;
+    }
+    .note-content-field {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 0 !important;
+    }
+    .note-editor-content {
+      flex: 1 1 auto;
+      min-height: 0 !important;
+      height: auto !important;
+      resize: none;
+      font-size: .98rem;
+      line-height: 1.7;
+      padding: 14px 16px !important;
+    }
+    .note-editor-hint {
+      display: none !important;
+    }
+    .note-attach-field {
+      flex: 0 0 auto;
+      margin-bottom: 0 !important;
+    }
+    .note-attach-zone.note-attach-compact {
+      padding: 9px 12px;
+      border-radius: 10px;
+      font-size: .84rem;
+      line-height: 1.35;
+    }
+    .note-attach-zone.note-attach-compact .muted {
+      font-size: .72rem !important;
+    }
+    .note-editor-footer {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border2);
+    }
+    .note-editor-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+    #noteSaveMsg {
+      min-width: 220px;
+      flex: 1 1 auto;
+    }
+    #noteSaveMsg .msg {
+      margin: 0;
+      padding: 8px 11px;
+      font-size: .82rem;
+    }
+    @media (max-width: 768px) {
+      .note-modal-open.modal { padding: 4px !important; }
+      .note-modal-open .modal-card {
+        width: 100vw !important;
+        height: 97svh !important;
+        max-height: 97svh !important;
+        border-radius: 14px;
+      }
+      .note-modal-open .modal-b {
+        padding: 10px 12px 12px !important;
+      }
+      .note-editor-context {
+        font-size: .78rem;
+      }
+      .note-editor-title {
+        height: 38px;
+      }
+      .note-editor-content {
+        font-size: .94rem;
+      }
+      .note-editor-footer {
+        align-items: stretch;
+        flex-direction: column;
+      }
+      .note-editor-actions {
+        width: 100%;
+      }
+      .note-editor-actions .btn {
+        flex: 1;
+        justify-content: center;
+      }
+      #noteSaveMsg {
+        min-width: 0;
+        width: 100%;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -3863,7 +4013,24 @@ function notePlainText(s, max=220){
   const t=String(s||'').replace(/\s+/g,' ').trim();
   return t.length>max ? t.slice(0,max-1)+'…' : t;
 }
-function noteTimeLabel(n){return esc(n.updatedAt||n.createdAt||'');}
+function noteDateOnlyLabel(v){
+  const s=String(v||'').trim();
+  if(!s)return '';
+  let m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(m)return `${String(m[1]).padStart(2,'0')}/${String(m[2]).padStart(2,'0')}/${m[3]}`;
+  m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m)return `${String(m[3]).padStart(2,'0')}/${String(m[2]).padStart(2,'0')}/${m[1]}`;
+  const d=new Date(s);
+  if(!isNaN(d.getTime())){
+    try{
+      return new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',day:'2-digit',month:'2-digit',year:'numeric'}).format(d);
+    }catch(e){
+      return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+    }
+  }
+  return s.replace(/\s+\d{1,2}:\d{2}(:\d{2})?.*$/,'');
+}
+function noteTimeLabel(n){return esc(noteDateOnlyLabel(n.updatedAt||n.createdAt||''));}
 function noteFileIcon(name,mime){
   const n=String(name||'').toLowerCase(); const m=String(mime||'').toLowerCase();
   if(m.startsWith('image/')||n.match(/\.(png|jpg|jpeg|gif|webp)$/))return '🖼️';
@@ -4071,16 +4238,31 @@ async function openNoteEditor(meetingId='', meetingTitle='', noteId=null){
   const titleVal=note?note.title:(meetingId?('Ghi chú '+meetingId):'');
   const contentVal=note?note.content:'';
   showModal(`<h3>📒 ${noteId?'Sửa ghi chú':'Tạo ghi chú'}</h3>`,`
-    <div style="display:grid;gap:14px">
-      ${meetingId?`<div class="msg">Ghi chú gắn với lịch <b>${esc(meetingId)}</b>${meetingTitle?': '+esc(notePlainText(meetingTitle,140)):''}</div>`:'<div class="msg">Ghi chú độc lập, không gắn với lịch công tác.</div>'}
-      <div class="field"><label>Tiêu đề</label><input id="noteTitle" class="note-editor-title" value="${esc(titleVal)}" placeholder="Nhập tiêu đề ghi chú"></div>
-      <div class="field"><label>Nội dung ghi chú</label><textarea id="noteContent" class="note-editor-content" placeholder="Ghi nội dung cuộc họp, ý kiến chỉ đạo, việc cần theo dõi...">${esc(contentVal)}</textarea><div class="hint">Ghi chú dài sẽ tự lưu phần nội dung đầy đủ vào Drive để tránh giới hạn ô Google Sheet.</div></div>
+    <div class="note-editor-form">
+      <div class="note-editor-context">
+        ${meetingId?`Ghi chú gắn với lịch <b>${esc(meetingId)}</b>${meetingTitle?': '+esc(notePlainText(meetingTitle,160)):''}`:'Ghi chú độc lập, không gắn với lịch công tác.'}
+      </div>
+      <div class="field note-title-field">
+        <label>Tiêu đề</label>
+        <input id="noteTitle" class="note-editor-title" value="${esc(titleVal)}" placeholder="Nhập tiêu đề ghi chú">
+      </div>
+      <div class="field note-content-field">
+        <label>Nội dung ghi chú</label>
+        <textarea id="noteContent" class="note-editor-content" placeholder="Ghi nội dung cuộc họp, ý kiến chỉ đạo, việc cần theo dõi...">${esc(contentVal)}</textarea>
+        <div class="hint note-editor-hint">Ghi chú dài sẽ tự lưu phần nội dung đầy đủ vào Drive để tránh giới hạn ô Google Sheet.</div>
+      </div>
       ${noteFilesHtml((note&&note.files)||[], !!(note&&note.canEdit))}
-      <div class="field"><label>File đính kèm</label><div id="noteAttachZone" class="note-attach-zone">📎 Kéo thả hoặc bấm để chọn ảnh/PDF/Word/Excel<br><span class="muted" style="font-size:.78rem">Hỗ trợ: ảnh, PDF, DOC/DOCX, XLS/XLSX; tối đa 50MB/file</span><input id="noteAttachInput" type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"></div><div id="noteQueuedFiles"></div></div>
-      <div id="noteSaveMsg"></div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
-        <button type="button" class="btn ghost" onclick="closeModal()">Đóng</button>
-        <button type="button" id="btnSaveNote" class="btn primary" onclick='saveNoteFromEditor(${jss(meetingId)},${jss(noteId||'')})'>💾 Lưu ghi chú</button>
+      <div class="field note-attach-field">
+        <label>File đính kèm</label>
+        <div id="noteAttachZone" class="note-attach-zone note-attach-compact">📎 Kéo thả hoặc bấm để chọn ảnh/PDF/Word/Excel <span class="muted">Hỗ trợ: ảnh, PDF, DOC/DOCX, XLS/XLSX; tối đa 50MB/file</span><input id="noteAttachInput" type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"></div>
+        <div id="noteQueuedFiles"></div>
+      </div>
+      <div class="note-editor-footer">
+        <div id="noteSaveMsg"></div>
+        <div class="note-editor-actions">
+          <button type="button" class="btn ghost" onclick="closeModal()">Đóng</button>
+          <button type="button" id="btnSaveNote" class="btn primary" onclick='saveNoteFromEditor(${jss(meetingId)},${jss(noteId||'')})'>💾 Lưu ghi chú</button>
+        </div>
       </div>
     </div>`);
   $('modal').classList.add('note-modal-open');
