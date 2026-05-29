@@ -1946,8 +1946,33 @@ function hasRole(list){
   const r=APP.user.role.toLowerCase();
   return list.some(x=>x.toLowerCase()===r);
 }
+const ROLE_NOTE_LDCC = ['LanhDaoCucChi','LanhDaocucchi','Lanhdaocucchi','lanhdaochicuc','lanhdaocucchi'];
+function normNoteName(s){
+  return String(s||'').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/đ/g,'d')
+    .replace(/d\/c|dong chi/g,' ')
+    .replace(/[-–—].*$/g,' ')
+    .replace(/\([^)]*\)/g,' ')
+    .replace(/[^a-z0-9]+/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+function isSuperAdmin(){return hasRole(['SuperAdmin']);}
+function isLanhDaoChiCuc(){return hasRole(ROLE_NOTE_LDCC);}
+function isCurrentUserChair(m){
+  if(!APP.user||!m)return false;
+  const chair=normNoteName(m.chuTri||'');
+  if(!chair)return false;
+  const names=[APP.user.fullname,APP.user.username,APP.user.id].map(normNoteName).filter(Boolean);
+  return names.some(n=>n && (chair.includes(n)||n.includes(chair)));
+}
+function canUseMeetingNote(m){
+  // Chỉ lãnh đạo Chi cục là chủ trì lịch mới thấy/gửi note theo lịch; SuperAdmin được giữ để hỗ trợ kỹ thuật.
+  return isSuperAdmin() || (isLanhDaoChiCuc() && isCurrentUserChair(m));
+}
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v50_notebook_long_note_attachments';
+const APP_VERSION = 'HTML_v51_private_chair_notes';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
@@ -3516,7 +3541,7 @@ function meetingCards(arr,compact){
       </div>
       <div class="m-actions">
         <button type="button" class="btn sm js-open-detail" data-action="open-detail" data-meeting-id="${esc(m.meetingId)}">👁 Xem chi tiết</button>
-        <button type="button" class="btn sm note-btn" data-action="open-note" data-meeting-id="${esc(m.meetingId)}" data-meeting-title="${esc(m.noiDung)}">📒 Note</button>
+        ${canUseMeetingNote(m)?`<button type="button" class="btn sm note-btn" data-action="open-note" data-meeting-id="${esc(m.meetingId)}" data-meeting-title="${esc(m.noiDung)}">📒 Note</button>`:''}
         ${hasRole(ROLE_EDIT)?`<button type="button" class="btn primary sm js-edit-meeting" data-action="edit-meeting" data-meeting-id="${esc(m.meetingId)}">✏️ Sửa</button>`:''}
       </div>
     </div>`;
@@ -3656,7 +3681,7 @@ function renderManageTable(){
       <td><span class="pill status-${esc(m.trangThai||'DRAFT')}">${esc(statusLabel(m.trangThai||'DRAFT'))}</span></td>
       <td class="nowrap"><div class="manage-actions">
         <button type="button" class="btn xs js-open-detail" data-action="open-detail" data-meeting-id="${esc(m.meetingId)}">👁 Xem</button>
-        <button type="button" class="btn xs note-btn" data-action="open-note" data-meeting-id="${esc(m.meetingId)}" data-meeting-title="${esc(m.noiDung)}">📒 Note</button>
+        ${canUseMeetingNote(m)?`<button type="button" class="btn xs note-btn" data-action="open-note" data-meeting-id="${esc(m.meetingId)}" data-meeting-title="${esc(m.noiDung)}">📒 Note</button>`:''}
         ${hasRole(ROLE_EDIT)?`<button type="button" class="btn primary xs js-edit-meeting" data-action="edit-meeting" data-meeting-id="${esc(m.meetingId)}">✏️ Sửa</button>`:''}
         ${canBulkLegacySync()?`<button type="button" class="btn warn xs" id="btnSyncLegacy_${esc(m.meetingId)}" onclick="syncLegacyFilesFromManage('${esc(m.meetingId)}')">Đồng bộ TL</button>`:''}
       </div></td>
@@ -4087,14 +4112,14 @@ async function openDetail(id){
         </div>
       </div>
       <div class="sp"></div>
-      <div class="panel" style="box-shadow:none;border-color:var(--border2)">
+      ${res.canNote?`<div class="panel" style="box-shadow:none;border-color:var(--border2)">
         <div class="panel-h">
           <h3>📒 Ghi chú cuộc họp</h3>
           <button type="button" class="btn xs note-btn" onclick='openNoteEditor(${jss(id)},${jss(m.noiDung)},null)'>＋ Thêm note</button>
         </div>
         <div class="panel-b" id="detailNotesBox"><div class="muted">Đang tải ghi chú...</div></div>
       </div>
-      <div class="sp"></div>
+      <div class="sp"></div>`:''}
       <div class="panel" style="box-shadow:none;border-color:var(--border2)">
         <div class="panel-h"><h3>📎 Tài liệu</h3></div>
         <div class="panel-b">${legacySyncBox(id,res)}${fileList(res.files)}${res.canUpload?uploadBox(id):''}</div>
@@ -4105,6 +4130,7 @@ async function openDetail(id){
         <div class="panel-b" style="font-size:.83rem">${logList(res.logs)}</div>
       </div>`;
     setupDrop(id);
+    if(res.canNote) loadDetailNotes(id);
   }catch(e){$('modalBody').innerHTML=`<div class="msg err">${esc(e.message)}</div>`}
 }
 function isDriveFolderLink(url){
