@@ -1706,6 +1706,7 @@
     .leader-bar-col.year { background: linear-gradient(180deg, #6fb0ff 0%, #0b67b2 100%); }
     .leader-bar-col.month { background: linear-gradient(180deg, #ffd98a 0%, #f2a007 100%); }
     .leader-bar-col .bar-value { position:absolute; top:-26px; left:50%; transform:translateX(-50%); background:#fff; color:var(--navy); border:1px solid #dce9f6; border-radius:999px; min-width:28px; padding:2px 7px; font-size:.78rem; font-weight:800; line-height:1.15; box-shadow:0 4px 10px rgba(18,59,110,.08); }
+    .leader-bar-col .bar-percent { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); color:#fff; font-size:1.05rem; font-weight:900; line-height:1; text-shadow:0 1px 3px rgba(0,0,0,.24); pointer-events:none; white-space:nowrap; }
     .leader-bar-label { margin-top:10px; text-align:center; color:var(--navy); }
     .leader-bar-name { font-size:.88rem; font-weight:700; line-height:1.25; }
     .leader-bar-meta { margin-top:4px; font-size:.74rem; color:var(--muted); line-height:1.35; }
@@ -2466,7 +2467,10 @@ function renderDashboard(){
 }
 function leaderMeetingBarChart(rows){
   rows=Array.isArray(rows)?rows:[];
+  const totalYear=rows.reduce((sum,x)=>sum+(Number(x.year)||0),0);
+  const totalMonth=rows.reduce((sum,x)=>sum+(Number(x.month)||0),0);
   const maxVal=Math.max(1,...rows.map(x=>Math.max(Number(x.year)||0, Number(x.month)||0)));
+  const pct=(value,total)=> total>0 ? Math.round((Number(value)||0)*100/total) : 0;
   return `
     <div class="leader-bar-chart">
       <div class="leader-bar-legend">
@@ -2477,6 +2481,8 @@ function leaderMeetingBarChart(rows){
         ${rows.map(x=>{
           const year=Number(x.year)||0;
           const month=Number(x.month)||0;
+          const yearPct=pct(year,totalYear);
+          const monthPct=pct(month,totalMonth);
           const hYear=Math.max(year>0?18:8, Math.round((year/maxVal)*150)+10);
           const hMonth=Math.max(month>0?18:8, Math.round((month/maxVal)*150)+10);
           const shortName=esc(x.short || x.name.split(' ').pop());
@@ -2484,11 +2490,13 @@ function leaderMeetingBarChart(rows){
           return `
             <div class="leader-bar-item">
               <div class="leader-bar-bars">
-                <div class="leader-bar-col year" style="height:${hYear}px" title="${fullName} - Trong năm: ${year}" onclick="openLeaderStatDetail('${esc(x.name)}','Đ/c ${esc(x.name)}','year')">
+                <div class="leader-bar-col year" style="height:${hYear}px" title="${fullName} - Trong năm: ${year} cuộc, chiếm ${yearPct}%" onclick="openLeaderStatDetail('${esc(x.name)}','Đ/c ${esc(x.name)}','year')">
                   <span class="bar-value">${year}</span>
+                  <span class="bar-percent">${yearPct}%</span>
                 </div>
-                <div class="leader-bar-col month" style="height:${hMonth}px" title="${fullName} - Trong tháng: ${month}" onclick="openLeaderStatDetail('${esc(x.name)}','Đ/c ${esc(x.name)}','month')">
+                <div class="leader-bar-col month" style="height:${hMonth}px" title="${fullName} - Trong tháng: ${month} cuộc, chiếm ${monthPct}%" onclick="openLeaderStatDetail('${esc(x.name)}','Đ/c ${esc(x.name)}','month')">
                   <span class="bar-value">${month}</span>
+                  <span class="bar-percent">${monthPct}%</span>
                 </div>
               </div>
               <div class="leader-bar-label">
