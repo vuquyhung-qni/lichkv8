@@ -2183,9 +2183,16 @@ function canUseMeetingNote(m){
   return !!(APP && APP.user && APP.user.username);
 }
 
-const ROLE_PREP_RATING = ['SuperAdmin','LanhDaoCucChi','LanhDaocucchi','Lanhdaocucchi','lanhdaochicuc','lanhdaocucchi'];
+const ROLE_PREP_RATING = [
+  'SuperAdmin','Admin','useradmin','UserAdmin','QuanTri','QuanTriHeThong','Quản trị hệ thống','Quản trị cao cấp',
+  'LanhDaoCucChi','LanhDaocucchi','Lanhdaocucchi','lanhdaochicuc','lanhdaocucchi'
+];
 function canRatePrepClient(){
-  return hasRole(ROLE_PREP_RATING);
+  if(hasRole(ROLE_PREP_RATING)) return true;
+  const r = normText((APP.user && APP.user.role) || '');
+  const u = normText((APP.user && APP.user.username) || '');
+  const fn = normText((APP.user && APP.user.fullname) || '');
+  return /superadmin|admin|useradmin|quan tri|lanh dao chi cuc|lanhdaochicuc|lanhdaocucchi/.test(r+' '+u+' '+fn);
 }
 function prepRatingStarsHtml(m, context='card'){
   if(!m || !m.showPrepRating) return '';
@@ -2209,14 +2216,35 @@ async function setPrepRating(ev, meetingId, score){
   if(ev){ ev.preventDefault(); ev.stopPropagation(); }
   const box = ev && ev.target ? ev.target.closest('.prep-rating') : null;
   if(box) box.classList.add('saving');
+
+  // Cập nhật hiển thị ngay để người dùng biết đã bấm sao; server sẽ lưu/ghi đè kết quả.
+  updateLocalMeetingRating(meetingId, Number(score)||0);
+  renderCalendar();
+  if(APP.currentScreen==='manage') renderManage();
+
   try{
     const res = await api('setMeetingRating',{meetingId, score});
-    updateLocalMeetingRating(meetingId, Number(res.score)||score);
+    const savedScore = Number(res.score)||score;
+    updateLocalMeetingRating(meetingId, savedScore);
+
+    // Tải lại dữ liệu từ server để bảo đảm điểm đã lưu, bấm lại lần sau vẫn sửa được.
+    try{
+      const fresh = await api('getMeetings',{showPast:true,limit:5000});
+      APP.allMeetings = fresh.meetings || APP.allMeetings;
+      if(APP.filters && APP.filters.scope === 'CURRENT'){
+        const cur = await api('getMeetings',{showPast:false,limit:1000});
+        APP.meetings = cur.meetings || APP.meetings;
+      }else{
+        APP.meetings = (fresh.meetings||APP.meetings).filter(m=>true);
+      }
+    }catch(e){}
+
     renderCalendar();
     if(APP.currentScreen==='manage') renderManage();
-    msgToast(res.msg || ('Đã đánh giá '+score+' sao.'));
+    msgToast(res.msg || ('Đã đánh giá '+savedScore+' sao.'));
   }catch(e){
     alert(e.message || String(e));
+    await refreshAll();
   }finally{
     if(box) box.classList.remove('saving');
   }
@@ -2232,7 +2260,7 @@ function msgToast(text){
   }catch(e){}
 }
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v58_public_rating_manage_note_cleanup';
+const APP_VERSION = 'HTML_v59_admin_star_click_update';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
