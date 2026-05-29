@@ -1945,6 +1945,8 @@
       opacity: .55;
       pointer-events: none;
     }
+    .prep-rating.readonly .star { cursor: default; pointer-events: none; }
+    .prep-rating.readonly .star:hover { transform: none; }
     .detail-rating-row {
       display: flex;
       align-items: center;
@@ -2181,16 +2183,23 @@ function canUseMeetingNote(m){
   return !!(APP && APP.user && APP.user.username);
 }
 
-const ROLE_PREP_RATING = ['LanhDaoCucChi','LanhDaocucchi','Lanhdaocucchi','lanhdaochicuc','lanhdaocucchi'];
+const ROLE_PREP_RATING = ['SuperAdmin','LanhDaoCucChi','LanhDaocucchi','Lanhdaocucchi','lanhdaochicuc','lanhdaocucchi'];
 function canRatePrepClient(){
   return hasRole(ROLE_PREP_RATING);
 }
 function prepRatingStarsHtml(m, context='card'){
-  if(!m || !m.canRatePrep || !canRatePrepClient()) return '';
-  const score = Math.max(0, Math.min(5, Number(m.myPrepRating)||0));
-  const title = score ? `Đã đánh giá ${score}/5 sao` : 'Chưa đánh giá chất lượng chuẩn bị hồ sơ tài liệu';
-  return `<span class="prep-rating prep-rating-${esc(context)}" data-meeting-id="${esc(m.meetingId)}" title="${esc(title)}">
-    ${[1,2,3,4,5].map(n=>`<button type="button" class="star ${n<=score?'on':''}" aria-label="${n} sao" onclick="setPrepRating(event, ${jss(m.meetingId)}, ${n})">★</button>`).join('')}
+  if(!m || !m.showPrepRating) return '';
+  const canRate = !!m.canRatePrep && canRatePrepClient();
+  const score = Math.max(0, Math.min(5, Number(m.prepRatingVisibleScore)||0));
+  const count = Number(m.publicPrepRatingCount)||0;
+  const title = score
+    ? `Đánh giá chuẩn bị tài liệu: ${score}/5 sao${count?` (${count} lượt đánh giá)`:''}${canRate?' - bấm để chấm/cập nhật':''}`
+    : 'Chưa đánh giá chất lượng chuẩn bị hồ sơ tài liệu';
+  return `<span class="prep-rating prep-rating-${esc(context)} ${canRate?'':'readonly'}" data-meeting-id="${esc(m.meetingId)}" title="${esc(title)}">
+    ${[1,2,3,4,5].map(n=>canRate
+      ? `<button type="button" class="star ${n<=score?'on':''}" aria-label="${n} sao" onclick="setPrepRating(event, ${jss(m.meetingId)}, ${n})">★</button>`
+      : `<span class="star ${n<=score?'on':''}" aria-hidden="true">★</span>`
+    ).join('')}
   </span>`;
 }
 function updateLocalMeetingRating(meetingId, score){
@@ -2223,7 +2232,7 @@ function msgToast(text){
   }catch(e){}
 }
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v56_meeting_prep_rating';
+const APP_VERSION = 'HTML_v58_public_rating_manage_note_cleanup';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
@@ -3809,7 +3818,6 @@ function renderManage(){
       <div class="panel-h">
         <h3>📋 Quản lý lịch công tác</h3>
         <button class="btn sm btn-export-excel desktop-only-inline" onclick="exportManageExcel()">📥 Xuất Excel</button>
-        ${canBulkLegacySync()?'<button class="btn ghost sm" onclick="openBulkLegacyMigration()">🔎 Rà soát TL cũ</button>':''}
         ${can?'<button class="btn primary sm" onclick="openMeetingForm()">＋ Thêm lịch</button>':''}
       </div>
       <div class="panel-b">
@@ -3933,9 +3941,8 @@ function renderManageTable(){
       <td><span class="pill status-${esc(m.trangThai||'DRAFT')}">${esc(statusLabel(m.trangThai||'DRAFT'))}</span></td>
       <td class="nowrap"><div class="manage-actions">
         <button type="button" class="btn xs js-open-detail" data-action="open-detail" data-meeting-id="${esc(m.meetingId)}">👁 Xem</button>
-        ${canUseMeetingNote(m)?`<button type="button" class="btn xs note-btn" data-action="open-note" data-meeting-id="${esc(m.meetingId)}" data-meeting-title="${esc(m.noiDung)}">📒 Note</button>`:''}
+        ${m.hasMyNote?`<button type="button" class="btn xs note-btn" data-action="open-note" data-meeting-id="${esc(m.meetingId)}" data-meeting-title="${esc(m.noiDung)}">📒 Note</button>`:''}
         ${hasRole(ROLE_EDIT)?`<button type="button" class="btn primary xs js-edit-meeting" data-action="edit-meeting" data-meeting-id="${esc(m.meetingId)}">✏️ Sửa</button>`:''}
-        ${canBulkLegacySync()?`<button type="button" class="btn warn xs" id="btnSyncLegacy_${esc(m.meetingId)}" onclick="syncLegacyFilesFromManage('${esc(m.meetingId)}')">Đồng bộ TL</button>`:''}
       </div></td>
     </tr>`).join(''):'<tr><td colspan="6"><div class="empty">Không có lịch phù hợp với điều kiện lọc.</div></td></tr>'}</tbody>
   </table></div>`;
