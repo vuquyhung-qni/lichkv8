@@ -2561,7 +2561,7 @@ function msgToastError(text){
 }
 
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v70_quiz_embed_view_setup';
+const APP_VERSION = 'HTML_v71_quiz_dashboard_embed';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const QUIZ_MODULE_URL = 'https://vuquyhung-qni.github.io/tracnghiem/';
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
@@ -3073,7 +3073,7 @@ function makeQuizUrl(){
   const u=new URL(QUIZ_MODULE_URL);
   u.searchParams.set('embed','1');
   u.searchParams.set('from','lichkv8');
-  u.searchParams.set('view','quiz-setup');
+  u.searchParams.set('view','dashboard');
   return u.toString();
 }
 function reloadQuizModule(){
