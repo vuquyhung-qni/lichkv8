@@ -29,3 +29,18 @@
 .hkg-att-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:12px 0}.hkg-att-box{border:1px solid var(--border2);border-radius:14px;padding:12px;text-align:center;background:#fff}.hkg-att-box b{display:block;font-size:1.28rem;color:var(--navy)}.hkg-att-box span{color:var(--muted);font-size:.72rem;font-weight:800;text-transform:uppercase}.hkg-att-box.ok b{color:#166534}.hkg-att-box.warn b{color:#b45309}.hkg-att-box.info b{color:#1d4ed8}.hkg-att-box.danger b{color:#991b1b}.hkg-att-box.muted b{color:#64748b}.hkg-editor-toolbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;border:1px solid var(--border2);border-radius:12px 12px 0 0;background:#f8fbff;padding:7px 8px}.hkg-editor-toolbar button{border:1px solid var(--border);border-radius:7px;background:#fff;color:var(--text2);font-weight:800;padding:5px 9px}.hkg-editor-toolbar span{margin-left:auto;font-size:.76rem}.hkg-minutes-text{width:100%;min-height:360px;border:1.5px solid var(--border);border-top:0;border-radius:0 0 12px 12px;padding:14px;resize:vertical;line-height:1.6;background:#fff;outline:none;font-family:"Be Vietnam Pro",Arial,sans-serif}.hkg-grid2-inner{display:grid;grid-template-columns:1fr 1fr;gap:10px}.hkg-task{border-left:4px solid var(--blue)}.hkg-card select,.hkg-card input,.hkg-card textarea{max-width:100%}
 @media(max-width:1024px){.hkg-stat-grid{grid-template-columns:repeat(3,1fr)}.hkg-att-grid{grid-template-columns:repeat(3,1fr)}.hkg-progress-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:768px){.hkg-detail-main{display:grid}.hkg-detail-kpis{grid-template-columns:repeat(2,1fr)}.hkg-detail-kpis div:nth-child(2n){border-right:0}.hkg-info-row{grid-template-columns:1fr;gap:2px}.hkg-action-grid{grid-template-columns:1fr}.hkg-att-grid{grid-template-columns:repeat(2,1fr)}.hkg-progress-grid{grid-template-columns:1fr}.hkg-card-head{display:grid}.hkg-editor-toolbar span{width:100%;margin-left:0}.hkg-minutes-text{min-height:280px}.hkg-grid2-inner{grid-template-columns:1fr}.hkg-list-filters{display:grid;grid-template-columns:1fr}.hkg-list-filters input,.hkg-list-filters select{width:100%;min-width:0}.hkg-v98 .hkg-hero{border-radius:14px;padding:15px}}
+
+/* V99 - Liên thông tùy chọn với Lịch công tác */
+.hkg-checkline{
+  display:flex !important;
+  align-items:center;
+  gap:8px;
+  font-weight:800 !important;
+  color:var(--navy,#063a63) !important;
+  text-transform:none !important;
+  letter-spacing:0 !important;
+}
+.hkg-checkline input{width:18px;height:18px;flex:0 0 18px;accent-color:#0b67b2;}
+.hkg-link-chip{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:2px 8px;font-size:.68rem;font-weight:800;margin-top:4px;border:1px solid transparent;white-space:nowrap;}
+.hkg-link-chip.linked{background:#e0f2fe;color:#075985;border-color:#bae6fd;}
+.hkg-link-chip.internal{background:#fff7ed;color:#9a3412;border-color:#fed7aa;}
