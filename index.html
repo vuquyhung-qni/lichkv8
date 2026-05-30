@@ -2210,7 +2210,7 @@
       .module-note { display:none; }
     }
 </style>
-  <link rel="stylesheet" href="modules/hkg.css">
+  <link rel="stylesheet" href="modules/hkg.css?v=90">
 </head>
 <body>
 
@@ -2602,7 +2602,7 @@ function msgToastError(text){
 }
 
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v87_hop_khong_giay';
+const APP_VERSION = 'HTML_v90_login_fix_hkg_split';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const QUIZ_MODULE_URL = 'https://vuquyhung-qni.github.io/tracnghiem/';
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
@@ -4474,7 +4474,7 @@ function exportManageExcel(){
   const safe=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
   const cell=v=>'<td style="vertical-align:top;border:1px solid #d9e3ec;padding:5px 7px">'+safe(v)+'</td>';
   const th=v=>'<th style="background:#0f4c81;color:#fff;border:1px solid #0f4c81;padding:6px 7px;text-align:center">'+safe(v)+'</th>';
-  const html='<!doctype html><html><head><meta charset="UTF-8">  <link rel="stylesheet" href="modules/hkg.css">
+  const html='<!doctype html><html><head><meta charset="UTF-8">  <link rel="stylesheet" href="modules/hkg.css?v=90">
 </head><body>'+
     '<h2 style="font-family:Arial;color:#063a63">QUẢN LÝ LỊCH CÔNG TÁC HQKV8</h2>'+
     '<p style="font-family:Arial">'+safe(filterText)+'</p>'+
@@ -5556,11 +5556,15 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
 
 </script>
 
+<script src="modules/hkg.js?v=90"></script>
+
 <script>
 (function(){
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function(){
-      navigator.serviceWorker.register('./service-worker.js').catch(function(err){
+      navigator.serviceWorker.register('./service-worker.js?v=90').then(function(reg){
+        try { reg.update(); } catch(e) {}
+      }).catch(function(err){
         console.warn('Không đăng ký được service worker PWA:', err);
       });
     });
