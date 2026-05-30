@@ -2236,8 +2236,12 @@
         <label>Mật khẩu</label>
         <input id="lgPass" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu">
       </div>
-      <button class="btn primary full" onclick="login()">Đăng nhập</button>
+      <button id="btnLogin" class="btn primary full" onclick="login()">Đăng nhập</button>
       <div id="loginMsg"></div>
+      <div id="loginDebugTools" style="margin-top:8px;font-size:.72rem;color:#5f6b76;text-align:center">
+        <button type="button" class="btn ghost xs" onclick="openGasPing()" style="font-size:.72rem;padding:5px 9px">Kiểm tra kết nối GAS</button>
+        <div id="loginDebugText" style="margin-top:5px;word-break:break-word"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -2602,7 +2606,7 @@ function msgToastError(text){
 }
 
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v91_cache_login_debug';
+const APP_VERSION = 'HTML_v92_login_visible_debug';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const QUIZ_MODULE_URL = 'https://vuquyhung-qni.github.io/tracnghiem/';
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
@@ -2710,7 +2714,7 @@ function api(action, payload={}) {
   return new Promise((resolve, reject) => {
     const cbName = '_cb_' + Date.now() + Math.random().toString(36).slice(2);
     const script = document.createElement('script');
-    const timeoutMs = (action === 'librarySearchFiles' ? 90000 : 30000);
+    const timeoutMs = (action === 'login' ? 12000 : (action === 'librarySearchFiles' ? 90000 : 30000));
     const timer = setTimeout(() => {
       cleanup();
       reject(new Error('Timeout — GAS không phản hồi. Vui lòng kiểm tra kết nối hoặc triển khai Web App.'));
@@ -2962,22 +2966,50 @@ window.addEventListener('load',()=>{
   $('lgPass').addEventListener('keydown',e=>{if(e.key==='Enter')login()})
 });
 
+function openGasPing(){
+  try{
+    const url = GAS_URL + '?action=ping&_=' + Date.now();
+    const box = $('loginDebugText');
+    if(box) box.textContent = 'Đã mở tab kiểm tra GAS. Nếu tab mới hiện JSON ok:true thì Web App còn chạy.';
+    window.open(url, '_blank');
+  }catch(e){
+    const box = $('loginDebugText');
+    if(box) box.textContent = 'Không mở được trang kiểm tra GAS: ' + ((e&&e.message)||e);
+  }
+}
+
 async function login(){
-  const username=$('lgUser').value.trim(),password=$('lgPass').value;
-  msg($('loginMsg'),'Đang đăng nhập...');
+  const username=$('lgUser').value.trim(), password=$('lgPass').value;
+  const loginMsg=$('loginMsg');
+  const btn=$('btnLogin');
+  if(!username || !password){ msg(loginMsg,'Vui lòng nhập đầy đủ tài khoản và mật khẩu.','err'); return; }
+  msg(loginMsg,'Đang gửi yêu cầu đăng nhập tới Apps Script...');
+  if(btn){ btn.disabled=true; btn.textContent='Đang đăng nhập...'; }
   try{
     const res=await api('login',{username,password,token:''});
-    APP.token=res.token;APP.user=res.user;
+    if(!res || !res.token || !res.user) throw new Error('Apps Script đã phản hồi nhưng thiếu token/user. Kiểm tra Code.gs đang deploy đúng bản Lịch công tác.');
+    APP.token=res.token; APP.user=res.user;
     sessionStorage.setItem('lct_token',APP.token);
     sessionStorage.setItem('lct_user',JSON.stringify(APP.user));
     writePortalBridge();
-    showApp();await refreshAll();
-    await handleInitialRoute();
-    if(res.user.isDefaultPass)alert('Tài khoản đang dùng mật khẩu mặc định. Vui lòng đổi mật khẩu.')
+    msg(loginMsg,'Đăng nhập thành công, đang tải dữ liệu...','ok');
+    showApp();
+    try{
+      await refreshAll();
+      await handleInitialRoute();
+    }catch(loadErr){
+      console.error('LOAD_AFTER_LOGIN_ERROR', loadErr);
+      if(typeof msgToast==='function') msgToast('Đã đăng nhập nhưng tải dữ liệu ban đầu lỗi: ' + ((loadErr&&loadErr.message)||loadErr));
+    }
+    if(res.user && res.user.isDefaultPass) alert('Tài khoản đang dùng mật khẩu mặc định. Vui lòng đổi mật khẩu.');
   }catch(e){
     const detail = (e && e.message) ? e.message : String(e || 'Không rõ lỗi');
-    msg($('loginMsg'),'Đăng nhập thất bại: '+detail,'err');
+    msg(loginMsg,'Đăng nhập thất bại: '+detail,'err');
+    const box=$('loginDebugText');
+    if(box) box.textContent='HTML: '+APP_VERSION+' | GAS: '+GAS_URL;
     console.error('LOGIN_ERROR', e);
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent='Đăng nhập'; }
   }
 }
 
@@ -5560,13 +5592,25 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
 
 </script>
 
-<script src="modules/hkg.js?v=91"></script>
+<script src="modules/hkg.js?v=92"></script>
 
 <script>
 (function(){
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function(){
-      navigator.serviceWorker.register('./service-worker.js?v=91').then(function(reg){
+    window.addEventListener('load', async function(){
+      try{
+        const resetKey = 'lct_sw_reset_v92';
+        if(localStorage.getItem(resetKey) !== '1'){
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for(const r of regs){ try{ await r.unregister(); }catch(_){} }
+          if(window.caches){
+            const keys = await caches.keys();
+            await Promise.all(keys.filter(k=>/^lct-|lichkv8|hqkv8/i.test(k)).map(k=>caches.delete(k)));
+          }
+          localStorage.setItem(resetKey,'1');
+        }
+      }catch(e){ console.warn('Không reset được service worker/cache cũ:', e); }
+      navigator.serviceWorker.register('./service-worker.js?v=92').then(function(reg){
         try { reg.update(); } catch(e) {}
       }).catch(function(err){
         console.warn('Không đăng ký được service worker PWA:', err);
