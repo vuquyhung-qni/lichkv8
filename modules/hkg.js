@@ -1,4 +1,4 @@
-/* V88 - Module Họp không giấy tách khỏi Index.html
+/* V96 - Module Họp không giấy: chỉ hiển thị hồ sơ đã tạo/liên kết
    File này chạy trong cùng trang Portal Lịch công tác, dùng chung APP/api/modal/helper. */
 // ===== Module Họp không giấy =====
 function hkgCanManage(){ return hasRole(ROLE_EDIT); }
@@ -19,7 +19,7 @@ async function renderHkgList(){
     APP.hkg.dashboard=res.dashboard||{}; APP.hkg.meetings=res.meetings||[]; APP.hkg.loaded=true; APP.hkg.view='list';
     const d=APP.hkg.dashboard;
     box.innerHTML=`<div class="hkg-shell">
-      <div class="hkg-hero"><div><h2>📋 Họp không giấy</h2><p>Hồ sơ họp điện tử: tài liệu, điểm danh, ý kiến, biểu quyết, biên bản, kết luận.</p></div><div class="hkg-toolbar"><button class="btn ghost sm" onclick="renderHkgGroups()">👥 Nhóm dự họp</button><button class="btn primary sm" onclick="hkgReload()">↻ Tải lại</button></div></div>
+      <div class="hkg-hero"><div><h2>📋 Họp không giấy</h2><p>Chỉ hiển thị các cuộc họp đã được tạo hồ sơ Họp không giấy từ Lịch công tác. Vào từng lịch họp và bấm “📋 Hồ sơ họp” để tạo/liên kết.</p></div><div class="hkg-toolbar"><button class="btn ghost sm" onclick="renderHkgGroups()">👥 Nhóm dự họp</button><button class="btn primary sm" onclick="hkgReload()">↻ Tải lại</button></div></div>
       <div class="hkg-stat-grid">
         ${hkgStat('Tổng hồ sơ',d.total||0)}${hkgStat('Chờ tài liệu',d.waitingDocs||0)}${hkgStat('Chờ điểm danh',d.waitingAttendance||0)}${hkgStat('Chờ biên bản',d.waitingMinutes||0)}${hkgStat('Chờ kết luận',d.waitingConclusion||0)}${hkgStat('Hoàn thành',d.completed||0)}
       </div>
@@ -32,18 +32,26 @@ async function renderHkgList(){
 }
 function hkgStat(label,val){return `<div class="hkg-stat"><b>${esc(val)}</b><span>${esc(label)}</span></div>`;}
 function hkgMeetingListHtml(arr){
-  if(!arr||!arr.length)return '<div class="empty">Chưa có hồ sơ họp phù hợp.</div>';
+  if(!arr||!arr.length)return '<div class="empty"><b>Chưa có hồ sơ Họp không giấy.</b><br>Module này chỉ hiển thị các cuộc họp đã được tạo/liên kết. Hãy vào Lịch công tác, mở lịch cần xử lý và bấm <b>📋 Hồ sơ họp</b>.</div>';
   return `<div class="table-wrap hkg-table-mobile"><table class="tbl"><thead><tr><th>Mã</th><th>Ngày họp</th><th>Nội dung</th><th>Chủ trì</th><th>Tài liệu</th><th>Điểm danh</th><th>Biên bản</th><th>Kết luận</th><th>Trạng thái</th><th></th></tr></thead><tbody>${arr.map(x=>`<tr>
     <td data-label="Mã"><b class="mono">${esc(x.meetingId)}</b></td><td data-label="Ngày">${esc(dateVNShort(x.ngayHienThi||x.ngayBatDau))}<br><span class="muted">${esc(timeRange(x))}</span></td><td data-label="Nội dung"><b>${esc(x.noiDung)}</b><br><span class="muted">${esc(x.diaDiem||'')}</span></td><td data-label="Chủ trì">${esc(x.chuTri||'')}</td><td data-label="Tài liệu">${esc(x.fileCount||0)}</td><td data-label="Điểm danh">${esc(x.attendanceDone||0)}/${esc(x.participantCount||0)}</td><td data-label="Biên bản">${x.hasMinutes?'Có':'Chưa'}</td><td data-label="Kết luận">${esc(x.conclusionCount||0)}</td><td data-label="Trạng thái"><span class="hkg-status ${hkgStatusClass(x.hkgStatus)}">${esc(hkgStatusLabel(x.hkgStatus))}</span></td><td data-label="Thao tác"><button class="btn primary xs" onclick="openHkgDetail('${esc(x.meetingId)}')">Mở hồ sơ</button></td>
   </tr>`).join('')}</tbody></table></div>`;
 }
 function hkgFilterList(){const kw=normalizeText(($('hkgKw')?.value||''));const st=$('hkgFilterStatus')?.value||'all';let arr=(APP.hkg.meetings||[]).filter(x=>(st==='all'||x.hkgStatus===st));if(kw)arr=arr.filter(x=>normalizeText([x.meetingId,x.noiDung,x.chuTri,x.diaDiem].join(' ')).includes(kw));$('hkgMeetingList').innerHTML=hkgMeetingListHtml(arr);}
 async function hkgReload(){APP.hkg.loaded=false;APP.hkg.view='list';await renderHkgList();}
-async function openHkgDetail(meetingId){APP.hkg.view='detail';APP.hkg.meetingId=meetingId;APP.hkg.detail=null;APP.hkg.tab='info';await go('hkg');}
+async function openHkgDetail(meetingId){
+  try{
+    // V96: mở từ Lịch công tác thì tạo/liên kết hồ sơ Họp không giấy trước.
+    await api('createHkgProfile',{meetingId:meetingId});
+    APP.hkg.loaded=false;
+    APP.hkg.view='detail';APP.hkg.meetingId=meetingId;APP.hkg.detail=null;APP.hkg.tab='info';
+    await go('hkg');
+  }catch(e){alert(e.message||'Không tạo/mở được hồ sơ Họp không giấy.');}
+}
 async function renderHkgDetail(){
   const box=$('screen-hkg'); if(!box) return; const id=APP.hkg.meetingId; if(!id){APP.hkg.view='list';return renderHkgList();}
   box.innerHTML='<div class="loading"><div class="spin"></div><span>Đang tải hồ sơ họp...</span></div>';
-  try{const res=await api('getHkgDetail',{meetingId:id}); APP.hkg.detail=res; const m=res.meeting||{}; box.innerHTML=`<div class="hkg-shell">
+  try{const res=await api('getHkgDetail',{meetingId:id,autoCreate:true}); APP.hkg.detail=res; const m=res.meeting||{}; box.innerHTML=`<div class="hkg-shell">
     <div class="hkg-detail-head"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><div class="hkg-detail-title">${esc(m.meetingId)} · ${esc(m.noiDung||'Hồ sơ họp')}</div><div class="muted">${esc(dateVNShort(m.ngayHienThi||m.ngayBatDau))} · ${esc(timeRange(m))} · ${esc(m.diaDiem||'')}</div></div><div class="hkg-toolbar"><button class="btn ghost sm" onclick="APP.hkg.view='list';renderHkgList()">← Danh sách</button><button class="btn sm" onclick="openDetail('${esc(id)}')">👁 Lịch gốc</button></div></div></div>
     <div class="hkg-tabs">${['info|Thông tin','docs|Tài liệu','att|Điểm danh','op|Ý kiến','vote|Biểu quyết','min|Biên bản','con|Kết luận','his|Lịch sử'].map(s=>{const [k,l]=s.split('|');return `<button class="hkg-tab ${APP.hkg.tab===k?'active':''}" onclick="hkgSetTab('${k}')">${l}</button>`}).join('')}</div>
     <div id="hkgTabBody">${hkgTabHtml()}</div>
