@@ -1,5 +1,5 @@
-// Service Worker PWA v89 - HQKV8
-const CACHE_VERSION = 'hqkv8-pwa-v89';
+// Service Worker PWA v90 - HQKV8
+const CACHE_VERSION = 'hqkv8-pwa-v90';
 const APP_SHELL = [
   './',
   './index.html',
