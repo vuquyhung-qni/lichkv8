@@ -2210,7 +2210,7 @@
       .module-note { display:none; }
     }
 </style>
-  <link rel="stylesheet" href="modules/hkg.css?v=91">
+  <link rel="stylesheet" href="modules/hkg.css?v=93">
 </head>
 <body>
 
@@ -2606,7 +2606,7 @@ function msgToastError(text){
 }
 
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v92_login_visible_debug';
+const APP_VERSION = 'HTML_v93_login_js_fix';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const QUIZ_MODULE_URL = 'https://vuquyhung-qni.github.io/tracnghiem/';
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
@@ -4510,8 +4510,7 @@ function exportManageExcel(){
   const safe=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
   const cell=v=>'<td style="vertical-align:top;border:1px solid #d9e3ec;padding:5px 7px">'+safe(v)+'</td>';
   const th=v=>'<th style="background:#0f4c81;color:#fff;border:1px solid #0f4c81;padding:6px 7px;text-align:center">'+safe(v)+'</th>';
-  const html='<!doctype html><html><head><meta charset="UTF-8">  <link rel="stylesheet" href="modules/hkg.css?v=91">
-</head><body>'+
+  const html='<!doctype html><html><head><meta charset="UTF-8"></head><body>'+
     '<h2 style="font-family:Arial;color:#063a63">QUẢN LÝ LỊCH CÔNG TÁC HQKV8</h2>'+
     '<p style="font-family:Arial">'+safe(filterText)+'</p>'+
     '<table style="border-collapse:collapse;font-family:Arial;font-size:10pt"><thead><tr>'+cols.map(th).join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+r.map(cell).join('')+'</tr>').join('')+'</tbody></table>'+
