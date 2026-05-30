@@ -5,6 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://*.google.com https://*.googleusercontent.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://drive.google.com https://docs.google.com https://*.googleusercontent.com https://*.gstatic.com; frame-src 'self' https://vuquyhung-qni.github.io https://*.github.io https://drive.google.com https://docs.google.com https://script.google.com https://script.googleusercontent.com https://*.google.com https://*.googleusercontent.com; object-src 'none'; base-uri 'self'; form-action 'self' https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com;">
   <title>Quản lý lịch công tác HQKV8</title>
+  <!-- PWA_V86_START -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#063a63">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Lịch công tác HQKV8">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+  <!-- PWA_V86_END -->
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
@@ -1859,6 +1871,24 @@
     .note-card-meta { font-size:.74rem; color:var(--muted); display:flex; flex-wrap:wrap; gap:6px; margin-bottom:9px; }
     .note-card-content { color:var(--text2); font-size:.86rem; line-height:1.55; white-space:pre-wrap; max-height:132px; overflow:hidden; }
     .note-card-actions { display:flex; gap:6px; flex-wrap:wrap; margin-top:12px; padding-top:10px; border-top:1px solid var(--border2); }
+    .note-card.unread { border-left:4px solid var(--gold2); background:linear-gradient(180deg,#fff 0%,#fffdf3 100%); }
+    .note-unread-chip { background:#fff7d6 !important; color:#8a5a00 !important; font-weight:800; }
+
+    .note-share-box { display:grid; gap:10px; }
+    .note-share-search { position:relative; }
+    .note-recipient-input { width:100%; border:1.5px solid var(--border); border-radius:10px; padding:11px 12px; outline:none; font-weight:600; color:var(--navy); background:#fff; }
+    .note-recipient-input:focus { border-color:var(--blue2); box-shadow:0 0 0 3px rgba(45,120,239,.12); }
+    .note-recipient-list { position:absolute; left:0; right:0; top:calc(100% + 5px); z-index:20; background:#fff; border:1px solid var(--border2); border-radius:12px; box-shadow:var(--shadow-lg); max-height:250px; overflow:auto; padding:6px; }
+    .note-recipient-item { width:100%; border:none; background:#fff; border-radius:10px; padding:9px 10px; text-align:left; cursor:pointer; display:flex; gap:9px; align-items:center; }
+    .note-recipient-item:hover { background:#f0f7ff; }
+    .note-recipient-avatar { width:30px; height:30px; border-radius:50%; background:linear-gradient(135deg,var(--gold),var(--gold2)); color:#0b1f45; display:grid; place-items:center; font-size:.72rem; font-weight:900; flex-shrink:0; }
+    .note-recipient-main b { display:block; color:var(--navy); font-size:.85rem; }
+    .note-recipient-main span { display:block; color:var(--muted); font-size:.72rem; margin-top:1px; }
+    .note-share-selected { display:none; border:1px solid #cfe0f2; background:#f7fbff; color:var(--navy); border-radius:12px; padding:10px 12px; font-size:.86rem; }
+    .note-share-selected.show { display:block; }
+    .note-share-message { width:100%; min-height:86px; border:1.5px solid var(--border); border-radius:12px; padding:10px 12px; resize:vertical; outline:none; color:var(--text2); }
+    .note-share-message:focus { border-color:var(--blue2); box-shadow:0 0 0 3px rgba(45,120,239,.12); }
+
     .note-meeting-pill { display:inline-flex; align-items:center; gap:4px; border-radius:999px; background:#eef6ff; color:var(--blue); font-size:.72rem; font-weight:800; padding:3px 8px; }
     .note-editor-title { width:100%; border:1.5px solid var(--border); border-radius:10px; padding:10px 12px; outline:none; font-weight:700; color:var(--navy); }
     .note-editor-content { width:100%; min-height:54vh; border:1.5px solid var(--border); border-radius:12px; padding:14px 16px; outline:none; resize:vertical; color:var(--text); line-height:1.65; font-size:.95rem; }
@@ -2161,6 +2191,8 @@
 
   
 
+
+
     /* ===== V68: Module Trắc nghiệm nhúng trong Portal ===== */
     .module-shell { display:flex; flex-direction:column; min-height:calc(100svh - 132px); background:#fff; border:1px solid var(--border2); border-radius:var(--r); box-shadow:var(--shadow-sm); overflow:hidden; }
     .module-head { display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid var(--border2); background:linear-gradient(90deg,#f7fbff,#fff); }
@@ -2170,13 +2202,15 @@
     .module-note { font-size:.76rem; color:var(--muted); padding:7px 14px; border-top:1px solid var(--border2); background:#f8fbff; }
     @media(max-width:768px){
       .module-shell { min-height:calc(100svh - 82px); border-radius:0; border-left:0; border-right:0; }
-      .module-head { padding:10px 12px; }
-      .module-head h3 { font-size:.88rem; }
+      .module-head { padding:10px 12px; justify-content:flex-start; gap:8px; }
+      .module-head h3 { font-size:.88rem; text-align:left; flex:1; min-width:0; line-height:1.25; }
       .module-head .btn.sm { padding:7px 9px; font-size:.76rem; }
-      .module-frame-wrap, .module-frame { min-height:calc(100svh - 156px); }
+      .module-head .quiz-back-btn, .module-head .quiz-newtab-btn { display:none !important; }
+      .module-frame-wrap, .module-frame { min-height:calc(100svh - 126px); }
       .module-note { display:none; }
     }
 </style>
+  <link rel="stylesheet" href="modules/hkg.css">
 </head>
 <body>
 
@@ -2241,10 +2275,15 @@
       <button class="nav-btn" data-screen="notebook" onclick="go('notebook')">
         <span class="nav-icon">📒</span>
         <span class="nav-label">Notebook</span>
+        <span id="navNotebookUnread" class="badge hide">0</span>
       </button>
       <button class="nav-btn" data-screen="quiz" id="navQuiz" onclick="go('quiz')">
         <span class="nav-icon">🧠</span>
         <span class="nav-label">Trắc nghiệm kiến thức</span>
+      </button>
+      <button class="nav-btn" data-screen="hkg" id="navHkg" onclick="go('hkg')">
+        <span class="nav-icon">📋</span>
+        <span class="nav-label">Họp không giấy</span>
       </button>
       <button class="nav-btn" data-screen="users" id="navUsers" onclick="go('users')">
         <span class="nav-icon">👥</span>
@@ -2290,6 +2329,7 @@
       <section id="screen-library" class="hide"></section>
       <section id="screen-notebook" class="hide"></section>
       <section id="screen-quiz" class="hide"></section>
+      <section id="screen-hkg" class="hide"></section>
       <section id="screen-users" class="hide"></section>
       <section id="screen-settings" class="hide"></section>
     </div>
@@ -2350,7 +2390,8 @@ const APP = {
   manageFilters:{kw:'', leader:'all', scope:'CURRENT', kind:'ALL', status:'all'},
   loadedAll:false, pendingFormFiles:[],
   libraryStack:[], libraryCurrentUrl:'', detailFiles:[], noteUploadQueue:[], notebook:{kw:'', notes:[], loaded:false},
-  quizLoaded:false
+  quizLoaded:false,
+  hkg:{view:'list', loaded:false, dashboard:null, meetings:[], detail:null, meetingId:'', tab:'info', groups:[], groupDetail:null, voteTimer:null}
 };
 
 // ===== PHÂN QUYỀN =====
@@ -2561,7 +2602,7 @@ function msgToastError(text){
 }
 
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v71_quiz_dashboard_embed';
+const APP_VERSION = 'HTML_v87_hop_khong_giay';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const QUIZ_MODULE_URL = 'https://vuquyhung-qni.github.io/tracnghiem/';
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
@@ -3008,7 +3049,7 @@ async function go(screen){
   document.querySelectorAll('.bn-item').forEach(b=>b.classList.toggle('active',b.dataset.screen===screen));
   document.querySelectorAll('[id^="screen-"]').forEach(s=>s.classList.add('hide'));
   $('screen-'+screen).classList.remove('hide');
-  const titles={dashboard:'TỔNG QUAN',calendar:'LỊCH CÔNG TÁC',manage:'QUẢN LÝ LỊCH',library:'THƯ VIỆN VĂN BẢN',notebook:'NOTEBOOK',quiz:'TRẮC NGHIỆM KIẾN THỨC',users:'QUẢN TRỊ NGƯỜI DÙNG',settings:'QUẢN TRỊ DANH MỤC'};
+  const titles={dashboard:'TỔNG QUAN',calendar:'LỊCH CÔNG TÁC',manage:'QUẢN LÝ LỊCH',library:'THƯ VIỆN VĂN BẢN',notebook:'NOTEBOOK',quiz:'TRẮC NGHIỆM KIẾN THỨC',hkg:'HỌP KHÔNG GIẤY',users:'QUẢN TRỊ NGƯỜI DÙNG',settings:'QUẢN TRỊ DANH MỤC'};
   $('pageTitle').textContent=titles[screen]||'';
   if(window.innerWidth<768)closeSide();
   await render();
@@ -3024,10 +3065,19 @@ async function refreshAll(){
   const _futureMeetings=APP.meetings.filter(m=>{const e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau);return e&&e>=_today;});
   $('navMeetCount').textContent=_futureMeetings.length;
   const bnBadge=$('bnMeetBadge');if(bnBadge)bnBadge.textContent=_futureMeetings.length;
+  refreshNotebookUnreadBadge();
   render();
 }
+async function refreshNotebookUnreadBadge(){
+  if(!APP.token) return;
+  try{
+    const res=await api('getNotes',{});
+    updateNotebookUnreadBadge(res.unreadSharedCount || 0);
+  }catch(e){/* im lặng */}
+}
+
 function setLoading(){
-  ['screen-dashboard','screen-calendar','screen-manage','screen-library','screen-notebook','screen-users','screen-settings']
+  ['screen-dashboard','screen-calendar','screen-manage','screen-library','screen-notebook','screen-quiz','screen-hkg','screen-users','screen-settings']
     .forEach(id=>$(id).innerHTML='<div class="loading"><div class="spin"></div><span>Đang tải...</span></div>');
 }
 
@@ -3089,10 +3139,10 @@ function renderQuizPortal(){
   if(APP.quizLoaded) return;
   box.innerHTML=`<div class="module-shell">
     <div class="module-head">
-      <button type="button" class="btn ghost sm" onclick="go('calendar')">← Lịch công tác</button>
+      <button type="button" class="btn ghost sm quiz-back-btn" onclick="go('calendar')">← Lịch công tác</button>
       <h3>🧠 Trắc nghiệm kiến thức</h3>
-      <button type="button" class="btn ghost sm" onclick="reloadQuizModule()">↻ Tải lại</button>
-      <button type="button" class="btn primary sm" onclick="openQuizNewTab()">↗ Tab mới</button>
+      <button type="button" class="btn ghost sm quiz-reload-btn" onclick="reloadQuizModule()">↻ Tải lại</button>
+      <button type="button" class="btn primary sm quiz-newtab-btn" onclick="openQuizNewTab()">↗ Tab mới</button>
     </div>
     <div class="module-frame-wrap">
       <iframe id="quizFrame" class="module-frame" src="${makeQuizUrl()}" title="Trắc nghiệm kiến thức" loading="lazy"></iframe>
@@ -3102,7 +3152,9 @@ function renderQuizPortal(){
   APP.quizLoaded=true;
 }
 
-async function render(){renderDashboard();renderCalendar();renderManage();renderLibrary();await renderNotebook();renderQuizPortal();await renderUsers();renderSettings();}
+
+
+async function render(){renderDashboard();renderCalendar();renderManage();renderLibrary();await renderNotebook();renderQuizPortal();if(typeof renderHkgModule==='function'){await renderHkgModule();}else{const b=$('screen-hkg');if(b)b.innerHTML='<div class="msg err">Chưa tải được module Họp không giấy. Vui lòng kiểm tra file modules/hkg.js.</div>';}await renderUsers();renderSettings();}
 
 // ===== DASHBOARD =====
 function renderDashboard(){
@@ -4237,6 +4289,7 @@ function meetingCards(arr,compact){
       </div>
       <div class="m-actions">
         <button type="button" class="btn sm js-open-detail" data-action="open-detail" data-meeting-id="${esc(m.meetingId)}">👁 Xem chi tiết</button>
+        <button type="button" class="btn sm" data-action="open-hkg" data-meeting-id="${esc(m.meetingId)}">📋 Hồ sơ họp</button>
         ${canUseMeetingNote(m)?`<button type="button" class="btn sm note-btn" data-action="open-note" data-meeting-id="${esc(m.meetingId)}" data-meeting-title="${esc(m.noiDung)}">📒 Note</button>`:''}
         ${prepRatingStarsHtml(m,'card')}
         ${hasRole(ROLE_EDIT)?`<button type="button" class="btn primary sm js-edit-meeting" data-action="edit-meeting" data-meeting-id="${esc(m.meetingId)}">✏️ Sửa</button>`:''}
@@ -4421,7 +4474,8 @@ function exportManageExcel(){
   const safe=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
   const cell=v=>'<td style="vertical-align:top;border:1px solid #d9e3ec;padding:5px 7px">'+safe(v)+'</td>';
   const th=v=>'<th style="background:#0f4c81;color:#fff;border:1px solid #0f4c81;padding:6px 7px;text-align:center">'+safe(v)+'</th>';
-  const html='<!doctype html><html><head><meta charset="UTF-8"></head><body>'+
+  const html='<!doctype html><html><head><meta charset="UTF-8">  <link rel="stylesheet" href="modules/hkg.css">
+</head><body>'+
     '<h2 style="font-family:Arial;color:#063a63">QUẢN LÝ LỊCH CÔNG TÁC HQKV8</h2>'+
     '<p style="font-family:Arial">'+safe(filterText)+'</p>'+
     '<table style="border-collapse:collapse;font-family:Arial;font-size:10pt"><thead><tr>'+cols.map(th).join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+r.map(cell).join('')+'</tr>').join('')+'</tbody></table>'+
@@ -4458,6 +4512,8 @@ const DEPT_LIST = [
 function deptDatalist(){return`<datalist id="deptList">${DEPT_LIST.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('')}</datalist>`}
 function userDatalist(id='userList',users=APP.usersLite){return`<datalist id="${esc(id)}">${users.map(u=>`<option value="${esc(u.username)}">${esc(u.fullname)} · ${esc(u.donVi)} · ${esc(u.role)}</option>`).join('')}</datalist>`}
 function fileTypeOptions(selected){return optionsAny(['FILE_TYPE','LOAI_TAI_LIEU'],selected)}
+function fileVisibilityOptions(selected='PUBLIC'){const arr=[['PUBLIC','1. Công khai trên lịch họp'],['LEADER_CHICUC','2. Chỉ lãnh đạo Chi cục'],['LEADER_PHONGDOI_UP','3. Lãnh đạo Phòng/Đội trở lên']];return arr.map(([v,l])=>`<option value="${v}"${v===selected?' selected':''}>${l}</option>`).join('')}
+function fileVisibilityLabel(v){return ({PUBLIC:'Công khai',LEADER_CHICUC:'Chỉ lãnh đạo Chi cục',LEADER_PHONGDOI_UP:'Lãnh đạo Phòng/Đội trở lên'}[String(v||'PUBLIC').toUpperCase()]||'Công khai')}
 function deptLabel(v){const d=APP.depts.find(x=>x.code===v||x.name===v);return d?d.name:v}
 function usersForDept(dept){const q=normText(deptLabel(dept));const code=normText(dept);return APP.usersLite.filter(u=>{const du=normText(u.donVi);return!q||du===code||du===q||du.includes(q)||q.includes(du);})}
 
@@ -4487,6 +4543,8 @@ function openMeetingForm(id){
     <div class="field full">
       <label>Tài liệu đính kèm</label>
       <select id="fUploadType" style="margin-bottom:8px">${fileTypeOptions('GIAY_MOI')}</select>
+      <select id="fUploadVisibility" style="margin-bottom:8px">${fileVisibilityOptions('PUBLIC')}</select>
+      <div class="hint" style="margin-bottom:8px">Mặc định công khai. Người upload luôn xem được file do mình upload.</div>
       <div id="formDrop" class="drop">Kéo thả file vào đây hoặc bấm để chọn<br><span class="muted" style="font-size:.78rem">PDF, Word, Excel, PowerPoint, ảnh...</span><input id="formFileInput" type="file" multiple class="hide"></div>
       <div id="queuedFiles" class="queued-list"></div>
       <div id="saveMsg"></div>
@@ -4539,7 +4597,7 @@ async function saveMeeting(id){
     const meetingId=res.meetingId||id;
     if(APP.pendingFormFiles.length){
       msg($('saveMsg'),`Đang upload ${APP.pendingFormFiles.length} file...`);
-      for(const file of APP.pendingFormFiles){validateUploadFile(file);const base64=await readFile(file);await api('uploadMeetingFile',{meetingId,fileType:$('fUploadType').value,fileName:file.name,mimeType:file.type,base64});}
+      for(const file of APP.pendingFormFiles){validateUploadFile(file);const base64=await readFile(file);await api('uploadMeetingFile',{meetingId,fileType:$('fUploadType').value,fileVisibility:($('fUploadVisibility')?.value||'PUBLIC'),fileName:file.name,mimeType:file.type,base64});}
     }
     closeModal();await refreshAll();
   }catch(e){alert(e.message);if(btn){btn.disabled=false;btn.textContent='💾 Lưu lịch'}}
@@ -4649,20 +4707,33 @@ function noteFilesHtml(files=[], canEdit=false){
       ${canEdit?`<button type="button" class="btn xs danger" style="padding:2px 6px" onclick='deleteNoteFile(${jss(f.noteFileId)})'>×</button>`:''}
     </span>`).join('')}</div>`;
 }
+function updateNotebookUnreadBadge(count){
+  count = Number(count || 0);
+  APP.notebook.unreadSharedCount = count;
+  const badge = $('navNotebookUnread');
+  if(badge){
+    badge.textContent = count > 99 ? '99+' : String(count);
+    badge.classList.toggle('hide', count <= 0);
+  }
+}
+
 function noteCardHtml(n){
   const linked=n.meetingId?`<span class="note-meeting-pill">📅 ${esc(n.meetingId)}</span>`:'<span class="note-meeting-pill" style="background:#fff7ed;color:#9a3412">📝 Ghi chú độc lập</span>';
   const meetingTitle=n.meeting&&n.meeting.title?`<div class="muted" style="font-size:.76rem;margin-bottom:6px">${esc(n.meeting.date||'')} ${esc(n.meeting.time||'')} · ${esc(notePlainText(n.meeting.title,90))}</div>`:'';
   const fileBadge=(n.fileCount||0)>0?`<span class="note-meeting-pill" style="background:#f0fdf4;color:#166534">📎 ${n.fileCount} file</span>`:'';
-  return `<div class="note-card">
+  const sharedBadge=n.isShared?`<span class="note-meeting-pill" style="background:#eef2ff;color:#3730a3">📨 Được gửi${n.shareInfo&&n.shareInfo.fromFullname?' từ '+esc(n.shareInfo.fromFullname):''}</span>`:'';
+  const unreadBadge=n.shareUnread?`<span class="note-meeting-pill note-unread-chip">Mới</span>`:'';
+  return `<div class="note-card ${n.shareUnread?'unread':''}">
     <div class="note-card-title">${esc(n.title||'Ghi chú không tiêu đề')}</div>
-    <div class="note-card-meta">${linked}${fileBadge}<span>${noteTimeLabel(n)}</span></div>
+    <div class="note-card-meta">${linked}${fileBadge}${sharedBadge}${unreadBadge}<span>${noteTimeLabel(n)}</span></div>
     ${meetingTitle}
     <div class="note-card-content">${esc(notePlainText(n.content,420))}</div>
     ${noteFilesHtml(n.files||[], false)}
     <div class="note-card-actions">
       <button type="button" class="btn xs" onclick='openNoteViewer(${jss(n.noteId)})'>👁 Xem</button>
       ${n.canEdit?`<button type="button" class="btn primary xs" onclick='openNoteEditor(${jss(n.meetingId)},${jss((n.meeting&&n.meeting.title)||'')},${jss(n.noteId)})'>✏️ Sửa</button>
-      <button type="button" class="btn danger xs" onclick='deleteNote(${jss(n.noteId)})'>🗑 Xóa</button>`:''}
+      <button type="button" class="btn xs ok" onclick='openNoteShare(${jss(n.noteId)})'>📤 Gửi</button>
+      <button type="button" class="btn danger xs" onclick='deleteNote(${jss(n.noteId)})'>🗑 Xóa</button>`:n.isShared?`<button type="button" class="btn danger xs" onclick='hideSharedNote(${jss(n.noteId)})'>🗑 Xóa hiển thị</button>`:''}
       ${n.meetingId?`<button type="button" class="btn ghost xs" onclick='openDetail(${jss(n.meetingId)})'>📋 Lịch</button>`:''}
     </div>
   </div>`;
@@ -4690,6 +4761,7 @@ async function renderNotebook(){
   try{
     const res=await api('getNotes',{keyword:kw});
     APP.notebook.notes=res.notes||[]; APP.notebook.loaded=true;
+    updateNotebookUnreadBadge(res.unreadSharedCount || 0);
     const list=$('notebookList'); if(!list)return;
     list.innerHTML=APP.notebook.notes.length?`<div class="notes-grid">${APP.notebook.notes.map(noteCardHtml).join('')}</div>`:'<div class="empty">Chưa có ghi chú nào.</div>';
   }catch(e){
@@ -4711,7 +4783,7 @@ async function loadDetailNotes(meetingId){
         <div class="detail-note-title">${esc(n.title||'Ghi chú')}</div>
         <div style="display:flex;gap:6px">
           <button type="button" class="btn xs" onclick='openNoteViewer(${jss(n.noteId)})'>👁 Xem</button>
-          ${n.canEdit?`<button type="button" class="btn primary xs" onclick='openNoteEditor(${jss(meetingId)},${jss('')},${jss(n.noteId)})'>✏️ Sửa</button>`:''}
+          ${n.canEdit?`<button type="button" class="btn primary xs" onclick='openNoteEditor(${jss(meetingId)},${jss('')},${jss(n.noteId)})'>✏️ Sửa</button><button type="button" class="btn ok xs" onclick='openNoteShare(${jss(n.noteId)})'>📤 Gửi</button>`:''}
         </div>
       </div>
       <div class="note-card-meta"><span>${esc(n.ownerFullname||n.ownerUsername||'')}</span><span>${noteTimeLabel(n)}</span>${(n.fileCount||0)>0?`<span>📎 ${n.fileCount} file</span>`:''}</div>
@@ -4728,6 +4800,7 @@ async function fetchNoteById(noteId){
   if(n)return n;
   const res=await api('getNotes',{});
   APP.notebook.notes=res.notes||[];
+  updateNotebookUnreadBadge(res.unreadSharedCount || 0);
   return findCachedNote(noteId);
 }
 async function openNoteViewer(noteId){
@@ -4736,6 +4809,15 @@ async function openNoteViewer(noteId){
   try{
     const n=await fetchNoteById(noteId);
     if(!n){$('modalBody').innerHTML='<div class="msg err">Không tìm thấy ghi chú.</div>';return;}
+    if(n.isShared && n.shareUnread){
+      try{
+        const rr=await api('markNoteShareRead',{noteId});
+        n.shareUnread=false;
+        if(n.shareInfo)n.shareInfo.isRead=true;
+        updateNotebookUnreadBadge(rr.unreadSharedCount || 0);
+        APP.notebook.loaded=false;
+      }catch(_e){}
+    }
     $('modalBody').innerHTML=`<div style="display:grid;gap:12px">
       <div class="note-meeting-pill">${n.meetingId?'📅 '+esc(n.meetingId):'📝 Ghi chú độc lập'}</div>
       <h2 style="color:var(--navy);font-size:1.2rem">${esc(n.title||'Ghi chú')}</h2>
@@ -4744,7 +4826,7 @@ async function openNoteViewer(noteId){
       <div class="panel" style="box-shadow:none"><div class="panel-b" style="white-space:pre-wrap;line-height:1.75;color:var(--text2);font-size:.98rem;min-height:240px">${esc(n.content)}</div></div>
       ${noteFilesHtml(n.files||[], n.canEdit)}
       <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
-        ${n.canEdit?`<button type="button" class="btn primary" onclick='openNoteEditor(${jss(n.meetingId)},${jss((n.meeting&&n.meeting.title)||'')},${jss(n.noteId)})'>✏️ Sửa</button>`:''}
+        ${n.canEdit?`<button type="button" class="btn primary" onclick='openNoteEditor(${jss(n.meetingId)},${jss((n.meeting&&n.meeting.title)||'')},${jss(n.noteId)})'>✏️ Sửa</button><button type="button" class="btn ok" onclick='openNoteShare(${jss(n.noteId)})'>📤 Gửi</button>`:n.isShared?`<button type="button" class="btn danger" onclick='hideSharedNote(${jss(n.noteId)})'>🗑 Xóa hiển thị</button>`:''}
         <button type="button" class="btn ghost" onclick="closeModal()">Đóng</button>
       </div>
     </div>`;
@@ -4800,6 +4882,94 @@ async function openMeetingNote(meetingId='', meetingTitle=''){
       <div style="display:flex;justify-content:flex-end;margin-top:12px">
         <button type="button" class="btn ghost" onclick="closeModal()">Đóng</button>
       </div>`;
+  }
+}
+
+
+let NOTE_SHARE_SELECTED_USER = null;
+let NOTE_SHARE_SEARCH_TIMER = null;
+function noteRecipientInitials(u){
+  const name=String((u&&u.fullname)||'').trim() || String((u&&u.username)||'').trim();
+  const parts=name.split(/\s+/).filter(Boolean);
+  if(!parts.length)return 'U';
+  if(parts.length===1)return parts[0].slice(0,2).toUpperCase();
+  return (parts[parts.length-2][0]+parts[parts.length-1][0]).toUpperCase();
+}
+async function openNoteShare(noteId){
+  const n=await fetchNoteById(noteId);
+  if(!n){ alert('Không tìm thấy ghi chú để gửi.'); return; }
+  if(!n.canEdit){ alert('Chỉ người tạo ghi chú mới được gửi ghi chú này.'); return; }
+  NOTE_SHARE_SELECTED_USER=null;
+  showModal('<h3>📤 Gửi ghi chú trong app</h3>',`
+    <div class="note-share-box">
+      <div class="msg" style="margin:0">Ghi chú: <b>${esc(n.title||'Ghi chú')}</b><br><span class="muted">Người nhận sẽ xem được bản ghi chú này trong Notebook của họ.</span></div>
+      <div class="field">
+        <label>Người nhận</label>
+        <div class="note-share-search">
+          <input id="noteRecipientInput" class="note-recipient-input" autocomplete="off" placeholder="Gõ tên đăng nhập hoặc họ tên đầy đủ...">
+          <div id="noteRecipientList" class="note-recipient-list hide"></div>
+        </div>
+        <div id="noteShareSelected" class="note-share-selected"></div>
+      </div>
+      <div class="field">
+        <label>Lời nhắn kèm theo</label>
+        <textarea id="noteShareMessage" class="note-share-message" placeholder="Ví dụ: Anh/chị xem giúp ghi chú này..."></textarea>
+      </div>
+      <div id="noteShareMsg"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap">
+        <button type="button" class="btn ghost" onclick="closeModal()">Đóng</button>
+        <button type="button" id="btnSendNoteShare" class="btn primary" onclick='sendNoteShare(${jss(noteId)})'>📤 Gửi</button>
+      </div>
+    </div>`);
+  const inp=$('noteRecipientInput');
+  if(inp){
+    inp.addEventListener('input',()=>{
+      NOTE_SHARE_SELECTED_USER=null;
+      const box=$('noteShareSelected'); if(box){box.classList.remove('show');box.innerHTML='';}
+      clearTimeout(NOTE_SHARE_SEARCH_TIMER);
+      NOTE_SHARE_SEARCH_TIMER=setTimeout(()=>searchNoteRecipientLive(inp.value),180);
+    });
+    inp.addEventListener('focus',()=>{ if(inp.value.trim()) searchNoteRecipientLive(inp.value); });
+    setTimeout(()=>inp.focus(),80);
+  }
+}
+async function searchNoteRecipientLive(q){
+  q=String(q||'').trim();
+  const list=$('noteRecipientList');
+  if(!list)return;
+  if(!q){ list.classList.add('hide'); list.innerHTML=''; return; }
+  list.classList.remove('hide');
+  list.innerHTML='<div class="muted" style="padding:10px">Đang tìm người dùng...</div>';
+  try{
+    const res=await api('searchNoteRecipients',{q});
+    const users=res.users||[];
+    if(!users.length){ list.innerHTML='<div class="muted" style="padding:10px">Không tìm thấy người phù hợp.</div>'; return; }
+    list.innerHTML=users.map(u=>`<button type="button" class="note-recipient-item" onclick='selectNoteRecipient(${jss(u)})'>
+      <span class="note-recipient-avatar">${esc(noteRecipientInitials(u))}</span>
+      <span class="note-recipient-main"><b>${esc(u.fullname||u.username)}</b><span>${esc(u.username)}${u.chucvu?' · '+esc(u.chucvu):''}${u.donVi?' · '+esc(u.donVi):''}</span></span>
+    </button>`).join('');
+  }catch(e){ list.innerHTML=`<div class="msg err" style="margin:6px">${esc(e.message||String(e))}</div>`; }
+}
+function selectNoteRecipient(u){
+  NOTE_SHARE_SELECTED_USER=u;
+  const inp=$('noteRecipientInput'); if(inp) inp.value=(u.fullname||u.username||'');
+  const list=$('noteRecipientList'); if(list) list.classList.add('hide');
+  const box=$('noteShareSelected');
+  if(box){box.classList.add('show');box.innerHTML=`Đã chọn: <b>${esc(u.fullname||u.username)}</b> <span class="muted">(${esc(u.username||'')})</span>`;}
+}
+async function sendNoteShare(noteId){
+  const btn=$('btnSendNoteShare');
+  const msgBox=$('noteShareMsg');
+  if(!NOTE_SHARE_SELECTED_USER || !NOTE_SHARE_SELECTED_USER.username){ msg(msgBox,'Vui lòng chọn người nhận trong danh sách gợi ý.','err'); return; }
+  if(btn){btn.disabled=true;btn.textContent='Đang gửi...';}
+  try{
+    const res=await api('shareNote',{noteId,toUsername:NOTE_SHARE_SELECTED_USER.username,message:($('noteShareMessage')?.value||'').trim()});
+    msg(msgBox,res.msg||'Đã gửi ghi chú.','ok');
+    APP.notebook.loaded=false;
+    setTimeout(()=>closeModal(),800);
+  }catch(e){
+    msg(msgBox,e.message||String(e),'err');
+    if(btn){btn.disabled=false;btn.textContent='📤 Gửi';}
   }
 }
 
@@ -4888,9 +5058,21 @@ async function deleteNoteFile(noteFileId){
   if(!confirm('Xóa file đính kèm khỏi ghi chú?'))return;
   try{await api('deleteNoteFile',{noteFileId});APP.notebook.loaded=false;const cur=Array.from(document.querySelectorAll('.modal')).some(m=>!m.classList.contains('hide'));alert('Đã xóa file đính kèm. Mở lại ghi chú để cập nhật.');}catch(e){alert(e.message||String(e));}
 }
+async function hideSharedNote(noteId){
+  if(!confirm('Xóa ghi chú được gửi khỏi Notebook của bạn? Ghi chú gốc của người gửi không bị xóa.'))return;
+  try{
+    const res=await api('hideSharedNote',{noteId});
+    updateNotebookUnreadBadge(res.unreadSharedCount || 0);
+    APP.notebook.loaded=false;
+    closeModal();
+    await renderNotebook();
+  }catch(e){alert(e.message||String(e));}
+}
 async function deleteNote(noteId){
+  const n=findCachedNote(noteId);
+  if(n && n.isShared && !n.canEdit){ return hideSharedNote(noteId); }
   if(!confirm('Xóa ghi chú này?'))return;
-  try{await api('deleteNote',{noteId});APP.notebook.loaded=false;await renderNotebook();}catch(e){alert(e.message);}
+  try{const res=await api('deleteNote',{noteId}); if(res&&res.unreadSharedCount!==undefined)updateNotebookUnreadBadge(res.unreadSharedCount||0); APP.notebook.loaded=false;await renderNotebook();}catch(e){alert(e.message);}
 }
 
 // ===== DETAIL =====
@@ -5003,7 +5185,7 @@ function fileList(files){
     const btnLabel=isFolder?'📁 Mở':'👁 Xem';
     const metaFolder=isFolder?'Thư mục Drive':(f.isVirtualFromFolder?'Tệp trong thư mục cũ':'Tệp Drive');
     const src=f.sourceFolderName?` · ${esc(f.sourceFolderName)}`:'';
-    return `<div class="file-row"><div><b>${esc(f.fileName)}</b><br><span class="muted" style="font-size:.78rem">${esc(f.fileType)} · V${esc(f.version)} · ${esc(f.uploadedBy)} · ${esc(dateVNShort(f.uploadedAt))} · ${esc(metaFolder)}${src}</span></div><button type="button" class="btn sm primary" onclick="openMeetingDetailFile(${i})">${btnLabel}</button></div>`;
+    return `<div class="file-row"><div><b>${esc(f.fileName)}</b><br><span class="muted" style="font-size:.78rem">${esc(f.fileType)} · ${esc(fileVisibilityLabel(f.fileVisibility))} · V${esc(f.version)} · ${esc(f.uploadedBy)} · ${esc(dateVNShort(f.uploadedAt))} · ${esc(metaFolder)}${src}</span></div><button type="button" class="btn sm primary" onclick="openMeetingDetailFile(${i})">${btnLabel}</button></div>`;
   }).join('')
 }
 function openMeetingDetailFile(index){
@@ -5024,7 +5206,7 @@ function openMeetingDetailFile(index){
   if(!url){ alert('Không có đường dẫn file Drive để xem.'); return; }
   openDriveFilePopup(url, f.fileName, f.mimeType);
 }
-function uploadBox(id){return`<div style="margin-top:12px"><div class="field"><label>Loại tài liệu</label><select id="upType">${fileTypeOptions('TAI_LIEU_HOP')}</select></div><div id="drop" class="drop">Kéo thả file vào đây hoặc bấm để chọn file<br><span class="muted" style="font-size:.76rem">PDF, Word, Excel, PowerPoint, ảnh, zip...</span><input id="fileInput" type="file" multiple class="hide"></div><div id="upMsg"></div></div>`}
+function uploadBox(id){return`<div style="margin-top:12px"><div class="field"><label>Loại tài liệu</label><select id="upType">${fileTypeOptions('TAI_LIEU_HOP')}</select></div><div class="field"><label>Phạm vi xem tài liệu</label><select id="upVisibility">${fileVisibilityOptions('PUBLIC')}</select><div class="hint">Mặc định công khai. Người upload luôn xem được file do mình upload.</div></div><div id="drop" class="drop">Kéo thả file vào đây hoặc bấm để chọn file<br><span class="muted" style="font-size:.76rem">PDF, Word, Excel, PowerPoint, ảnh, zip...</span><input id="fileInput" type="file" multiple class="hide"></div><div id="upMsg"></div></div>`}
 function setupDrop(id){
   const d=$('drop');if(!d)return;const inp=$('fileInput');
   d.onclick=()=>inp.click();
@@ -5035,7 +5217,7 @@ function setupDrop(id){
 }
 async function uploadFiles(id,files){
   if(!files||!files.length)return;const el=$('upMsg');msg(el,`Đang upload ${files.length} file...`);
-  for(const file of files){const base64=await readFile(file);await api('uploadMeetingFile',{meetingId:id,fileType:$('upType').value,fileName:file.name,mimeType:file.type,base64});}
+  for(const file of files){const base64=await readFile(file);await api('uploadMeetingFile',{meetingId:id,fileType:$('upType').value,fileVisibility:($('upVisibility')?.value||'PUBLIC'),fileName:file.name,mimeType:file.type,base64});}
   msg(el,'Đã upload xong. Đang tải lại...','ok');await refreshAll();setTimeout(()=>openDetail(id),500);
 }
 function readFile(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)})}
@@ -5352,7 +5534,7 @@ function handleDelegatedMeetingAction_(ev){
   const btn = target.closest('[data-action]');
   if(!btn) return;
   const action = btn.getAttribute('data-action');
-  if(action !== 'open-detail' && action !== 'edit-meeting' && action !== 'open-note') return;
+  if(action !== 'open-detail' && action !== 'edit-meeting' && action !== 'open-note' && action !== 'open-hkg') return;
 
   // Tránh mobile chạy 2 lần: touchend xong trình duyệt phát sinh click.
   const now = Date.now();
@@ -5367,10 +5549,23 @@ function handleDelegatedMeetingAction_(ev){
   if(action === 'open-detail') openDetail(id);
   if(action === 'edit-meeting') openMeetingForm(id);
   if(action === 'open-note') openMeetingNote(id, btn.getAttribute('data-meeting-title')||'');
+  if(action === 'open-hkg'){ if(typeof openHkgDetail==='function') openHkgDetail(id); else alert('Chưa tải được module Họp không giấy. Vui lòng kiểm tra file modules/hkg.js.'); }
 }
 document.addEventListener('click', handleDelegatedMeetingAction_, true);
 document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:true, passive:false});
 
+</script>
+
+<script>
+(function(){
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('./service-worker.js').catch(function(err){
+        console.warn('Không đăng ký được service worker PWA:', err);
+      });
+    });
+  }
+})();
 </script>
 </body>
 </html>
