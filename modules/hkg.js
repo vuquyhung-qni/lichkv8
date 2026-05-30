@@ -1,9 +1,8 @@
-/* V89 - Module Họp không giấy tách khỏi Index.html
+/* V88 - Module Họp không giấy tách khỏi Index.html
    File này chạy trong cùng trang Portal Lịch công tác, dùng chung APP/api/modal/helper. */
 // ===== Module Họp không giấy =====
 function hkgCanManage(){ return hasRole(ROLE_EDIT); }
 function hkgStatusLabel(s){ const m={DONE:'Hoàn thành',WAIT_DOCS:'Chờ tài liệu',WAIT_ATTEND:'Chờ điểm danh',WAIT_MINUTES:'Chờ biên bản',WAIT_CONCLUSION:'Chờ kết luận'}; return m[s]||s||'Đang xử lý'; }
-function hkgFileVisibilityLabel(v){return ({PUBLIC:'Công khai',LEADER_CHICUC:'Chỉ lãnh đạo Chi cục',LEADER_PHONGDOI_UP:'Lãnh đạo Phòng/Đội trở lên'}[String(v||'PUBLIC').toUpperCase()]||'Công khai')}
 function hkgStatusClass(s){ return s==='DONE'?'done':(s==='OVERDUE'?'late':'wait'); }
 async function renderHkgModule(){
   const box=$('screen-hkg'); if(!box) return;
@@ -16,7 +15,7 @@ async function renderHkgList(){
   const box=$('screen-hkg'); if(!box) return;
   box.innerHTML='<div class="loading"><div class="spin"></div><span>Đang tải module Họp không giấy...</span></div>';
   try{
-    const res=await api('getHkgMeetings',{showPast:true,limit:2000});
+    const res=await api('getHkgMeetings',{showPast:true,limit:300});
     APP.hkg.dashboard=res.dashboard||{}; APP.hkg.meetings=res.meetings||[]; APP.hkg.loaded=true; APP.hkg.view='list';
     const d=APP.hkg.dashboard;
     box.innerHTML=`<div class="hkg-shell">
@@ -53,7 +52,7 @@ async function renderHkgDetail(){
 function hkgSetTab(t){APP.hkg.tab=t; const b=$('hkgTabBody'); if(b)b.innerHTML=hkgTabHtml(); document.querySelectorAll('.hkg-tab').forEach(x=>x.classList.remove('active')); hkgMaybeStartVoteTimer();}
 function hkgTabHtml(){const r=APP.hkg.detail||{}, m=r.meeting||{}; const t=APP.hkg.tab||'info';
   if(t==='info')return `<div class="hkg-grid2"><div class="hkg-card"><h4>Thông tin cuộc họp</h4>${hkgInfoRow('Mã lịch',m.meetingId)}${hkgInfoRow('Nội dung',m.noiDung)}${hkgInfoRow('Thời gian',dateVNShort(m.ngayHienThi||m.ngayBatDau)+' · '+timeRange(m))}${hkgInfoRow('Địa điểm',m.diaDiem)}${hkgInfoRow('Chủ trì',m.chuTri)}${hkgInfoRow('Thành phần',m.thanhPhan)}</div><div class="hkg-card"><h4>Thao tác nhanh</h4><div class="hkg-mini-list"><button class="btn primary" onclick="hkgSetTab('att')">✅ Điểm danh</button><button class="btn" onclick="hkgSetTab('vote')">🗳 Biểu quyết</button><button class="btn" onclick="hkgSetTab('min')">📝 Biên bản</button><button class="btn" onclick="hkgSetTab('con')">📌 Kết luận</button></div></div></div>`;
-  if(t==='docs')return `<div class="hkg-card"><h4>Tài liệu họp</h4>${(r.files||[]).length?`<div class="hkg-mini-list">${r.files.map(f=>`<div class="hkg-mini-item"><b>${esc(f.fileName||f.name||'Tài liệu')}</b><br><span class="muted">${esc(f.fileType||'')} · ${esc(f.fileVisibilityLabel||hkgFileVisibilityLabel(f.fileVisibility)||'Công khai')}</span><div style="margin-top:6px"><a class="btn xs primary" target="_blank" href="${esc(f.fileUrl||f.url||'#')}">Mở file</a></div></div>`).join('')}</div>`:'<div class="empty">Chưa có tài liệu họp.</div>'}<div style="margin-top:12px"><button class="btn" onclick="openDetail('${esc(m.meetingId)}')">Upload/xem tài liệu trong lịch gốc</button></div></div>`;
+  if(t==='docs')return `<div class="hkg-card"><h4>Tài liệu họp</h4>${(r.files||[]).length?`<div class="hkg-mini-list">${r.files.map(f=>`<div class="hkg-mini-item"><b>${esc(f.fileName||f.name||'Tài liệu')}</b><br><span class="muted">${esc(f.fileType||'')}</span><div style="margin-top:6px"><a class="btn xs primary" target="_blank" href="${esc(f.fileUrl||f.url||'#')}">Mở file</a></div></div>`).join('')}</div>`:'<div class="empty">Chưa có tài liệu họp.</div>'}<div style="margin-top:12px"><button class="btn" onclick="openDetail('${esc(m.meetingId)}')">Upload/xem tài liệu trong lịch gốc</button></div></div>`;
   if(t==='att')return hkgAttendanceHtml(r);
   if(t==='op')return hkgOpinionHtml(r);
   if(t==='vote')return hkgVoteHtml(r);
