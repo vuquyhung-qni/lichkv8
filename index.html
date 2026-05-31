@@ -2209,6 +2209,63 @@
       .module-frame-wrap, .module-frame { min-height:calc(100svh - 126px); }
       .module-note { display:none; }
     }
+
+    /* ===== V101: Trắc nghiệm nhúng trong Portal - giao diện gọn, không nút quay lại/tab mới ===== */
+    .quiz-embed-shell{
+      min-height:calc(100svh - 116px);
+      background:#f7f9fc;
+      border:1px solid var(--border2);
+      border-radius:14px;
+      box-shadow:var(--shadow-sm);
+      overflow:hidden;
+    }
+    .quiz-embed-head{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:12px 16px;
+      background:linear-gradient(90deg,#f7fbff,#fff);
+      border-bottom:1px solid var(--border2);
+    }
+    .quiz-embed-head h3{
+      margin:0;
+      flex:1;
+      min-width:0;
+      color:var(--navy);
+      font-size:1rem;
+      font-weight:900;
+      text-transform:uppercase;
+      letter-spacing:.45px;
+      text-align:left;
+      line-height:1.25;
+    }
+    .quiz-embed-frame-wrap{
+      width:100%;
+      min-height:calc(100svh - 176px);
+      background:#f7f9fc;
+      overflow:hidden;
+    }
+    .quiz-embed-frame{
+      width:100%;
+      height:calc(100svh - 176px);
+      min-height:760px;
+      border:0;
+      display:block;
+      background:#f7f9fc;
+    }
+    @media(max-width:768px){
+      .quiz-embed-shell{
+        min-height:calc(100svh - 70px);
+        border-left:0;
+        border-right:0;
+        border-radius:0;
+      }
+      .quiz-embed-head{padding:10px 12px;}
+      .quiz-embed-head h3{font-size:.92rem;}
+      .quiz-embed-frame-wrap{min-height:calc(100svh - 118px);}
+      .quiz-embed-frame{height:calc(100svh - 118px); min-height:720px;}
+    }
+
 </style>
   <link rel="stylesheet" href="modules/hkg.css?v=93">
 </head>
@@ -2606,7 +2663,7 @@ function msgToastError(text){
 }
 
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v100_leader_stats_include_trucban';
+const APP_VERSION = 'HTML_v101_quiz_embed_ui_fix';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const QUIZ_MODULE_URL = 'https://vuquyhung-qni.github.io/tracnghiem/';
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
@@ -3164,7 +3221,9 @@ function makeQuizUrl(){
   const u=new URL(QUIZ_MODULE_URL);
   u.searchParams.set('embed','1');
   u.searchParams.set('from','lichkv8');
-  u.searchParams.set('view','dashboard');
+  u.searchParams.set('view','quiz-setup');
+  u.searchParams.set('compact','1');
+  u.searchParams.set('portal','1');
   return u.toString();
 }
 function reloadQuizModule(){
@@ -3178,17 +3237,14 @@ function openQuizNewTab(){
 function renderQuizPortal(){
   const box=$('screen-quiz'); if(!box) return;
   if(APP.quizLoaded) return;
-  box.innerHTML=`<div class="module-shell">
-    <div class="module-head">
-      <button type="button" class="btn ghost sm quiz-back-btn" onclick="go('calendar')">← Lịch công tác</button>
-      <h3>🧠 Trắc nghiệm kiến thức</h3>
+  box.innerHTML=`<div class="quiz-embed-shell">
+    <div class="quiz-embed-head">
+      <h3>🧠 TRẮC NGHIỆM KIẾN THỨC</h3>
       <button type="button" class="btn ghost sm quiz-reload-btn" onclick="reloadQuizModule()">↻ Tải lại</button>
-      <button type="button" class="btn primary sm quiz-newtab-btn" onclick="openQuizNewTab()">↗ Tab mới</button>
     </div>
-    <div class="module-frame-wrap">
-      <iframe id="quizFrame" class="module-frame" src="${makeQuizUrl()}" title="Trắc nghiệm kiến thức" loading="lazy"></iframe>
+    <div class="quiz-embed-frame-wrap">
+      <iframe id="quizFrame" class="quiz-embed-frame" src="${makeQuizUrl()}" title="Trắc nghiệm kiến thức" loading="eager"></iframe>
     </div>
-    <div class="module-note">Module Trắc nghiệm chạy độc lập, được mở trong Portal Lịch công tác và nhận phiên đăng nhập nội bộ.</div>
   </div>`;
   APP.quizLoaded=true;
 }
@@ -3247,7 +3303,8 @@ function renderDashboard(){
     const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;
     if(!s)return;
     const raw=meetingLeaderHaystack(m);
-    const parts=String(raw||'').split(/[,;\n]+/).map(x=>x.trim()).filter(x=>x.length>1);
+    const parts=String(raw||'').split(/[,;
+]+/).map(x=>x.trim()).filter(x=>x.length>1);
     const matched=new Set();
     parts.forEach(part=>{
       const pn=normName(part);
@@ -3451,7 +3508,8 @@ function openLeaderStatDetail(leaderName, leaderShort, period){
   const normTarget=normLName(leaderName);
   function matchLeader(m){
     const raw=meetingLeaderHaystack(m);
-    const parts=String(raw||'').split(/[,;\n]+/).map(x=>x.trim()).filter(x=>x.length>1);
+    const parts=String(raw||'').split(/[,;
+]+/).map(x=>x.trim()).filter(x=>x.length>1);
     return parts.some(p=>{
       const pn=normLName(p);
       return pn===normTarget||pn.includes(normTarget)||normTarget.includes(pn);
@@ -5614,7 +5672,7 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
           localStorage.setItem(resetKey,'1');
         }
       }catch(e){ console.warn('Không reset được service worker/cache cũ:', e); }
-      navigator.serviceWorker.register('./service-worker.js?v=92').then(function(reg){
+      navigator.serviceWorker.register('./service-worker.js?v=101').then(function(reg){
         try { reg.update(); } catch(e) {}
       }).catch(function(err){
         console.warn('Không đăng ký được service worker PWA:', err);

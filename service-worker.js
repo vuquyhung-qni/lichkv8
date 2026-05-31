@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lichkv8-v100-leader-stats-trucban';
+const CACHE_NAME = 'lichkv8-v101-quiz-embed-ui-fix';
 const STATIC_ASSETS = [
   './',
   './index.html',
