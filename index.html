@@ -6,6 +6,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://*.google.com https://*.googleusercontent.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://drive.google.com https://docs.google.com https://*.googleusercontent.com https://*.gstatic.com; frame-src 'self' https://vuquyhung-qni.github.io https://*.github.io https://drive.google.com https://docs.google.com https://script.google.com https://script.googleusercontent.com https://*.google.com https://*.googleusercontent.com; object-src 'none'; base-uri 'self'; form-action 'self' https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com;">
   <title>Quản lý lịch công tác HQKV8</title>
   <!-- PWA_V86_START -->
+  <!-- V102: fix JS regex newline causing login buttons not to run -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#063a63">
   <meta name="mobile-web-app-capable" content="yes">
@@ -2663,7 +2664,7 @@ function msgToastError(text){
 }
 
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v101_quiz_embed_ui_fix';
+const APP_VERSION = 'HTML_v102_login_regex_fix_quiz_embed';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const QUIZ_MODULE_URL = 'https://vuquyhung-qni.github.io/tracnghiem/';
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
@@ -3303,8 +3304,7 @@ function renderDashboard(){
     const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;
     if(!s)return;
     const raw=meetingLeaderHaystack(m);
-    const parts=String(raw||'').split(/[,;
-]+/).map(x=>x.trim()).filter(x=>x.length>1);
+    const parts=String(raw||'').split(/[,;\n]+/).map(x=>x.trim()).filter(x=>x.length>1);
     const matched=new Set();
     parts.forEach(part=>{
       const pn=normName(part);
@@ -3508,8 +3508,7 @@ function openLeaderStatDetail(leaderName, leaderShort, period){
   const normTarget=normLName(leaderName);
   function matchLeader(m){
     const raw=meetingLeaderHaystack(m);
-    const parts=String(raw||'').split(/[,;
-]+/).map(x=>x.trim()).filter(x=>x.length>1);
+    const parts=String(raw||'').split(/[,;\n]+/).map(x=>x.trim()).filter(x=>x.length>1);
     return parts.some(p=>{
       const pn=normLName(p);
       return pn===normTarget||pn.includes(normTarget)||normTarget.includes(pn);
