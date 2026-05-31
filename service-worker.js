@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lct-v99-static';
+const CACHE_NAME = 'lichkv8-v100-leader-stats-trucban';
 const STATIC_ASSETS = [
   './',
   './index.html',

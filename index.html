@@ -2606,7 +2606,7 @@ function msgToastError(text){
 }
 
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v93_login_js_fix';
+const APP_VERSION = 'HTML_v100_leader_stats_include_trucban';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const QUIZ_MODULE_URL = 'https://vuquyhung-qni.github.io/tracnghiem/';
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
@@ -2925,9 +2925,14 @@ function leaderFullName(v){
   };
   return map[x]||String(v||'');
 }
+function isTrucBanMeeting(m){
+  return String((m && (m.loaiLich || m.LOAI_LICH)) || '').toUpperCase() === 'TRUC_BAN';
+}
 function meetingLeaderHaystack(m){
-  // Chỉ dùng trường Chủ trì và Lãnh đạo liên quan để tránh khớp nhầm tên trong thành phần tham dự.
-  return `${m.chuTri||''};${m.lanhDaoLienQuan||''}`;
+  // Mặc định chỉ dùng trường Chủ trì và Lãnh đạo liên quan để tránh khớp nhầm tên trong thành phần tham dự.
+  // Riêng lịch TRỰC BAN: lãnh đạo thường nằm trong trường Thành phần, nên cộng thêm Thành phần vào thống kê/lọc lãnh đạo.
+  const base = `${m.chuTri||''};${m.lanhDaoLienQuan||''}`;
+  return isTrucBanMeeting(m) ? `${base};${m.thanhPhan||''}` : base;
 }
 function matchLeaderExact(m,leader){
   if(!leader||leader==='all')return true;
@@ -3237,11 +3242,12 @@ function renderDashboard(){
   }
   const leaderMap={};
   LEADERS.forEach(l=>{ leaderMap[l.name]={...l,today:0,tomorrow:0,week:0,month:0,year:0}; });
-  nonTrucBan.forEach(m=>{
+  // Thống kê lãnh đạo tính cả lịch trực ban. Với lịch trực ban, tên lãnh đạo có thể nằm trong trường Thành phần.
+  meetings.forEach(m=>{
     const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;
     if(!s)return;
-    const raw=[m.chuTri,m.lanhDaoLienQuan].join(',');
-    const parts=raw.split(/[,;]+/).map(x=>x.trim()).filter(x=>x.length>1);
+    const raw=meetingLeaderHaystack(m);
+    const parts=String(raw||'').split(/[,;\n]+/).map(x=>x.trim()).filter(x=>x.length>1);
     const matched=new Set();
     parts.forEach(part=>{
       const pn=normName(part);
@@ -3444,15 +3450,14 @@ function openLeaderStatDetail(leaderName, leaderShort, period){
   }
   const normTarget=normLName(leaderName);
   function matchLeader(m){
-    const raw=[m.chuTri,m.lanhDaoLienQuan].join(',');
-    const parts=raw.split(/[,;]+/).map(x=>x.trim()).filter(x=>x.length>1);
+    const raw=meetingLeaderHaystack(m);
+    const parts=String(raw||'').split(/[,;\n]+/).map(x=>x.trim()).filter(x=>x.length>1);
     return parts.some(p=>{
       const pn=normLName(p);
       return pn===normTarget||pn.includes(normTarget)||normTarget.includes(pn);
     });
   }
-  const nonTrucBan=meetings.filter(m=>m.loaiLich!=='TRUC_BAN');
-  let arr=nonTrucBan.filter(m=>{
+  let arr=meetings.filter(m=>{
     if(!matchLeader(m))return false;
     const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;
     if(!s)return false;
