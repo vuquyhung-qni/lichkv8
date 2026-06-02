@@ -2694,7 +2694,7 @@ function msgToastError(text){
 }
 
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v103_schedule_summary';
+const APP_VERSION = 'HTML_v104_summary_fix_fast_render';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const QUIZ_MODULE_URL = 'https://vuquyhung-qni.github.io/tracnghiem/';
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
@@ -3282,7 +3282,37 @@ function renderQuizPortal(){
 
 
 
-async function render(){renderDashboard();renderCalendar();renderSummary();renderManage();renderLibrary();await renderNotebook();renderQuizPortal();if(typeof renderHkgModule==='function'){await renderHkgModule();}else{const b=$('screen-hkg');if(b)b.innerHTML='<div class="msg err">Chưa tải được module Họp không giấy. Vui lòng kiểm tra file modules/hkg.js.</div>';}await renderUsers();renderSettings();}
+async function render(){
+  // V104: chỉ render màn hình đang mở để tránh chậm dây chuyền và lỗi ở module khác làm treo màn hình hiện tại.
+  const screen = APP.currentScreen || 'calendar';
+  await renderScreen_(screen);
+}
+async function renderScreen_(screen){
+  try{
+    switch(screen){
+      case 'dashboard': renderDashboard(); break;
+      case 'calendar': renderCalendar(); break;
+      case 'summary': renderSummary(); break;
+      case 'manage': renderManage(); break;
+      case 'library': renderLibrary(); break;
+      case 'notebook': await renderNotebook(); break;
+      case 'quiz': renderQuizPortal(); break;
+      case 'hkg':
+        if(typeof renderHkgModule==='function') await renderHkgModule();
+        else { const b=$('screen-hkg'); if(b) b.innerHTML='<div class="msg err">Chưa tải được module Họp không giấy. Vui lòng kiểm tra file modules/hkg.js.</div>'; }
+        break;
+      case 'users': await renderUsers(); break;
+      case 'settings': renderSettings(); break;
+      default: renderCalendar(); break;
+    }
+  }catch(e){
+    console.error('RENDER_SCREEN_ERROR', screen, e);
+    const b=$('screen-'+screen);
+    if(b){
+      b.innerHTML='<div class="msg err">Lỗi hiển thị màn hình '+esc(screen)+': '+esc((e&&e.message)||e)+'</div>';
+    }
+  }
+}
 
 
 // ===== TÓM TẮT LỊCH GỬI LÃNH ĐẠO =====
@@ -4351,6 +4381,7 @@ function weekRange(d){
   return[start,end];
 }
 function parseIsoDate(v){if(!v)return null;const[y,m,d]=String(v).split('-').map(Number);if(!y||!m||!d)return null;return new Date(y,m-1,d)}
+function dateKey_(v){const d=parseIsoDate(v);return d?d.getTime():0;}
 async function changeScope(scope){
   APP.filters.scope=scope;
   if(scope==='YEAR'||scope==='WEEK'||scope==='MONTH'){

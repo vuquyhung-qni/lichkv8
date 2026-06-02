@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lichkv8-v103-summary-zalo';
+const CACHE_NAME = 'lichkv8-v104-summary-fix-fast-render';
 const STATIC_ASSETS = [
   './',
   './index.html',
