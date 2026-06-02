@@ -2695,7 +2695,7 @@ function msgToastError(text){
 }
 
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v106_summary_3days_no_date_filter';
+const APP_VERSION = 'HTML_v107_summary_zalo_plaintext';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const QUIZ_MODULE_URL = 'https://vuquyhung-qni.github.io/tracnghiem/';
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
@@ -3319,9 +3319,9 @@ async function renderScreen_(screen){
 // ===== TÓM TẮT LỊCH GỬI LÃNH ĐẠO =====
 const SUMMARY_LEADERS = [
   { key:'hung',  name:'Phạm Quốc Hưng',    label:'Đ/c Phạm Quốc Hưng - Chi cục trưởng' },
-  { key:'duong', name:'Ngô Tùng Dương',    label:'Đ/c Ngô Tùng Dương - Phó CCT' },
-  { key:'loi',   name:'Bùi Ngọc Lợi',      label:'Đ/c Bùi Ngọc Lợi - Phó CCT' },
-  { key:'thang', name:'Nguyễn Cảnh Thắng', label:'Đ/c Nguyễn Cảnh Thắng - Phó CCT' }
+  { key:'duong', name:'Ngô Tùng Dương',    label:'Đ/c Ngô Tùng Dương - Phó Chi cục trưởng' },
+  { key:'loi',   name:'Bùi Ngọc Lợi',      label:'Đ/c Bùi Ngọc Lợi - Phó Chi cục trưởng' },
+  { key:'thang', name:'Nguyễn Cảnh Thắng', label:'Đ/c Nguyễn Cảnh Thắng - Phó Chi cục trưởng' }
 ];
 function renderSummary(){
   const box=$('screen-summary'); if(!box) return;
@@ -3348,7 +3348,7 @@ function renderSummary(){
         <div class="summary-options">
           <label><input type="checkbox" ${f.onlyPublished!==false?'checked':''} onchange="setSummaryOption('onlyPublished',this.checked)"> Chỉ lấy lịch đã duyệt/đã công bố</label>
           <label><input type="checkbox" ${f.includeTruc?'checked':''} onchange="setSummaryOption('includeTruc',this.checked)"> Bao gồm lịch trực ban</label>
-          <span class="muted">Mặc định lấy lịch 3 ngày từ hôm nay, sắp theo thứ tự: Hưng → Dương → Lợi → Thắng.</span>
+          <span class="muted">Mặc định lấy lịch 3 ngày từ hôm nay, định dạng plain text tối ưu để copy gửi Zalo.</span>
         </div>
         <div class="sp"></div>
         <div class="summary-preview-wrap">
@@ -3373,16 +3373,24 @@ function summaryPlainText_(){const el=$('summaryText');return el?(el.innerText||
 async function copySummaryText(){
   const el=$('summaryText'); const text=summaryPlainText_();
   if(!text.trim()){toast('Không có nội dung để copy.','err');return;}
-  const html=el?el.innerHTML:'';
+  // V107: Zalo ưu tiên text/plain, không giữ định dạng HTML.
+  // Vì vậy chỉ copy plain text để dán vào Zalo ổn định, không lỗi đậm/nhạt.
   try{
-    if(navigator.clipboard&&window.ClipboardItem&&html){
-      await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([text],{type:'text/plain'})})]);
-    }else if(navigator.clipboard){
+    if(navigator.clipboard){
       await navigator.clipboard.writeText(text);
     }else throw new Error('Clipboard API không khả dụng');
-    toast('Đã copy nội dung tóm tắt lịch.');
+    toast('Đã copy nội dung tóm tắt lịch để gửi Zalo.');
   }catch(e){
-    if(el){const range=document.createRange();range.selectNodeContents(el);const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range);document.execCommand('copy');sel.removeAllRanges();toast('Đã copy nội dung tóm tắt lịch.');}
+    if(el){
+      const range=document.createRange();
+      range.selectNodeContents(el);
+      const sel=window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      document.execCommand('copy');
+      sel.removeAllRanges();
+      toast('Đã copy nội dung tóm tắt lịch để gửi Zalo.');
+    }
   }
 }
 function downloadSummaryTxt(){const text=summaryPlainText_();const blob=new Blob([text],{type:'text/plain;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='tom-tat-lich.txt';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
@@ -3400,19 +3408,23 @@ function periodByTime_(m){const t=String(m.gioBatDau||'').trim();if(!t)return'C�
 function cleanLeaderRole_(s){return String(s||'').replace(/^Đ\/c\s*/i,'Đ/c ').replace(/\s+/g,' ').trim();}
 function meetingLeaderForLine_(m){const chu=cleanLeaderRole_(m.chuTri||'');if(chu)return chu;const idx=summaryLeaderIndex_(m);return idx<99?SUMMARY_LEADERS[idx].label:'';}
 function summaryLine_(m,key){const time=m.gioBatDau||'';const period=periodByTime_(m);const action=String(m.noiDung||'').trim();const place=String(m.diaDiem||'').trim();let line=`- (${period}) ${time?time+': ':''}`;if(key==='other'){const who=meetingLeaderForLine_(m);if(who)line+=`${who}, `;}line+=action;if(place)line+=`, tại ${place}`;line=line.replace(/\s+/g,' ').replace(/\s+,/g,',').trim();if(!/[.!?…]$/.test(line))line+='.';return line;}
-function buildSummaryText(){const arr=summaryMeetings_();const f=APP.summaryFilters||{};if(!arr.length)return'TÓM TẮT LỊCH\n\nKhông có lịch phù hợp trong khoảng thời gian đã chọn.';const today=new Date();today.setHours(0,0,0,0);const end=summaryEndDate_();const rangeText=dateVNShort(dateInputValue_(today))+(dateInputValue_(today)!==dateInputValue_(end)?' - '+dateVNShort(dateInputValue_(end)):'');return f.mode==='LEADER'?buildSummaryByLeader_(arr,rangeText):buildSummaryByDay_(arr,rangeText);}
-function buildSummaryByDay_(arr,rangeText){const byDate={};arr.forEach(m=>{const k=summaryDateKey_(m);(byDate[k]||(byDate[k]=[])).push(m);});let out='TÓM TẮT LỊCH\n'+rangeText+'\n';Object.keys(byDate).sort().forEach(date=>{out+='\n'+summaryDateTitle_(date)+'\n';const group={hung:[],duong:[],loi:[],thang:[],other:[]};byDate[date].forEach(m=>{group[summaryLeaderKey_(m)].push(m);});['hung','duong','loi','thang','other'].forEach(key=>{const list=group[key]||[];if(!list.length)return;out+='\n'+summaryLeaderLabelByKey_(key)+'\n';list.sort((a,b)=>String(a.gioBatDau||'').localeCompare(String(b.gioBatDau||''))).forEach(m=>{out+=summaryLine_(m,key)+'\n';});});});return out.trim();}
-function buildSummaryByLeader_(arr,rangeText){const group={hung:[],duong:[],loi:[],thang:[],other:[]};arr.forEach(m=>{group[summaryLeaderKey_(m)].push(m);});let out='TÓM TẮT LỊCH THEO LÃNH ĐẠO\n'+rangeText+'\n';['hung','duong','loi','thang','other'].forEach(key=>{const list=group[key]||[];if(!list.length)return;out+='\n'+summaryLeaderLabelByKey_(key)+'\n';const byDate={};list.forEach(m=>{const k=summaryDateKey_(m);(byDate[k]||(byDate[k]=[])).push(m);});Object.keys(byDate).sort().forEach(date=>{out+=summaryDateTitle_(date)+'\n';byDate[date].sort((a,b)=>String(a.gioBatDau||'').localeCompare(String(b.gioBatDau||''))).forEach(m=>{out+=summaryLine_(m,key)+'\n';});});});return out.trim();}
+function summaryTitleByRange_(range){
+  range=range||'3DAYS';
+  if(range==='TODAY')return 'TÓM TẮT LỊCH HÔM NAY';
+  if(range==='TOMORROW')return 'TÓM TẮT LỊCH NGÀY MAI';
+  if(range==='3DAYS')return 'TÓM TẮT LỊCH 03 NGÀY';
+  if(range==='WEEK')return 'TÓM TẮT LỊCH ĐẾN HẾT TUẦN';
+  if(range==='MONTH')return 'TÓM TẮT LỊCH ĐẾN HẾT THÁNG';
+  return 'TÓM TẮT LỊCH';
+}
+function buildSummaryText(){const arr=summaryMeetings_();const f=APP.summaryFilters||{};const title=summaryTitleByRange_(f.range||'3DAYS');if(!arr.length)return title+'\n\nKhông có lịch phù hợp trong khoảng thời gian đã chọn.';const today=new Date();today.setHours(0,0,0,0);const end=summaryEndDate_();const rangeText=dateVNShort(dateInputValue_(today))+(dateInputValue_(today)!==dateInputValue_(end)?' - '+dateVNShort(dateInputValue_(end)):'');return f.mode==='LEADER'?buildSummaryByLeader_(arr,rangeText,title):buildSummaryByDay_(arr,rangeText,title);}
+function buildSummaryByDay_(arr,rangeText,title){const byDate={};arr.forEach(m=>{const k=summaryDateKey_(m);(byDate[k]||(byDate[k]=[])).push(m);});let out=(title||'TÓM TẮT LỊCH')+'\n';Object.keys(byDate).sort().forEach(date=>{out+='\n📅 '+summaryDateTitle_(date).toUpperCase()+'\n';const group={hung:[],duong:[],loi:[],thang:[],other:[]};byDate[date].forEach(m=>{group[summaryLeaderKey_(m)].push(m);});['hung','duong','loi','thang','other'].forEach(key=>{const list=group[key]||[];if(!list.length)return;out+='\n👤 '+summaryLeaderLabelByKey_(key)+'\n';list.sort((a,b)=>String(a.gioBatDau||'').localeCompare(String(b.gioBatDau||''))).forEach(m=>{out+=summaryLine_(m,key)+'\n';});});});return out.trim();}
+function buildSummaryByLeader_(arr,rangeText,title){const group={hung:[],duong:[],loi:[],thang:[],other:[]};arr.forEach(m=>{group[summaryLeaderKey_(m)].push(m);});let out=(title||'TÓM TẮT LỊCH')+' THEO LÃNH ĐẠO\n';['hung','duong','loi','thang','other'].forEach(key=>{const list=group[key]||[];if(!list.length)return;out+='\n👤 '+summaryLeaderLabelByKey_(key)+'\n';const byDate={};list.forEach(m=>{const k=summaryDateKey_(m);(byDate[k]||(byDate[k]=[])).push(m);});Object.keys(byDate).sort().forEach(date=>{out+='\n📅 '+summaryDateTitle_(date).toUpperCase()+'\n';byDate[date].sort((a,b)=>String(a.gioBatDau||'').localeCompare(String(b.gioBatDau||''))).forEach(m=>{out+=summaryLine_(m,key)+'\n';});});});return out.trim();}
 function buildSummaryHtml(){return summaryTextToHtml_(buildSummaryText());}
 function summaryTextToHtml_(text){
-  return String(text||'').split('\n').map(function(line){
-    const s=line.trim();
-    if(!s)return '';
-    if(/^TÓM TẮT LỊCH/i.test(s))return '<b>'+esc(s)+'</b>';
-    if(/^Thứ |^Chủ Nhật/i.test(s))return '<b>'+esc(s)+'</b>';
-    if(/^Đ\/c |^Lịch chung/i.test(s))return '<b>'+esc(s)+'</b>';
-    return esc(line);
-  }).join('<br>');
+  // V107: hiển thị dạng plain text giống nội dung copy sang Zalo.
+  // Không dùng thẻ <b> vì Zalo thường chỉ nhận text/plain.
+  return esc(String(text||'')).replace(/\n/g,'<br>');
 }
 
 // ===== DASHBOARD =====

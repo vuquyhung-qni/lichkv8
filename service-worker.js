@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lichkv8-v106-summary-3days-no-date-filter';
+const CACHE_NAME = 'lichkv8-v107-summary-3days-no-date-filter';
 const STATIC_ASSETS = [
   './',
   './index.html',
