@@ -2202,7 +2202,8 @@
     .summary-options { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin: 8px 0 0; }
     .summary-options label { display:inline-flex; gap:6px; align-items:center; font-size:.82rem; color:var(--text2); font-weight:600; }
     .summary-preview-wrap { display:grid; grid-template-columns: minmax(0,1fr) 340px; gap:14px; }
-    .summary-textarea { width:100%; min-height:520px; border:1.5px solid var(--border); border-radius:14px; padding:14px 15px; outline:none; background:#fbfdff; color:var(--text); font-size:.93rem; line-height:1.65; resize:vertical; white-space:pre-wrap; }
+    .summary-textarea { width:100%; min-height:520px; border:1.5px solid var(--border); border-radius:14px; padding:14px 15px; outline:none; background:#fbfdff; color:var(--text); font-size:.93rem; line-height:1.65; resize:vertical; white-space:pre-wrap; overflow:auto; }
+    .summary-editor b { font-weight:800; color:var(--navy); }
     .summary-textarea:focus { border-color:var(--blue2); box-shadow:0 0 0 3px rgba(45,120,239,.12); background:#fff; }
     .summary-side-card { background:#f8fbff; border:1px solid var(--border2); border-radius:14px; padding:14px; height:max-content; }
     .summary-side-card h4 { margin:0 0 8px; color:var(--navy); font-size:.9rem; }
@@ -2694,7 +2695,7 @@ function msgToastError(text){
 }
 
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v104_summary_fix_fast_render';
+const APP_VERSION = 'HTML_v105_summary_bold_leader_clean';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const QUIZ_MODULE_URL = 'https://vuquyhung-qni.github.io/tracnghiem/';
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
@@ -3317,10 +3318,10 @@ async function renderScreen_(screen){
 
 // ===== TÓM TẮT LỊCH GỬI LÃNH ĐẠO =====
 const SUMMARY_LEADERS = [
-  { key:'hung',  name:'Phạm Quốc Hưng',    label:'Đ/c Phạm Quốc Hưng' },
-  { key:'duong', name:'Ngô Tùng Dương',    label:'Đ/c Ngô Tùng Dương' },
-  { key:'loi',   name:'Bùi Ngọc Lợi',      label:'Đ/c Bùi Ngọc Lợi' },
-  { key:'thang', name:'Nguyễn Cảnh Thắng', label:'Đ/c Nguyễn Cảnh Thắng' }
+  { key:'hung',  name:'Phạm Quốc Hưng',    label:'Đ/c Phạm Quốc Hưng - Chi cục trưởng' },
+  { key:'duong', name:'Ngô Tùng Dương',    label:'Đ/c Ngô Tùng Dương - Phó CCT' },
+  { key:'loi',   name:'Bùi Ngọc Lợi',      label:'Đ/c Bùi Ngọc Lợi - Phó CCT' },
+  { key:'thang', name:'Nguyễn Cảnh Thắng', label:'Đ/c Nguyễn Cảnh Thắng - Phó CCT' }
 ];
 function renderSummary(){
   const box=$('screen-summary'); if(!box) return;
@@ -3352,14 +3353,14 @@ function renderSummary(){
         <div class="sp"></div>
         <div class="summary-preview-wrap">
           <div>
-            <textarea id="summaryText" class="summary-textarea" spellcheck="false">${esc(buildSummaryText())}</textarea>
+            <div id="summaryText" class="summary-textarea summary-editor" contenteditable="true" spellcheck="false">${buildSummaryHtml()}</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
               <button class="btn primary" onclick="copySummaryText()">📋 Copy gửi Zalo</button>
               <button class="btn ghost" onclick="regenerateSummaryText()">↻ Tạo lại</button>
               <button class="btn ghost" onclick="downloadSummaryTxt()">⬇ Tải TXT</button>
             </div>
           </div>
-          <div class="summary-side-card"><h4>Quy tắc tóm tắt</h4><ul><li>Chỉ tổng hợp lịch từ hôm nay trở đi.</li><li>Trong từng ngày sắp theo lãnh đạo: Hưng, Dương, Lợi, Thắng.</li><li>Lịch không xác định lãnh đạo đưa vào mục “Lịch chung / thành phần khác”.</li><li>Có thể chỉnh tay nội dung trước khi copy gửi Zalo.</li></ul></div>
+          <div class="summary-side-card"><h4>Quy tắc tóm tắt</h4><ul><li>Chỉ tổng hợp lịch từ hôm nay trở đi.</li><li>In đậm thứ/ngày và tên lãnh đạo trong khung xem trước.</li><li>Trong từng ngày sắp theo lãnh đạo: Hưng, Dương, Lợi, Thắng.</li><li>Chi tiết lịch không lặp lại tên/chức danh lãnh đạo đã nêu ở tiêu đề nhóm.</li><li>Có thể chỉnh tay nội dung trước khi copy gửi Zalo.</li></ul></div>
         </div>
       </div>
     </div>`;
@@ -3368,9 +3369,24 @@ function setSummaryRange(range){APP.summaryFilters.range=range;APP.summaryFilter
 function setSummaryCustomEnd(value){APP.summaryFilters.range='CUSTOM';APP.summaryFilters.endDate=value;renderSummary();}
 function setSummaryMode(mode){APP.summaryFilters.mode=mode;renderSummary();}
 function setSummaryOption(key,value){APP.summaryFilters[key]=value;renderSummary();}
-function regenerateSummaryText(){const el=$('summaryText');if(el)el.value=buildSummaryText();}
-async function copySummaryText(){const text=($('summaryText')&&$('summaryText').value)||'';if(!text.trim()){toast('Không có nội dung để copy.','err');return;}try{await navigator.clipboard.writeText(text);toast('Đã copy nội dung tóm tắt lịch.');}catch(e){const el=$('summaryText');if(el){el.focus();el.select();document.execCommand('copy');toast('Đã copy nội dung tóm tắt lịch.');}}}
-function downloadSummaryTxt(){const text=($('summaryText')&&$('summaryText').value)||'';const blob=new Blob([text],{type:'text/plain;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='tom-tat-lich.txt';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
+function regenerateSummaryText(){const el=$('summaryText');if(el)el.innerHTML=buildSummaryHtml();}
+function summaryPlainText_(){const el=$('summaryText');return el?(el.innerText||el.textContent||''):'';}
+async function copySummaryText(){
+  const el=$('summaryText'); const text=summaryPlainText_();
+  if(!text.trim()){toast('Không có nội dung để copy.','err');return;}
+  const html=el?el.innerHTML:'';
+  try{
+    if(navigator.clipboard&&window.ClipboardItem&&html){
+      await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([text],{type:'text/plain'})})]);
+    }else if(navigator.clipboard){
+      await navigator.clipboard.writeText(text);
+    }else throw new Error('Clipboard API không khả dụng');
+    toast('Đã copy nội dung tóm tắt lịch.');
+  }catch(e){
+    if(el){const range=document.createRange();range.selectNodeContents(el);const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range);document.execCommand('copy');sel.removeAllRanges();toast('Đã copy nội dung tóm tắt lịch.');}
+  }
+}
+function downloadSummaryTxt(){const text=summaryPlainText_();const blob=new Blob([text],{type:'text/plain;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='tom-tat-lich.txt';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
 function dateInputValue_(d){if(!(d instanceof Date)||isNaN(d))return'';return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function endDateByRange_(range){const today=new Date();today.setHours(0,0,0,0);const d=new Date(today);if(range==='TODAY')return d;if(range==='TOMORROW'){d.setDate(d.getDate()+1);return d;}if(range==='MONTH')return new Date(today.getFullYear(),today.getMonth()+1,0);const day=today.getDay()||7;d.setDate(today.getDate()+(7-day));return d;}
 function summaryEndDate_(){const f=APP.summaryFilters||{};const raw=f.endDate||dateInputValue_(endDateByRange_(f.range||'WEEK'));const d=parseIsoDate(raw);if(d){d.setHours(23,59,59,999);return d;}const e=endDateByRange_(f.range||'WEEK');e.setHours(23,59,59,999);return e;}
@@ -3384,10 +3400,21 @@ function summaryDateTitle_(iso){const d=parseIsoDate(iso);if(!d)return iso||'';r
 function periodByTime_(m){const t=String(m.gioBatDau||'').trim();if(!t)return'Cả ngày';const h=parseInt(t.split(':')[0],10);if(isNaN(h))return'Cả ngày';if(h<12)return'Sáng';if(h<18)return'Chiều';return'Tối';}
 function cleanLeaderRole_(s){return String(s||'').replace(/^Đ\/c\s*/i,'Đ/c ').replace(/\s+/g,' ').trim();}
 function meetingLeaderForLine_(m){const chu=cleanLeaderRole_(m.chuTri||'');if(chu)return chu;const idx=summaryLeaderIndex_(m);return idx<99?SUMMARY_LEADERS[idx].label:'';}
-function summaryLine_(m){const who=meetingLeaderForLine_(m);const time=m.gioBatDau||'';const period=periodByTime_(m);const action=String(m.noiDung||'').trim();const place=String(m.diaDiem||'').trim();let line=`- (${period}) ${time?time+': ':''}`;if(who)line+=`${who}, `;line+=action;if(place)line+=`, tại ${place}`;line=line.replace(/\s+/g,' ').replace(/\s+,/g,',').trim();if(!/[.!?…]$/.test(line))line+='.';return line;}
+function summaryLine_(m,key){const time=m.gioBatDau||'';const period=periodByTime_(m);const action=String(m.noiDung||'').trim();const place=String(m.diaDiem||'').trim();let line=`- (${period}) ${time?time+': ':''}`;if(key==='other'){const who=meetingLeaderForLine_(m);if(who)line+=`${who}, `;}line+=action;if(place)line+=`, tại ${place}`;line=line.replace(/\s+/g,' ').replace(/\s+,/g,',').trim();if(!/[.!?…]$/.test(line))line+='.';return line;}
 function buildSummaryText(){const arr=summaryMeetings_();const f=APP.summaryFilters||{};if(!arr.length)return'TÓM TẮT LỊCH\n\nKhông có lịch phù hợp trong khoảng thời gian đã chọn.';const today=new Date();today.setHours(0,0,0,0);const end=summaryEndDate_();const rangeText=dateVNShort(dateInputValue_(today))+(dateInputValue_(today)!==dateInputValue_(end)?' - '+dateVNShort(dateInputValue_(end)):'');return f.mode==='LEADER'?buildSummaryByLeader_(arr,rangeText):buildSummaryByDay_(arr,rangeText);}
-function buildSummaryByDay_(arr,rangeText){const byDate={};arr.forEach(m=>{const k=summaryDateKey_(m);(byDate[k]||(byDate[k]=[])).push(m);});let out='TÓM TẮT LỊCH\n'+rangeText+'\n';Object.keys(byDate).sort().forEach(date=>{out+='\n'+summaryDateTitle_(date)+'\n';const group={hung:[],duong:[],loi:[],thang:[],other:[]};byDate[date].forEach(m=>{group[summaryLeaderKey_(m)].push(m);});['hung','duong','loi','thang','other'].forEach(key=>{const list=group[key]||[];if(!list.length)return;out+='\n'+summaryLeaderLabelByKey_(key)+'\n';list.sort((a,b)=>String(a.gioBatDau||'').localeCompare(String(b.gioBatDau||''))).forEach(m=>{out+=summaryLine_(m)+'\n';});});});return out.trim();}
-function buildSummaryByLeader_(arr,rangeText){const group={hung:[],duong:[],loi:[],thang:[],other:[]};arr.forEach(m=>{group[summaryLeaderKey_(m)].push(m);});let out='TÓM TẮT LỊCH THEO LÃNH ĐẠO\n'+rangeText+'\n';['hung','duong','loi','thang','other'].forEach(key=>{const list=group[key]||[];if(!list.length)return;out+='\n'+summaryLeaderLabelByKey_(key)+'\n';const byDate={};list.forEach(m=>{const k=summaryDateKey_(m);(byDate[k]||(byDate[k]=[])).push(m);});Object.keys(byDate).sort().forEach(date=>{out+=summaryDateTitle_(date)+'\n';byDate[date].sort((a,b)=>String(a.gioBatDau||'').localeCompare(String(b.gioBatDau||''))).forEach(m=>{out+=summaryLine_(m)+'\n';});});});return out.trim();}
+function buildSummaryByDay_(arr,rangeText){const byDate={};arr.forEach(m=>{const k=summaryDateKey_(m);(byDate[k]||(byDate[k]=[])).push(m);});let out='TÓM TẮT LỊCH\n'+rangeText+'\n';Object.keys(byDate).sort().forEach(date=>{out+='\n'+summaryDateTitle_(date)+'\n';const group={hung:[],duong:[],loi:[],thang:[],other:[]};byDate[date].forEach(m=>{group[summaryLeaderKey_(m)].push(m);});['hung','duong','loi','thang','other'].forEach(key=>{const list=group[key]||[];if(!list.length)return;out+='\n'+summaryLeaderLabelByKey_(key)+'\n';list.sort((a,b)=>String(a.gioBatDau||'').localeCompare(String(b.gioBatDau||''))).forEach(m=>{out+=summaryLine_(m,key)+'\n';});});});return out.trim();}
+function buildSummaryByLeader_(arr,rangeText){const group={hung:[],duong:[],loi:[],thang:[],other:[]};arr.forEach(m=>{group[summaryLeaderKey_(m)].push(m);});let out='TÓM TẮT LỊCH THEO LÃNH ĐẠO\n'+rangeText+'\n';['hung','duong','loi','thang','other'].forEach(key=>{const list=group[key]||[];if(!list.length)return;out+='\n'+summaryLeaderLabelByKey_(key)+'\n';const byDate={};list.forEach(m=>{const k=summaryDateKey_(m);(byDate[k]||(byDate[k]=[])).push(m);});Object.keys(byDate).sort().forEach(date=>{out+=summaryDateTitle_(date)+'\n';byDate[date].sort((a,b)=>String(a.gioBatDau||'').localeCompare(String(b.gioBatDau||''))).forEach(m=>{out+=summaryLine_(m,key)+'\n';});});});return out.trim();}
+function buildSummaryHtml(){return summaryTextToHtml_(buildSummaryText());}
+function summaryTextToHtml_(text){
+  return String(text||'').split('\n').map(function(line){
+    const s=line.trim();
+    if(!s)return '';
+    if(/^TÓM TẮT LỊCH/i.test(s))return '<b>'+esc(s)+'</b>';
+    if(/^Thứ |^Chủ Nhật/i.test(s))return '<b>'+esc(s)+'</b>';
+    if(/^Đ\/c |^Lịch chung/i.test(s))return '<b>'+esc(s)+'</b>';
+    return esc(line);
+  }).join('<br>');
+}
 
 // ===== DASHBOARD =====
 function renderDashboard(){
