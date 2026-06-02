@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lichkv8-v102-quiz-embed-ui-fix';
+const CACHE_NAME = 'lichkv8-v103-summary-zalo';
 const STATIC_ASSETS = [
   './',
   './index.html',
