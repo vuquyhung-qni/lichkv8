@@ -2201,7 +2201,7 @@
     .summary-toolbar .btn.active { background:linear-gradient(135deg,var(--blue),var(--blue2)); color:#fff; box-shadow:0 4px 14px rgba(11,103,178,.22); }
     .summary-options { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin: 8px 0 0; }
     .summary-options label { display:inline-flex; gap:6px; align-items:center; font-size:.82rem; color:var(--text2); font-weight:600; }
-    .summary-preview-wrap { display:grid; grid-template-columns: minmax(0,1fr) 340px; gap:14px; }
+    .summary-preview-wrap { display:block; }
     .summary-textarea { width:100%; min-height:520px; border:1.5px solid var(--border); border-radius:14px; padding:14px 15px; outline:none; background:#fbfdff; color:var(--text); font-size:.93rem; line-height:1.65; resize:vertical; white-space:pre-wrap; overflow:auto; }
     .summary-editor b { font-weight:800; color:var(--navy); }
     .summary-textarea:focus { border-color:var(--blue2); box-shadow:0 0 0 3px rgba(45,120,239,.12); background:#fff; }
@@ -2479,7 +2479,7 @@ const APP = {
   token:'', user:null, setup:{}, depts:[], usersLite:[], meetings:[],
   dashboard:null, currentScreen:'calendar', dashPeriod:'week',
   filters:{kw:'', leader:'all', scope:'CURRENT', kind:'ALL'},
-  summaryFilters:{range:'WEEK', endDate:'', mode:'DAY_LEADER', includeTruc:false, onlyPublished:true},
+  summaryFilters:{range:'3DAYS', endDate:'', mode:'DAY_LEADER', includeTruc:false, onlyPublished:true},
   manageFilters:{kw:'', leader:'all', scope:'CURRENT', kind:'ALL', status:'all'},
   loadedAll:false, pendingFormFiles:[],
   libraryStack:[], libraryCurrentUrl:'', detailFiles:[], noteUploadQueue:[], notebook:{kw:'', notes:[], loaded:false},
@@ -2695,7 +2695,7 @@ function msgToastError(text){
 }
 
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v105_summary_bold_leader_clean';
+const APP_VERSION = 'HTML_v106_summary_3days_no_date_filter';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const QUIZ_MODULE_URL = 'https://vuquyhung-qni.github.io/tracnghiem/';
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
@@ -3326,7 +3326,7 @@ const SUMMARY_LEADERS = [
 function renderSummary(){
   const box=$('screen-summary'); if(!box) return;
   const f=APP.summaryFilters||{};
-  const customEnd=f.endDate||dateInputValue_(endDateByRange_(f.range||'WEEK'));
+  const customEnd=f.endDate||dateInputValue_(endDateByRange_(f.range||'3DAYS'));
   box.innerHTML=`
     <div class="panel">
       <div class="panel-h">
@@ -3337,9 +3337,9 @@ function renderSummary(){
         <div class="summary-toolbar">
           <button class="btn sm ${f.range==='TODAY'?'active':''}" onclick="setSummaryRange('TODAY')">Hôm nay</button>
           <button class="btn sm ${f.range==='TOMORROW'?'active':''}" onclick="setSummaryRange('TOMORROW')">Ngày mai</button>
-          <button class="btn sm ${(!f.range||f.range==='WEEK')?'active':''}" onclick="setSummaryRange('WEEK')">Đến hết tuần</button>
+          <button class="btn sm ${(!f.range||f.range==='3DAYS')?'active':''}" onclick="setSummaryRange('3DAYS')">3 ngày</button>
+          <button class="btn sm ${f.range==='WEEK'?'active':''}" onclick="setSummaryRange('WEEK')">Đến hết tuần</button>
           <button class="btn sm ${f.range==='MONTH'?'active':''}" onclick="setSummaryRange('MONTH')">Đến hết tháng</button>
-          <label class="field" style="margin:0;min-width:180px"><input id="summaryEndDate" type="date" value="${esc(customEnd)}" onchange="setSummaryCustomEnd(this.value)" style="height:38px;padding:7px 10px"></label>
           <div class="summary-mode-seg">
             <button class="${f.mode!=='LEADER'?'active':''}" onclick="setSummaryMode('DAY_LEADER')">Theo ngày</button>
             <button class="${f.mode==='LEADER'?'active':''}" onclick="setSummaryMode('LEADER')">Theo lãnh đạo</button>
@@ -3348,7 +3348,7 @@ function renderSummary(){
         <div class="summary-options">
           <label><input type="checkbox" ${f.onlyPublished!==false?'checked':''} onchange="setSummaryOption('onlyPublished',this.checked)"> Chỉ lấy lịch đã duyệt/đã công bố</label>
           <label><input type="checkbox" ${f.includeTruc?'checked':''} onchange="setSummaryOption('includeTruc',this.checked)"> Bao gồm lịch trực ban</label>
-          <span class="muted">Mặc định lấy từ ngày hiện thời trở đi, sắp theo thứ tự: Hưng → Dương → Lợi → Thắng.</span>
+          <span class="muted">Mặc định lấy lịch 3 ngày từ hôm nay, sắp theo thứ tự: Hưng → Dương → Lợi → Thắng.</span>
         </div>
         <div class="sp"></div>
         <div class="summary-preview-wrap">
@@ -3360,7 +3360,6 @@ function renderSummary(){
               <button class="btn ghost" onclick="downloadSummaryTxt()">⬇ Tải TXT</button>
             </div>
           </div>
-          <div class="summary-side-card"><h4>Quy tắc tóm tắt</h4><ul><li>Chỉ tổng hợp lịch từ hôm nay trở đi.</li><li>In đậm thứ/ngày và tên lãnh đạo trong khung xem trước.</li><li>Trong từng ngày sắp theo lãnh đạo: Hưng, Dương, Lợi, Thắng.</li><li>Chi tiết lịch không lặp lại tên/chức danh lãnh đạo đã nêu ở tiêu đề nhóm.</li><li>Có thể chỉnh tay nội dung trước khi copy gửi Zalo.</li></ul></div>
         </div>
       </div>
     </div>`;
@@ -3388,8 +3387,8 @@ async function copySummaryText(){
 }
 function downloadSummaryTxt(){const text=summaryPlainText_();const blob=new Blob([text],{type:'text/plain;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='tom-tat-lich.txt';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
 function dateInputValue_(d){if(!(d instanceof Date)||isNaN(d))return'';return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-function endDateByRange_(range){const today=new Date();today.setHours(0,0,0,0);const d=new Date(today);if(range==='TODAY')return d;if(range==='TOMORROW'){d.setDate(d.getDate()+1);return d;}if(range==='MONTH')return new Date(today.getFullYear(),today.getMonth()+1,0);const day=today.getDay()||7;d.setDate(today.getDate()+(7-day));return d;}
-function summaryEndDate_(){const f=APP.summaryFilters||{};const raw=f.endDate||dateInputValue_(endDateByRange_(f.range||'WEEK'));const d=parseIsoDate(raw);if(d){d.setHours(23,59,59,999);return d;}const e=endDateByRange_(f.range||'WEEK');e.setHours(23,59,59,999);return e;}
+function endDateByRange_(range){const today=new Date();today.setHours(0,0,0,0);const d=new Date(today);if(range==='TODAY')return d;if(range==='TOMORROW'){d.setDate(d.getDate()+1);return d;}if(range==='3DAYS'){d.setDate(d.getDate()+2);return d;}if(range==='MONTH')return new Date(today.getFullYear(),today.getMonth()+1,0);const day=today.getDay()||7;d.setDate(today.getDate()+(7-day));return d;}
+function summaryEndDate_(){const f=APP.summaryFilters||{};const raw=f.endDate||dateInputValue_(endDateByRange_(f.range||'3DAYS'));const d=parseIsoDate(raw);if(d){d.setHours(23,59,59,999);return d;}const e=endDateByRange_(f.range||'3DAYS');e.setHours(23,59,59,999);return e;}
 function isPublishedForSummary_(m){const st=String(m.trangThai||m.status||'').toUpperCase();return !st||st==='PUBLISHED'||st==='COMPLETED'||st==='ACTIVE'||st==='DA_DUYET'||st==='ĐÃ DUYỆT';}
 function summaryMeetings_(){const f=APP.summaryFilters||{};const today=new Date();today.setHours(0,0,0,0);const end=summaryEndDate_();const src=(APP.allMeetings&&APP.allMeetings.length)?APP.allMeetings:APP.meetings;return(src||[]).filter(m=>{const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;if(!s||!e)return false;if(e<today||s>end)return false;if(!f.includeTruc&&(isTrucBanMeeting(m)||isGiaoBanMeeting(m)))return false;if(f.onlyPublished!==false&&!isPublishedForSummary_(m))return false;if(String(m.trangThai||'').toUpperCase()==='CANCELLED')return false;return true;}).sort((a,b)=>dateKey_(a.ngayBatDau)-dateKey_(b.ngayBatDau)||String(a.gioBatDau||'').localeCompare(String(b.gioBatDau||''))||String(a.meetingId||'').localeCompare(String(b.meetingId||'')));}
 function summaryLeaderIndex_(m){for(let i=0;i<SUMMARY_LEADERS.length;i++)if(matchLeaderExact(m,SUMMARY_LEADERS[i].name))return i;return 99;}
