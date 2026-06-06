@@ -3,7 +3,7 @@
  * Chạy trong Portal Lịch công tác, dùng chung api(), APP, token.
  * ========================================================== */
 (function(){
-  const DUTY_VERSION = 'duty_v109_excel_import';
+  const DUTY_VERSION = 'duty_v111_excel_ticket_import';
   const DEFAULT_UNITS = [
     {code:'CHICUC', name:'Trụ sở Chi cục HQKV VIII', order:1},
     {code:'VANPHONG', name:'Văn phòng', order:2},
@@ -327,16 +327,46 @@
   function dutyMakeUploadId(){
     return 'duty_excel_' + Date.now() + '_' + Math.random().toString(36).slice(2);
   }
+  async function dutyWaitUploadStatus(uploadId, fileName){
+    const deadline = Date.now() + 90000; // V111: Excel cần thời gian xử lý dài hơn upload file thường.
+    let lastMsg = '';
+    while(Date.now() < deadline){
+      await new Promise(r=>setTimeout(r, 1800));
+      try{
+        const st = await api('getUploadStatus', {uploadId});
+        if(st && !st.pending){
+          if(st.ok === false) throw new Error(st.msg || ('Upload lỗi: '+(fileName||'')));
+          return st;
+        }
+        lastMsg = (st && st.msg) || lastMsg;
+      }catch(e){
+        lastMsg = (e && e.message) || String(e || '');
+      }
+    }
+    throw new Error('Chưa nhận được phản hồi đọc Excel từ Web App sau 90 giây. ' + (lastMsg ? 'Thông tin cuối: ' + lastMsg : ''));
+  }
+
   async function dutyPostExcelToServer(action, file, extra){
     if(!file) throw new Error('Chưa chọn file Excel.');
     const uploadId=dutyMakeUploadId();
+
+    // V111: tạo upload ticket bằng JSONP trước khi gửi file qua form POST ẩn.
+    // Ticket lưu user đã đăng nhập trên server, tránh lỗi POST không nhận đúng token/session.
+    let uploadTicket='';
+    try{
+      const ticketRes = await api('createDutyUploadTicket', {purpose: action, fileName: file.name, size: file.size || 0});
+      uploadTicket = ticketRes && ticketRes.ticket;
+      if(!uploadTicket) throw new Error('Server không trả upload ticket.');
+    }catch(e){
+      throw new Error('Không tạo được mã upload Excel. Cần thay Code.gs V111 và Deploy New version. Chi tiết: ' + ((e&&e.message)||e));
+    }
+
     const dataUrl=await dutyFileToDataUrl(file);
     const payload=Object.assign({}, extra||{}, {
-      action, token: (window.APP && APP.token) || '', uploadId,
+      action, token: (window.APP && APP.token) || '', uploadId, uploadTicket,
       fileName:file.name, mimeType:file.type||'', base64:dataUrl
     });
 
-    // Ưu tiên google.script.run nếu chạy trong Apps Script; khi chạy GitHub Pages dùng form POST ẩn để tránh CORS/JSONP quá dài.
     if(typeof canUseGoogleScriptRun==='function' && canUseGoogleScriptRun()){
       await new Promise((resolve,reject)=>{
         try{
@@ -349,12 +379,10 @@
     } else if(typeof apiViaHiddenUploadPost==='function') {
       await apiViaHiddenUploadPost(payload);
     } else {
-      // Dự phòng khi đang chạy trong môi trường khác; chỉ phù hợp file nhỏ.
-      await api(action, {uploadId, fileName:file.name, mimeType:file.type||'', base64:dataUrl, ...(extra||{})});
+      await api(action, {uploadId, uploadTicket, fileName:file.name, mimeType:file.type||'', base64:dataUrl, ...(extra||{})});
     }
 
-    if(typeof waitUploadStatus!=='function') throw new Error('Thiếu hàm waitUploadStatus để nhận kết quả đọc Excel. Cần cập nhật index.html bản mới.');
-    const res=await waitUploadStatus(uploadId, file.name);
+    const res=await dutyWaitUploadStatus(uploadId, file.name);
     if(!res || res.ok===false) throw new Error((res&&res.msg)||'Lỗi đọc Excel trên server.');
     return res;
   }
