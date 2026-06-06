@@ -1,18 +1,21 @@
 /* ==========================================================
- * modules/duty.js — V108 Module Tổng hợp danh sách trực HQKV8
+ * modules/duty.js — V109 Module Tổng hợp danh sách trực HQKV8
  * Chạy trong Portal Lịch công tác, dùng chung api(), APP, token.
  * ========================================================== */
 (function(){
-  const DUTY_VERSION = 'duty_v108';
+  const DUTY_VERSION = 'duty_v109_excel_import';
   const DEFAULT_UNITS = [
     {code:'CHICUC', name:'Trụ sở Chi cục HQKV VIII', order:1},
-    {code:'HONGAI', name:'Trụ sở HQCK cảng Hòn Gai', order:2},
-    {code:'CAMPHA', name:'Trụ sở HQCK cảng Cẩm Phả', order:3},
-    {code:'VANGIA', name:'Trụ sở HQCK cảng Vạn Gia', order:4},
-    {code:'HOANHMO', name:'Trụ sở HQCK Hoành Mô', order:5},
-    {code:'BPS', name:'Trụ sở HQCK Bắc Phong Sinh', order:6},
-    {code:'MONGCAI', name:'Trụ sở HQCK quốc tế Móng Cái', order:7},
-    {code:'KSHQ', name:'Trụ sở Đội Kiểm soát Hải quan', order:8}
+    {code:'VANPHONG', name:'Văn phòng', order:2},
+    {code:'HONGAI', name:'Trụ sở HQCK cảng Hòn Gai', order:3},
+    {code:'CAMPHA', name:'Trụ sở HQCK cảng Cẩm Phả', order:4},
+    {code:'VANGIA', name:'Trụ sở HQCK cảng Vạn Gia', order:5},
+    {code:'HOANHMO', name:'Trụ sở HQCK Hoành Mô', order:6},
+    {code:'BPS', name:'Trụ sở HQCK Bắc Phong Sinh', order:7},
+    {code:'MONGCAI', name:'Trụ sở HQCK quốc tế Móng Cái', order:8},
+    {code:'KSHQ', name:'Trụ sở Đội Kiểm soát Hải quan', order:9},
+    {code:'KSHQ_HL', name:'Đội Kiểm soát Hải quan - Khu vực Hạ Long', order:10},
+    {code:'KSHQ_MC', name:'Đội Kiểm soát Hải quan - Khu vực Móng Cái', order:11}
   ];
 
   function $(id){ return document.getElementById(id); }
@@ -55,7 +58,7 @@
       st.formUnit='CHICUC';
       st.formDate=st.startDate;
       st.formType='Thứ 7/CN';
-      st.loaded=false; st.units=DEFAULT_UNITS.slice(); st.entries=[]; st.statuses=[]; st.message='';
+      st.loaded=false; st.units=DEFAULT_UNITS.slice(); st.entries=[]; st.statuses=[]; st.message=''; st.importRows=[]; st.importInvalid=[];
     }
     return st;
   }
@@ -97,6 +100,7 @@
     box.innerHTML = renderDutyShell();
     if(st.tab==='entry') renderDutyEntryTab();
     else if(st.tab==='detail') renderDutyDetailTab();
+    else if(st.tab==='import') renderDutyImportTab();
     else renderDutySummaryTab();
   };
 
@@ -125,6 +129,7 @@
         <div class="duty-toolbar card-soft">
           <button class="btn sm ${st.tab==='summary'?'primary':''}" onclick="dutySetTab('summary')">Bảng tổng hợp</button>
           <button class="btn sm ${st.tab==='entry'?'primary':''}" onclick="dutySetTab('entry')">Nhập lịch trực</button>
+          <button class="btn sm ${st.tab==='import'?'primary':''}" onclick="dutySetTab('import')">Nhập từ Excel</button>
           <button class="btn sm ${st.tab==='detail'?'primary':''}" onclick="dutySetTab('detail')">Dữ liệu chi tiết</button>
           <span class="duty-sep"></span>
           <button class="btn sm" onclick="dutyQuickRange('today')">Hôm nay</button>
@@ -223,6 +228,157 @@
       <td><button class="btn sm danger-light" onclick="this.closest('tr').remove()">Xóa</button></td>
     </tr>`;
   }
+
+
+  function renderDutyImportTab(){
+    const st=dutyState(); const box=$('dutyContent'); if(!box) return;
+    const rows=st.importRows||[];
+    const invalid=st.importInvalid||[];
+    box.innerHTML=`
+      <div class="duty-entry-grid">
+        <div class="card-soft duty-entry-form">
+          <h3>Nhập danh sách trực từ Excel</h3>
+          <div class="duty-help">
+            File Excel cần có các cột: <b>NGAY_TRUC, UNIT_CODE hoặc DON_VI, HO_TEN, CHUC_VU, SO_DIEN_THOAI, GHI_CHU</b>.
+            Khi import, dữ liệu cũ cùng <b>ngày + đơn vị</b> sẽ được thay thế bằng dữ liệu trong file.
+          </div>
+          <div class="duty-form-row">
+            <label>Chọn file Excel<br><input id="dutyExcelFile" class="input" type="file" accept=".xlsx,.xls,.csv" onchange="dutyReadExcelFile()"></label>
+            <label>Trạng thái sau import<br><select id="dutyImportSubmit" class="select-field"><option value="false">Lưu nháp</option><option value="true">Lưu & gửi Văn phòng</option></select></label>
+          </div>
+          <div class="duty-actions-line">
+            <button class="btn primary" onclick="dutyReadExcelFile()">📥 Đọc file Excel</button>
+            <button class="btn green" onclick="dutySubmitExcelImport()" ${rows.length?'':'disabled'}>✅ Cập nhật vào phần mềm</button>
+          </div>
+          <div class="duty-help">Mẫu chuẩn: tải file Excel đã chuyển từ phụ lục, hoặc giữ đúng tên cột như trên khi tự lập file.</div>
+        </div>
+        <div class="card-soft duty-side">
+          <h3>Gợi ý mã đơn vị</h3>
+          <div class="duty-code-list">${(st.units||DEFAULT_UNITS).map(u=>`<div><b>${E(u.code)}</b> — ${E(u.name)}</div>`).join('')}</div>
+        </div>
+      </div>
+      <div class="duty-table-card">
+        <h3>Dữ liệu đọc từ Excel (${rows.length} dòng hợp lệ)</h3>
+        ${invalid.length?`<div class="duty-msg err">Có ${invalid.length} dòng chưa hợp lệ: ${E(invalid.slice(0,5).map(x=>'dòng '+x.row+': '+x.msg).join('; '))}${invalid.length>5?'...':''}</div>`:''}
+        <table class="duty-detail-table"><thead><tr><th>Ngày</th><th>Thứ</th><th>Trụ sở</th><th>Họ tên</th><th>Chức vụ</th><th>SĐT</th><th>Ghi chú</th></tr></thead><tbody>
+          ${rows.slice(0,200).map(r=>`<tr><td>${E(dateShort(r.dutyDate))}</td><td>${E(weekday(r.dutyDate))}</td><td>${E(unitName(r.unitCode)||r.unitName)}</td><td>${E(r.fullname)}</td><td>${E(r.position)}</td><td>${E(r.phone)}</td><td>${E(r.note)}</td></tr>`).join('') || '<tr><td colspan="7" class="empty-cell">Chưa đọc file Excel</td></tr>'}
+        </tbody></table>
+      </div>`;
+  }
+
+  function getImportHeader(row, keys){
+    for(const k of keys){
+      if(Object.prototype.hasOwnProperty.call(row,k)) return row[k];
+    }
+    const lowerMap={};
+    Object.keys(row||{}).forEach(k=>lowerMap[norm(k)]=row[k]);
+    for(const k of keys){
+      const v=lowerMap[norm(k)];
+      if(v!==undefined) return v;
+    }
+    return '';
+  }
+  function excelDateToIso(v){
+    if(!v) return '';
+    if(v instanceof Date && !isNaN(v.getTime())) return iso(v);
+    if(typeof v === 'number'){
+      const d = new Date(Math.round((v - 25569) * 86400 * 1000));
+      if(!isNaN(d.getTime())) return iso(new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+    }
+    const s=String(v).trim();
+    let m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if(m) return `${m[3]}-${pad(m[2])}-${pad(m[1])}`;
+    m=s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    if(m) return `${m[1]}-${pad(m[2])}-${pad(m[3])}`;
+    const d=new Date(s);
+    return isNaN(d.getTime())?'':iso(d);
+  }
+  function unitCodeFromExcel(unitCode, unitName){
+    const code=String(unitCode||'').trim().toUpperCase();
+    const units=dutyState().units||DEFAULT_UNITS;
+    if(units.some(u=>u.code===code)) return code;
+    const n=norm(unitName);
+    if(!n) return '';
+    const aliases=[
+      ['CHICUC',['chi cuc hqkv viii','chi cuc hai quan khu vuc viii','tru so chi cuc','hqkv viii']],
+      ['VANPHONG',['van phong','vp']],
+      ['HONGAI',['hon gai','cang hon gai']],
+      ['CAMPHA',['cam pha','cang cam pha']],
+      ['VANGIA',['van gia','cang van gia']],
+      ['HOANHMO',['hoanh mo']],
+      ['BPS',['bac phong sinh']],
+      ['MONGCAI',['mong cai','quoc te mong cai']],
+      ['KSHQ_HL',['khu vuc ha long']],
+      ['KSHQ_MC',['khu vuc mong cai']],
+      ['KSHQ',['doi kiem soat hai quan','doi kshq','kshq']]
+    ];
+    for(const [c,arr] of aliases){ if(arr.some(k=>n.includes(k))) return c; }
+    const found=units.find(u=>norm(u.name)===n || norm(u.name).includes(n) || n.includes(norm(u.name)));
+    return found?found.code:'';
+  }
+  async function loadXlsxLib(){
+    if(window.XLSX) return window.XLSX;
+    await new Promise((resolve,reject)=>{
+      const s=document.createElement('script');
+      s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+      s.onload=resolve; s.onerror=()=>reject(new Error('Không tải được thư viện đọc Excel. Vui lòng kiểm tra mạng.'));
+      document.head.appendChild(s);
+    });
+    return window.XLSX;
+  }
+  function normalizeImportRows(rawRows){
+    const st=dutyState(); const valid=[]; const invalid=[];
+    rawRows.forEach((row, idx)=>{
+      const dutyDate=excelDateToIso(getImportHeader(row,['NGAY_TRUC','Ngày trực','Ngay truc','DUTY_DATE','date']));
+      const unitCode=unitCodeFromExcel(getImportHeader(row,['UNIT_CODE','Mã đơn vị','Ma don vi']), getImportHeader(row,['DON_VI','Đơn vị','Don vi','Trụ sở','Tru so','UNIT_NAME']));
+      const unitLabel=unitName(unitCode) || String(getImportHeader(row,['DON_VI','Đơn vị','Don vi','Trụ sở','Tru so','UNIT_NAME'])||'').trim();
+      const fullname=String(getImportHeader(row,['HO_TEN','Họ tên','Ho ten','FULLNAME','Tên','Ten'])||'').trim();
+      const position=String(getImportHeader(row,['CHUC_VU','Chức vụ','Chuc vu','POSITION'])||'').trim();
+      const phone=String(getImportHeader(row,['SO_DIEN_THOAI','Số điện thoại','So dien thoai','PHONE','SĐT','SDT'])||'').trim();
+      const note=String(getImportHeader(row,['GHI_CHU','Ghi chú','Ghi chu','NOTE'])||'').trim();
+      const dutyType=String(getImportHeader(row,['DUTY_TYPE','Loại ngày','Loai ngay'])||'Thứ 7/CN').trim();
+      const dutyShift=String(getImportHeader(row,['DUTY_SHIFT','Ca trực','Ca truc'])||'Cả ngày').trim();
+      const dutyRole=String(getImportHeader(row,['DUTY_ROLE','Vai trò','Vai tro'])||'').trim();
+      if(!dutyDate || !unitCode || !fullname) {
+        if(dutyDate || unitCode || fullname || position || phone) invalid.push({row:idx+2, msg:'Thiếu NGAY_TRUC/UNIT_CODE hoặc DON_VI/HO_TEN'});
+        return;
+      }
+      valid.push({dutyDate, unitCode, unitName:unitLabel, fullname, position, phone, note, dutyType, dutyShift, dutyRole});
+    });
+    st.importRows=valid; st.importInvalid=invalid;
+  }
+
+  window.dutyReadExcelFile=async function(){
+    const input=$('dutyExcelFile');
+    const file=input && input.files && input.files[0];
+    if(!file){ alert('Vui lòng chọn file Excel.'); return; }
+    setMsg('Đang đọc file Excel...', 'info');
+    try{
+      const XLSX=await loadXlsxLib();
+      const buf=await file.arrayBuffer();
+      const wb=XLSX.read(buf,{type:'array',cellDates:true});
+      const ws=wb.Sheets['DUTY_IMPORT'] || wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:'',raw:true});
+      normalizeImportRows(rows);
+      setMsg(`Đã đọc ${dutyState().importRows.length} dòng hợp lệ từ Excel.`, 'ok');
+      renderDutyImportTab();
+    }catch(e){ setMsg('Lỗi đọc Excel: '+(e.message||e), 'err'); }
+  };
+  window.dutySubmitExcelImport=async function(){
+    const st=dutyState();
+    if(!st.importRows || !st.importRows.length){ alert('Chưa có dữ liệu hợp lệ để import.'); return; }
+    const submit = $('dutyImportSubmit') && $('dutyImportSubmit').value === 'true';
+    if(!confirm(`Cập nhật ${st.importRows.length} dòng vào phần mềm? Dữ liệu cũ cùng ngày + đơn vị sẽ được thay thế.`)) return;
+    setMsg('Đang cập nhật dữ liệu từ Excel...', 'info');
+    try{
+      const res=await api('importDutyEntries',{rows:st.importRows, submit});
+      st.loaded=false; await loadDuty(true);
+      setMsg((res && res.msg) || 'Đã import dữ liệu từ Excel.', 'ok');
+      st.tab='summary';
+      renderDutyModule();
+    }catch(e){ setMsg('Lỗi import Excel: '+(e.message||e), 'err'); }
+  };
+
 
   function renderDutyDetailTab(){
     const box=$('dutyContent'); if(!box) return;
