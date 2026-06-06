@@ -328,7 +328,7 @@
     return 'duty_excel_' + Date.now() + '_' + Math.random().toString(36).slice(2);
   }
   async function dutyWaitUploadStatus(uploadId, fileName){
-    const deadline = Date.now() + 90000; // V112: đọc Excel qua ticket, server sửa MIME .xlsx thành application/zip trước khi unzip.
+    const deadline = Date.now() + 90000; // V113: chỉ upload/parse Excel một lần; khi import sẽ commit từ dữ liệu đã đọc trong CacheService.
     let lastMsg = '';
     while(Date.now() < deadline){
       await new Promise(r=>setTimeout(r, 1800));
@@ -397,6 +397,7 @@
       const st=dutyState();
       st.importRows=Array.isArray(res.rows)?res.rows:[];
       st.importInvalid=Array.isArray(res.invalid)?res.invalid:[];
+      st.importUploadId=res.uploadId || '';
       setMsg(`Đã đọc ${st.importRows.length} dòng hợp lệ từ Excel${st.importInvalid.length?`, ${st.importInvalid.length} dòng chưa hợp lệ`:''}.`, st.importRows.length?'ok':'err');
       renderDutyImportTab();
     }catch(e){ setMsg('Lỗi đọc Excel: '+(e.message||e), 'err'); }
@@ -412,10 +413,17 @@
     setMsg('Đang cập nhật dữ liệu từ Excel...', 'info');
     try{
       let res;
-      if(file){
+      // V113: nếu đã bấm “Đọc file Excel” và có dữ liệu xem trước thì KHÔNG upload lại file lần 2.
+      // Server sẽ lấy các dòng đã parse từ CacheService theo uploadId và ghi vào DUTY_ENTRY.
+      if(st.importUploadId){
+        res=await api('commitDutyExcelImport',{uploadId:st.importUploadId, submit});
+      } else if(st.importRows && st.importRows.length){
+        res=await api('importDutyEntries',{rows:st.importRows, submit});
+      } else if(file){
+        // Chỉ dùng fallback này khi người dùng chưa bấm Đọc file Excel.
         res=await dutyPostExcelToServer('importDutyExcelFile', file, {submit});
       } else {
-        res=await api('importDutyEntries',{rows:st.importRows, submit});
+        throw new Error('Chưa có dữ liệu hợp lệ để import.');
       }
       st.loaded=false; await loadDuty(true);
       setMsg((res && res.msg) || 'Đã import dữ liệu từ Excel.', 'ok');
