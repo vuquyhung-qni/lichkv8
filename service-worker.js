@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lichkv8-v107-summary-3days-no-date-filter';
+const CACHE_NAME = 'lichkv8-v108-duty-module';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -6,7 +6,9 @@ const STATIC_ASSETS = [
   './icon-192.png',
   './icon-512.png',
   './modules/hkg.js',
-  './modules/hkg.css'
+  './modules/hkg.css',
+  './modules/duty.js',
+  './modules/duty.css'
 ];
 
 self.addEventListener('install', event => {
@@ -28,10 +30,8 @@ self.addEventListener('fetch', event => {
   const req = event.request;
   const url = new URL(req.url);
 
-  // Không cache Apps Script/Google API/data động.
   if (/script\.google\.com|script\.googleusercontent\.com|googleapis\.com|googleusercontent\.com/.test(url.hostname)) return;
 
-  // Trang HTML dùng network-first để tránh kẹt bản cũ sau khi cập nhật GitHub.
   if (req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html')) {
     event.respondWith(
       fetch(req, { cache: 'no-store' }).catch(() => caches.match('./index.html'))
@@ -39,7 +39,6 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Asset tĩnh: cache-first, có cập nhật nền.
   event.respondWith(
     caches.match(req).then(cached => {
       const fetchPromise = fetch(req).then(res => {
