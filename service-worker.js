@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lichkv8-v111-duty-excel-ticket-import';
+const CACHE_NAME = 'lichkv8-v112-duty-xlsx-zip-contenttype-fix';
 const STATIC_ASSETS = [
   './',
   './index.html',

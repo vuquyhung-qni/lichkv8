@@ -3,7 +3,7 @@
  * Chạy trong Portal Lịch công tác, dùng chung api(), APP, token.
  * ========================================================== */
 (function(){
-  const DUTY_VERSION = 'duty_v111_excel_ticket_import';
+  const DUTY_VERSION = 'duty_v112_xlsx_zip_contenttype_fix';
   const DEFAULT_UNITS = [
     {code:'CHICUC', name:'Trụ sở Chi cục HQKV VIII', order:1},
     {code:'VANPHONG', name:'Văn phòng', order:2},
@@ -328,7 +328,7 @@
     return 'duty_excel_' + Date.now() + '_' + Math.random().toString(36).slice(2);
   }
   async function dutyWaitUploadStatus(uploadId, fileName){
-    const deadline = Date.now() + 90000; // V111: Excel cần thời gian xử lý dài hơn upload file thường.
+    const deadline = Date.now() + 90000; // V112: đọc Excel qua ticket, server sửa MIME .xlsx thành application/zip trước khi unzip.
     let lastMsg = '';
     while(Date.now() < deadline){
       await new Promise(r=>setTimeout(r, 1800));
@@ -350,7 +350,7 @@
     if(!file) throw new Error('Chưa chọn file Excel.');
     const uploadId=dutyMakeUploadId();
 
-    // V111: tạo upload ticket bằng JSONP trước khi gửi file qua form POST ẩn.
+    // V112: tạo upload ticket bằng JSONP trước khi gửi file qua form POST ẩn.
     // Ticket lưu user đã đăng nhập trên server, tránh lỗi POST không nhận đúng token/session.
     let uploadTicket='';
     try{
@@ -358,7 +358,7 @@
       uploadTicket = ticketRes && ticketRes.ticket;
       if(!uploadTicket) throw new Error('Server không trả upload ticket.');
     }catch(e){
-      throw new Error('Không tạo được mã upload Excel. Cần thay Code.gs V111 và Deploy New version. Chi tiết: ' + ((e&&e.message)||e));
+      throw new Error('Không tạo được mã upload Excel. Cần thay Code.gs V112 và Deploy New version. Chi tiết: ' + ((e&&e.message)||e));
     }
 
     const dataUrl=await dutyFileToDataUrl(file);
