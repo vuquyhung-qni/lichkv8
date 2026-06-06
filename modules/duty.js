@@ -316,62 +316,79 @@
     const found=units.find(u=>norm(u.name)===n || norm(u.name).includes(n) || n.includes(norm(u.name)));
     return found?found.code:'';
   }
-  async function loadXlsxLib(){
-    if(window.XLSX) return window.XLSX;
-    await new Promise((resolve,reject)=>{
-      const s=document.createElement('script');
-      s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
-      s.onload=resolve; s.onerror=()=>reject(new Error('Không tải được thư viện đọc Excel. Vui lòng kiểm tra mạng.'));
-      document.head.appendChild(s);
+  function dutyFileToDataUrl(file){
+    return new Promise((resolve,reject)=>{
+      const r=new FileReader();
+      r.onload=()=>resolve(String(r.result||''));
+      r.onerror=()=>reject(r.error||new Error('Không đọc được file.'));
+      r.readAsDataURL(file);
     });
-    return window.XLSX;
   }
-  function normalizeImportRows(rawRows){
-    const st=dutyState(); const valid=[]; const invalid=[];
-    rawRows.forEach((row, idx)=>{
-      const dutyDate=excelDateToIso(getImportHeader(row,['NGAY_TRUC','Ngày trực','Ngay truc','DUTY_DATE','date']));
-      const unitCode=unitCodeFromExcel(getImportHeader(row,['UNIT_CODE','Mã đơn vị','Ma don vi']), getImportHeader(row,['DON_VI','Đơn vị','Don vi','Trụ sở','Tru so','UNIT_NAME']));
-      const unitLabel=unitName(unitCode) || String(getImportHeader(row,['DON_VI','Đơn vị','Don vi','Trụ sở','Tru so','UNIT_NAME'])||'').trim();
-      const fullname=String(getImportHeader(row,['HO_TEN','Họ tên','Ho ten','FULLNAME','Tên','Ten'])||'').trim();
-      const position=String(getImportHeader(row,['CHUC_VU','Chức vụ','Chuc vu','POSITION'])||'').trim();
-      const phone=String(getImportHeader(row,['SO_DIEN_THOAI','Số điện thoại','So dien thoai','PHONE','SĐT','SDT'])||'').trim();
-      const note=String(getImportHeader(row,['GHI_CHU','Ghi chú','Ghi chu','NOTE'])||'').trim();
-      const dutyType=String(getImportHeader(row,['DUTY_TYPE','Loại ngày','Loai ngay'])||'Thứ 7/CN').trim();
-      const dutyShift=String(getImportHeader(row,['DUTY_SHIFT','Ca trực','Ca truc'])||'Cả ngày').trim();
-      const dutyRole=String(getImportHeader(row,['DUTY_ROLE','Vai trò','Vai tro'])||'').trim();
-      if(!dutyDate || !unitCode || !fullname) {
-        if(dutyDate || unitCode || fullname || position || phone) invalid.push({row:idx+2, msg:'Thiếu NGAY_TRUC/UNIT_CODE hoặc DON_VI/HO_TEN'});
-        return;
-      }
-      valid.push({dutyDate, unitCode, unitName:unitLabel, fullname, position, phone, note, dutyType, dutyShift, dutyRole});
+  function dutyMakeUploadId(){
+    return 'duty_excel_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+  }
+  async function dutyPostExcelToServer(action, file, extra){
+    if(!file) throw new Error('Chưa chọn file Excel.');
+    const uploadId=dutyMakeUploadId();
+    const dataUrl=await dutyFileToDataUrl(file);
+    const payload=Object.assign({}, extra||{}, {
+      action, token: (window.APP && APP.token) || '', uploadId,
+      fileName:file.name, mimeType:file.type||'', base64:dataUrl
     });
-    st.importRows=valid; st.importInvalid=invalid;
+
+    // Ưu tiên google.script.run nếu chạy trong Apps Script; khi chạy GitHub Pages dùng form POST ẩn để tránh CORS/JSONP quá dài.
+    if(typeof canUseGoogleScriptRun==='function' && canUseGoogleScriptRun()){
+      await new Promise((resolve,reject)=>{
+        try{
+          google.script.run
+            .withSuccessHandler(res=>{ if(!res || res.ok===false) reject(new Error((res&&res.msg)||'Lỗi đọc Excel')); else resolve(res); })
+            .withFailureHandler(err=>reject(new Error((err&&err.message)||String(err||'Lỗi gọi Apps Script'))))
+            .api(payload);
+        }catch(e){ reject(e); }
+      });
+    } else if(typeof apiViaHiddenUploadPost==='function') {
+      await apiViaHiddenUploadPost(payload);
+    } else {
+      // Dự phòng khi đang chạy trong môi trường khác; chỉ phù hợp file nhỏ.
+      await api(action, {uploadId, fileName:file.name, mimeType:file.type||'', base64:dataUrl, ...(extra||{})});
+    }
+
+    if(typeof waitUploadStatus!=='function') throw new Error('Thiếu hàm waitUploadStatus để nhận kết quả đọc Excel. Cần cập nhật index.html bản mới.');
+    const res=await waitUploadStatus(uploadId, file.name);
+    if(!res || res.ok===false) throw new Error((res&&res.msg)||'Lỗi đọc Excel trên server.');
+    return res;
   }
 
   window.dutyReadExcelFile=async function(){
     const input=$('dutyExcelFile');
     const file=input && input.files && input.files[0];
     if(!file){ alert('Vui lòng chọn file Excel.'); return; }
-    setMsg('Đang đọc file Excel...', 'info');
+    setMsg('Đang gửi file Excel lên Apps Script để đọc...', 'info');
     try{
-      const XLSX=await loadXlsxLib();
-      const buf=await file.arrayBuffer();
-      const wb=XLSX.read(buf,{type:'array',cellDates:true});
-      const ws=wb.Sheets['DUTY_IMPORT'] || wb.Sheets[wb.SheetNames[0]];
-      const rows=XLSX.utils.sheet_to_json(ws,{defval:'',raw:true});
-      normalizeImportRows(rows);
-      setMsg(`Đã đọc ${dutyState().importRows.length} dòng hợp lệ từ Excel.`, 'ok');
+      const res=await dutyPostExcelToServer('parseDutyExcelFile', file, {});
+      const st=dutyState();
+      st.importRows=Array.isArray(res.rows)?res.rows:[];
+      st.importInvalid=Array.isArray(res.invalid)?res.invalid:[];
+      setMsg(`Đã đọc ${st.importRows.length} dòng hợp lệ từ Excel${st.importInvalid.length?`, ${st.importInvalid.length} dòng chưa hợp lệ`:''}.`, st.importRows.length?'ok':'err');
       renderDutyImportTab();
     }catch(e){ setMsg('Lỗi đọc Excel: '+(e.message||e), 'err'); }
   };
   window.dutySubmitExcelImport=async function(){
     const st=dutyState();
-    if(!st.importRows || !st.importRows.length){ alert('Chưa có dữ liệu hợp lệ để import.'); return; }
+    const input=$('dutyExcelFile');
+    const file=input && input.files && input.files[0];
     const submit = $('dutyImportSubmit') && $('dutyImportSubmit').value === 'true';
-    if(!confirm(`Cập nhật ${st.importRows.length} dòng vào phần mềm? Dữ liệu cũ cùng ngày + đơn vị sẽ được thay thế.`)) return;
+    if(!file && (!st.importRows || !st.importRows.length)){ alert('Chưa có dữ liệu hợp lệ để import.'); return; }
+    const n=(st.importRows&&st.importRows.length)||'các';
+    if(!confirm(`Cập nhật ${n} dòng vào phần mềm? Dữ liệu cũ cùng ngày + đơn vị sẽ được thay thế.`)) return;
     setMsg('Đang cập nhật dữ liệu từ Excel...', 'info');
     try{
-      const res=await api('importDutyEntries',{rows:st.importRows, submit});
+      let res;
+      if(file){
+        res=await dutyPostExcelToServer('importDutyExcelFile', file, {submit});
+      } else {
+        res=await api('importDutyEntries',{rows:st.importRows, submit});
+      }
       st.loaded=false; await loadDuty(true);
       setMsg((res && res.msg) || 'Đã import dữ liệu từ Excel.', 'ok');
       st.tab='summary';

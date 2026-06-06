@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lichkv8-v109-duty-excel-import';
+const CACHE_NAME = 'lichkv8-v110-duty-excel-import';
 const STATIC_ASSETS = [
   './',
   './index.html',
