@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lichkv8-v123-duty-fast-mobile-cards';
+const CACHE_NAME = 'lichkv8-v125-duty-weekend-default';
 const STATIC_ASSETS = [
   './',
   './index.html',

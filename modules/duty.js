@@ -1,10 +1,10 @@
 /* ==========================================================
- * modules/duty.js — V123 Module Lịch trực ban HQKV8
+ * modules/duty.js — V125 Module Lịch trực ban HQKV8
  * Bỏ Trụ sở Đội Kiểm soát Hải quan và Văn phòng vì dùng chung Trụ sở Chi cục HQKV VIII.
- * Tối ưu tải dữ liệu, giao diện desktop không viền từng người, mobile dạng card không kẻ bảng.
+ * Mặc định T7+CN tuần này, bỏ fallback lịch gần nhất, nền theo ngày, bỏ viền từng người.
  * ========================================================== */
 (function(){
-  const DUTY_VERSION = 'duty_v123_fast_mobile_cards_no_person_border';
+  const DUTY_VERSION = 'duty_v125_weekend_default_clean_rows';
   const DEFAULT_UNITS = [
     {code:'CHICUC', name:'Trụ sở Chi cục HQKV VIII', order:1},
     {code:'HONGAI', name:'Trụ sở HQCK cảng Hòn Gai', order:2},
@@ -28,6 +28,9 @@
   function todayIso(){ const d=new Date(); d.setHours(0,0,0,0); return iso(d); }
   function addDays(v,n){ const d=parseDate(v)||new Date(); d.setDate(d.getDate()+n); return iso(d); }
   function nextSaturday(){ const d=new Date(); d.setHours(0,0,0,0); const day=d.getDay(); const add=(6-day+7)%7; d.setDate(d.getDate()+add); return iso(d); }
+  function weekMonday(base){ const d=base?new Date(base):new Date(); d.setHours(0,0,0,0); const day=d.getDay(); const diff=(day===0?-6:1-day); d.setDate(d.getDate()+diff); return d; }
+  function thisWeekSaturday(){ const m=weekMonday(new Date()); m.setDate(m.getDate()+5); return iso(m); }
+  function previousWeekSaturday(){ const m=weekMonday(new Date()); m.setDate(m.getDate()-2); return iso(m); }
   function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
 
@@ -51,9 +54,9 @@
       .duty-toolbar-main .duty-left-tools,.duty-toolbar-main .duty-right-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
       .duty-toolbar-main .duty-left-tools{flex:1 1 auto;min-width:280px}
       .duty-toolbar-main .duty-right-tools{margin-left:auto;justify-content:flex-end}
-      .duty-toolbar-main label{font-size:.78rem;color:#475569;font-weight:800;display:inline-flex;align-items:center;gap:5px}
+      .duty-toolbar-main label{font-size:.78rem;color:#475569;font-weight:800;display:inline-flex;align-items:center;gap:5px}.duty-date-text{width:104px;text-align:center;font-weight:800}
       .duty-active-range{font-size:.82rem;color:#0f3a61;background:#eef7ff;border:1px solid #c7ddf3;border-radius:999px;padding:6px 11px;font-weight:800}
-      .duty-fallback-note{font-size:.84rem;color:#92400e;background:linear-gradient(90deg,#fff7ed 0%,#fffbeb 100%);border:1px solid #fed7aa;border-radius:12px;padding:9px 12px;margin:0;box-shadow:0 6px 18px rgba(15,23,42,.04)}
+      .duty-fallback-note{display:none}
       .duty-matrix-scroll{overflow:auto;border:1px solid #cbdcf0;border-radius:18px;background:linear-gradient(180deg,#f8fbff 0%,#ffffff 100%);box-shadow:0 14px 36px rgba(15,23,42,.08);max-height:calc(100svh - 238px)}
       .duty-matrix-table{width:100%;min-width:1260px;border-collapse:separate;border-spacing:0;table-layout:fixed;font-size:.89rem;background:transparent}
       .duty-matrix-table th,.duty-matrix-table td{border-right:1px solid #d6e2ef;border-bottom:1px solid #d6e2ef;padding:10px 8px;vertical-align:top;text-align:center;background:#fff}
@@ -61,21 +64,28 @@
       .duty-matrix-table thead th:not(.duty-date-col){font-size:.84rem;padding-top:12px;padding-bottom:12px}
       .duty-matrix-table th:first-child,.duty-matrix-table td:first-child{border-left:1px solid #d6e2ef}
       .duty-matrix-table thead tr:first-child th{border-top:1px solid #0f4c81}
-      .duty-matrix-table tbody tr:nth-child(odd) td:not(.duty-date-col){background:#fbfdff}
-      .duty-matrix-table tbody tr:hover td:not(.duty-date-col){background:#f3f8fe}
-      .duty-matrix-table .duty-date-col{width:128px;min-width:128px;background:linear-gradient(180deg,#eff6ff 0%,#e0efff 100%);font-weight:800;color:#0f2f53;vertical-align:middle;position:sticky;left:0;z-index:2}
+      .duty-matrix-table tbody tr:nth-child(odd) td:not(.duty-date-col){background:inherit}
+      .duty-matrix-table tbody tr:hover td:not(.duty-date-col){filter:brightness(.985)}
+      .duty-matrix-table .duty-date-col{width:128px;min-width:128px;background:#eef6ff;font-weight:800;color:#0f2f53;vertical-align:middle;position:sticky;left:0;z-index:2}
       .duty-matrix-table thead .duty-date-col{z-index:6;background:linear-gradient(180deg,#08375f 0%,#0c4b7d 100%);color:#fff}
       .duty-date-range{font-weight:900;font-size:1rem;line-height:1.18;color:inherit}
       .duty-date-weekdays{font-size:.79rem;color:inherit;opacity:.92;line-height:1.25;margin-top:5px}
-      .duty-cell-merged{background:linear-gradient(180deg,#f9fcff 0%,#eef7ff 100%)!important;vertical-align:middle!important;box-shadow:inset 0 0 0 2px rgba(28,113,184,.06)}
-      .duty-merge-badge{display:inline-block;margin-top:8px;border-radius:999px;background:#dff2ff;color:#0a4b7a;border:1px solid #bee3f8;padding:2px 8px;font-size:.72rem;font-weight:900}
-      .duty-compact-note{font-size:.84rem;color:#0f3a61;background:linear-gradient(90deg,#eef7ff 0%,#f8fcff 100%);border:1px solid #c7ddf3;border-radius:12px;padding:10px 12px;margin:0 0 10px 0;box-shadow:0 6px 18px rgba(15,23,42,.04)}
-      .duty-matrix-cell{min-height:88px;display:flex;flex-direction:column;gap:8px;align-items:stretch;justify-content:center}
-      .duty-person{padding:6px 2px;border:0!important;border-radius:0;line-height:1.25;background:transparent!important;box-shadow:none!important}
+      .duty-day-color-0 td:not(.duty-date-col),td.duty-day-color-0{background:#f8fbff!important}
+      .duty-day-color-1 td:not(.duty-date-col),td.duty-day-color-1{background:#fffaf0!important}
+      .duty-day-color-2 td:not(.duty-date-col),td.duty-day-color-2{background:#f0fdf4!important}
+      .duty-day-color-3 td:not(.duty-date-col),td.duty-day-color-3{background:#f5f3ff!important}
+      .duty-day-color-4 td:not(.duty-date-col),td.duty-day-color-4{background:#f0f9ff!important}
+      .duty-day-color-5 td:not(.duty-date-col),td.duty-day-color-5{background:#fff1f2!important}
+      .duty-empty-cell{display:block;color:#64748b;font-weight:800;font-style:italic;padding:8px 4px}
+      .duty-cell-merged{vertical-align:middle!important;box-shadow:none!important}
+      .duty-merge-badge{display:none!important}
+      .duty-compact-note{display:none!important}
+      .duty-matrix-cell{min-height:88px;display:flex;flex-direction:column;gap:6px;align-items:stretch;justify-content:center}
+      .duty-person{padding:4px 2px;border:0!important;border-radius:0!important;line-height:1.25;background:transparent!important;box-shadow:none!important;outline:0!important}
       .duty-person:last-child{margin-bottom:0}
       .duty-person-name{font-weight:900;color:#0b2948;font-size:.95rem;line-height:1.2}
       .duty-person-pos{font-weight:700;color:#1e3a5f;margin-top:4px;font-size:.84rem}
-      .duty-person-phone{display:inline-block;font-weight:800;color:#0a4b7a;margin-top:4px;white-space:nowrap;background:#eef7ff;border:0;border-radius:999px;padding:2px 9px;font-size:.82rem}
+      .duty-person-phone{display:block;font-weight:800;color:#0a4b7a;margin-top:3px;white-space:nowrap;background:transparent!important;border:0!important;border-radius:0!important;padding:0!important;font-size:.82rem}
       .duty-person-note{font-size:.74rem;color:#64748b;margin-top:5px;font-style:italic}
       .duty-date-picks{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 2px}
       .duty-date-pick{display:inline-flex;align-items:center;gap:6px;border:1px solid #cbd5e1;background:#f8fafc;border-radius:999px;padding:6px 10px;font-size:.8rem;font-weight:800;color:#334155;cursor:pointer;user-select:none}
@@ -105,8 +115,9 @@
         .duty-matrix-table .duty-date-col{color:#073b63;background:#eef7ff!important;border-radius:12px!important;padding:10px 12px!important;margin-bottom:6px!important;font-weight:900!important}
         .duty-matrix-table td:not(.duty-date-col):empty{display:none!important}
         .duty-matrix-table td:not(.duty-date-col)::before{content:attr(data-unit);display:block;margin:2px 0 5px;color:#0b67b2;font-size:.73rem;font-weight:900;text-transform:uppercase;letter-spacing:.03em}
+        .duty-empty-cell{padding:2px 0;color:#64748b;font-style:italic;font-weight:700}
         .duty-cell-merged{box-shadow:none!important}
-        .duty-merge-badge{margin-top:4px;background:#f1f5f9;border:0;color:#475569}
+        .duty-merge-badge{display:none!important}
         .duty-matrix-cell{min-height:0;gap:3px;justify-content:flex-start}
         .duty-person{padding:4px 0!important;border:0!important;background:transparent!important;box-shadow:none!important}
         .duty-person-name{font-size:.92rem;color:#0b2948}
@@ -157,7 +168,7 @@
       st.inited=true;
       st.version=DUTY_VERSION;
       st.tab='summary';
-      st.startDate=nextSaturday();
+      st.startDate=thisWeekSaturday();
       st.endDate=addDays(st.startDate,1);
       st.unitFilter='all';
       st.formUnit='CHICUC';
@@ -278,23 +289,7 @@
     st.entries = (res.entries || []).map(normalizeDutyEntry);
     st.statuses = (res.statuses || []).map(x=>Object.assign({},x,{unitCode:canonicalUnitCode(x.unitCode||x.UNIT_CODE||'')}));
 
-    // V122: nếu khoảng đang xem chưa có lịch trực mới, tự hiển thị lịch trực gần nhất đã nhập; Văn phòng/KSHQ gom về Trụ sở Chi cục.
-    if(!st.entries.length){
-      try{
-        const t=todayIso();
-        const fbRes = await getDutyDataCached(addDays(t,-120), addDays(t,45), !!force);
-        const fbEntries=(fbRes.entries||[]).map(normalizeDutyEntry).filter(x=>x.dutyDate);
-        const rg=chooseRecentDutyRange(fbEntries);
-        if(rg){
-          st.startDate=rg.startDate;
-          st.endDate=rg.endDate;
-          st.units=cleanUnits((fbRes.units&&fbRes.units.length)?fbRes.units:st.units);
-          st.entries=fbEntries.filter(x=>x.dutyDate>=rg.startDate && x.dutyDate<=rg.endDate);
-          st.statuses=(fbRes.statuses||[]).map(x=>Object.assign({},x,{unitCode:canonicalUnitCode(x.unitCode||x.UNIT_CODE||'')}));
-          st.fallbackNotice='Chưa có lịch trực mới trong khoảng đã chọn, đang hiển thị lịch trực ban gần nhất trong khoảng rà soát 120 ngày: '+dateRangeShort(rg.startDate,rg.endDate)+'.';
-        }
-      }catch(_){ }
-    }
+    // V125: không tự nhảy sang lịch gần nhất; nếu tuần này chưa cập nhật thì vẫn hiển thị khung T7+CN và ghi rõ chưa cập nhật.
     st.loaded = true;
   }
 
@@ -341,11 +336,10 @@
             <button class="btn sm ${st.tab==='summary'?'primary':''}" onclick="dutySetTab('summary')">Bảng tổng hợp</button>
             <button class="btn sm ${st.tab==='detail'?'primary':''}" onclick="dutySetTab('detail')">Dữ liệu chi tiết</button>
             <span class="duty-active-range">${E(rangeText)}</span>
-            <button class="btn sm" onclick="dutyQuickRange('today')">Hôm nay</button>
-            <button class="btn sm" onclick="dutyQuickRange('weekend')">Cuối tuần này</button>
-            <button class="btn sm" onclick="dutyQuickRange('7days')">7 ngày</button>
-            <label>Từ <input class="input mini" type="date" value="${E(st.startDate)}" onchange="dutySetDateRange(this.value,null)"></label>
-            <label>Đến <input class="input mini" type="date" value="${E(st.endDate)}" onchange="dutySetDateRange(null,this.value)"></label>
+            <button class="btn sm" onclick="dutyQuickRange('prevWeekend')">T7+CN tuần trước</button>
+            <button class="btn sm primary" onclick="dutyQuickRange('thisWeekend')">T7+CN tuần này</button>
+            <label>Từ ngày <input class="input mini duty-date-text" type="text" inputmode="numeric" placeholder="dd/mm/yyyy" value="${E(dateShort(st.startDate))}" onchange="dutySetDateRangeVN(this.value,null)"></label>
+            <label>Đến ngày <input class="input mini duty-date-text" type="text" inputmode="numeric" placeholder="dd/mm/yyyy" value="${E(dateShort(st.endDate))}" onchange="dutySetDateRangeVN(null,this.value)"></label>
             <select class="select-field mini" onchange="dutySetUnitFilter(this.value)">
               <option value="all">Tất cả trụ sở</option>${cleanUnits(st.units||DEFAULT_UNITS).map(u=>`<option value="${E(u.code)}" ${st.unitFilter===u.code?'selected':''}>${E(u.name)}</option>`).join('')}
             </select>
@@ -444,32 +438,34 @@
     }
     return dateShort(start)+' - '+dateShort(end);
   }
+  function dayColorClass(date, units, rows){
+    const dates=dateRangeList(dutyState().startDate, dutyState().endDate, 62);
+    const idx=Math.max(0, dates.indexOf(date));
+    return 'duty-day-color-' + (idx % 6);
+  }
   function renderSummaryTable(rows){
-    if(!rows.length) return '<div class="empty-state">Chưa có dữ liệu trực ban trong khoảng thời gian đã chọn.</div>';
     const st=dutyState();
-    const units=matrixUnitColumns(rows);
+    const units=matrixUnitColumns(rows || []);
     let dates=dateRangeList(st.startDate, st.endDate, 62);
-    const dataDates=groupByDate(rows).map(x=>x.date);
-    dates=dates.filter(d=>dataDates.includes(d));
-    if(!dates.length) dates=dataDates;
-    const calc=computeCellSpans(rows, dates, units);
-    let html='';
-    if(calc.mergeCount>0){
-      html += `<div class="duty-compact-note">Đã trộn ${E(calc.mergeCount)} ô có lịch trực giống nhau giữa các ngày liên tiếp để bảng gọn và dễ đọc hơn.</div>`;
+    if(!dates.length){
+      const dataDates=groupByDate(rows||[]).map(x=>x.date);
+      dates=dataDates.length?dataDates:[thisWeekSaturday(), addDays(thisWeekSaturday(),1)];
     }
+    const calc=computeCellSpans(rows || [], dates, units);
+    let html='';
     html += '<div class="duty-matrix-scroll"><table class="duty-matrix-table"><thead><tr><th class="duty-date-col">Ngày</th>';
     units.forEach(u=>{ html += `<th>${E(u.name)}</th>`; });
     html += '</tr></thead><tbody>';
     dates.forEach(d=>{
-      html += `<tr><td class="duty-date-col"><div class="duty-date-range">${E(dateShort(d))}</div><div class="duty-date-weekdays">${E(weekday(d))}</div></td>`;
+      const rowColor=dayColorClass(d, units, rows||[]);
+      html += `<tr class="${rowColor}"><td class="duty-date-col ${rowColor}"><div class="duty-date-range">${E(dateShort(d))}</div><div class="duty-date-weekdays">${E(weekday(d))}</div></td>`;
       units.forEach(u=>{
         const sp=(calc.spans[u.code]&&calc.spans[u.code][d]) || {rowspan:1,skip:false,merged:false};
         if(sp.skip) return;
-        const cell=matrixCellRows(rows,d,u.code);
+        const cell=matrixCellRows(rows||[],d,u.code);
         const rowAttr=sp.rowspan>1 ? ` rowspan="${sp.rowspan}"` : '';
-        const cellClass=sp.merged ? ' class="duty-cell-merged"' : '';
-        const badge=sp.merged ? `<div class="duty-merge-badge">Trùng ${sp.rowspan} ngày</div>` : '';
-        html += `<td${rowAttr}${cellClass} data-unit="${E(u.name)}">` + (cell.length ? `<div class="duty-matrix-cell">${cell.map(personCellHtml).join('')}${badge}</div>` : '') + '</td>';
+        const cellClass=` class="${sp.merged?'duty-cell-merged ':''}${rowColor}"`;
+        html += `<td${rowAttr}${cellClass} data-unit="${E(u.name)}">` + (cell.length ? `<div class="duty-matrix-cell">${cell.map(personCellHtml).join('')}</div>` : '<span class="duty-empty-cell">Chưa cập nhật lịch</span>') + '</td>';
       });
       html += '</tr>';
     });
@@ -608,7 +604,7 @@
             <button class="btn primary" onclick="dutyReadExcelFile()">📥 Đọc file Excel</button>
             <button class="btn green" onclick="dutySubmitExcelImport()" ${rows.length?'':'disabled'}>✅ Cập nhật vào phần mềm</button>
           </div>
-          <div class="duty-help">V123: Văn phòng và Trụ sở Đội KSHQ dùng chung Trụ sở Chi cục HQKV VIII; giao diện mobile hiển thị dạng thẻ, không kẻ bảng.</div>
+          <div class="duty-help">V125: mặc định hiển thị T7+CN tuần này; nếu chưa có dữ liệu thì vẫn kẻ bảng và ghi Chưa cập nhật lịch.</div>
         </div>
       </div>
       <div class="duty-table-card">
@@ -792,11 +788,25 @@
     const wrap=document.getElementById('dutyEntryMenuWrap');
     if(wrap && !wrap.contains(ev.target)) wrap.classList.remove('open');
   }, true);
+  function parseVnDateToIso(v){
+    const s=String(v||'').trim();
+    let m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+    if(m){ const d=new Date(+m[3], +m[2]-1, +m[1]); if(d && !isNaN(d)) return iso(d); }
+    m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if(m) return `${m[1]}-${pad(m[2])}-${pad(m[3])}`;
+    return '';
+  }
   window.dutySetTab=function(tab){ const st=dutyState(); st.tab=tab; renderDutyModule(); };
   window.dutyReload=async function(){ const st=dutyState(); st.loaded=false; await renderDutyModule(); };
   window.dutySetDateRange=function(start,end){ const st=dutyState(); if(start)st.startDate=start; if(end)st.endDate=end; st.loaded=false; renderDutyModule(); };
+  window.dutySetDateRangeVN=function(start,end){
+    const st=dutyState();
+    if(start!==null){ const v=parseVnDateToIso(start); if(!v){ alert('Ngày bắt đầu chưa đúng định dạng dd/mm/yyyy'); renderDutyModule(); return; } st.startDate=v; }
+    if(end!==null){ const v=parseVnDateToIso(end); if(!v){ alert('Ngày kết thúc chưa đúng định dạng dd/mm/yyyy'); renderDutyModule(); return; } st.endDate=v; }
+    st.loaded=false; renderDutyModule();
+  };
   window.dutySetUnitFilter=function(unit){ const st=dutyState(); st.unitFilter=unit; renderDutyModule(); };
-  window.dutyQuickRange=function(kind){ const st=dutyState(); const t=todayIso(); if(kind==='today'){st.startDate=t;st.endDate=t;} else if(kind==='weekend'){st.startDate=nextSaturday();st.endDate=addDays(st.startDate,1);} else {st.startDate=t;st.endDate=addDays(t,6);} st.loaded=false; renderDutyModule(); };
+  window.dutyQuickRange=function(kind){ const st=dutyState(); if(kind==='prevWeekend'){st.startDate=previousWeekSaturday();st.endDate=addDays(st.startDate,1);} else {st.startDate=thisWeekSaturday();st.endDate=addDays(st.startDate,1);} st.loaded=false; renderDutyModule(); };
   window.dutyFormChanged=function(resetChecks){
     const st=dutyState();
     const unit=$('dutyFormUnit'); const d1=$('dutyFormDate'); const d2=$('dutyFormEndDate'); const typ=$('dutyFormType');
@@ -841,9 +851,10 @@
     const st=dutyState();
     const units=matrixUnitColumns(rows);
     let dates=dateRangeList(st.startDate, st.endDate, 62);
-    const dataDates=groupByDate(rows).map(x=>x.date);
-    dates=dates.filter(d=>dataDates.includes(d));
-    if(!dates.length) dates=dataDates;
+    if(!dates.length){
+      const dataDates=groupByDate(rows||[]).map(x=>x.date);
+      dates=dataDates.length?dataDates:[thisWeekSaturday(), addDays(thisWeekSaturday(),1)];
+    }
     const calc=computeCellSpans(rows, dates, units);
     let html='<table border="1"><thead><tr><th>Ngày</th>';
     units.forEach(u=>{ html += `<th>${E(u.name)}</th>`; });
@@ -855,7 +866,7 @@
         if(sp.skip) return;
         const cell=matrixCellRows(rows,d,u.code);
         const rowAttr=sp.rowspan>1 ? ` rowspan="${sp.rowspan}"` : '';
-        html += `<td${rowAttr}>${cell.map(r=>`<b>Đ/c ${E(cleanPersonName(r.fullname))}</b><br>${E(r.position||'')}<br>${E(formatPhoneDisplay(r.phone)||'')}`).join('<hr>')}</td>`;
+        html += `<td${rowAttr}>${cell.length ? cell.map(r=>`<b>Đ/c ${E(cleanPersonName(r.fullname))}</b><br>${E(r.position||'')}<br>${E(formatPhoneDisplay(r.phone)||'')}`).join('<hr>') : 'Chưa cập nhật lịch'}</td>`;
       });
       html += '</tr>';
     });

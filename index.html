@@ -2294,7 +2294,7 @@
 
 </style>
   <link rel="stylesheet" href="modules/hkg.css?v=99">
-  <link rel="stylesheet" href="modules/duty.css?v=123">
+  <link rel="stylesheet" href="modules/duty.css?v=125">
 </head>
 <body>
 
@@ -2467,9 +2467,9 @@
     <span id="bnMeetBadge" class="bn-badge">0</span>
     <span>Lịch</span>
   </button>
-  <button class="bn-item" data-screen="library" onclick="go('library')">
-    <span class="bn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/><path d="M8 6h8"/><path d="M8 10h8"/></svg></span>
-    <span>TVVB</span>
+  <button class="bn-item" data-screen="duty" onclick="go('duty')">
+    <span class="bn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h8"/><path d="M9 3v3h6V3"/><rect x="5" y="5" width="14" height="16" rx="2"/><path d="M8 11h8"/><path d="M8 15h6"/></svg></span>
+    <span>Trực ban</span>
   </button>
   <button class="bn-item" onclick="toggleSide()">
     <span class="bn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></span>
@@ -2702,7 +2702,7 @@ function msgToastError(text){
 }
 
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v123_duty_fast_mobile_cards';
+const APP_VERSION = 'HTML_v125_duty_weekend_default';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const QUIZ_MODULE_URL = 'https://vuquyhung-qni.github.io/tracnghiem/';
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
@@ -2838,6 +2838,35 @@ function api(action, payload={}) {
 
 function makeUploadId(){
   return '_up_' + Date.now() + '_' + Math.random().toString(36).slice(2,10);
+}
+
+// ===== V124: cache nhẹ trong phiên trình duyệt để Notebook/TVVB mở nhanh hơn =====
+function fastCacheHash(s){
+  s=String(s||'');
+  let h=0;
+  for(let i=0;i<s.length;i++){ h=((h<<5)-h)+s.charCodeAt(i); h|=0; }
+  return Math.abs(h).toString(36);
+}
+function fastCacheKey(prefix, payload){
+  return 'lct_fast_'+prefix+'_'+fastCacheHash(JSON.stringify(payload||{}));
+}
+function fastCacheGet(prefix, payload, ttlMs){
+  try{
+    const raw=sessionStorage.getItem(fastCacheKey(prefix,payload));
+    if(!raw) return null;
+    const obj=JSON.parse(raw);
+    if(!obj || !obj.t || (Date.now()-obj.t)>(ttlMs||300000)) return null;
+    return obj.v || null;
+  }catch(e){ return null; }
+}
+function fastCacheSet(prefix, payload, value){
+  try{ sessionStorage.setItem(fastCacheKey(prefix,payload), JSON.stringify({t:Date.now(),v:value})); }catch(e){}
+}
+function fastCacheClearPrefix(prefix){
+  try{
+    const p='lct_fast_'+prefix+'_';
+    Object.keys(sessionStorage).forEach(k=>{ if(k.indexOf(p)===0) sessionStorage.removeItem(k); });
+  }catch(e){}
 }
 async function waitUploadStatus(uploadId, fileName){
   const deadline = Date.now() + 30000;
@@ -3186,7 +3215,7 @@ async function go(screen){
   document.querySelectorAll('.bn-item').forEach(b=>b.classList.toggle('active',b.dataset.screen===screen));
   document.querySelectorAll('[id^="screen-"]').forEach(s=>s.classList.add('hide'));
   $('screen-'+screen).classList.remove('hide');
-  const titles={dashboard:'TỔNG QUAN',calendar:'LỊCH CÔNG TÁC',summary:'TÓM TẮT LỊCH',duty:'TỔNG HỢP DANH SÁCH TRỰC',manage:'QUẢN LÝ LỊCH',library:'THƯ VIỆN VĂN BẢN',notebook:'NOTEBOOK',quiz:'TRẮC NGHIỆM KIẾN THỨC',hkg:'HỌP KHÔNG GIẤY',users:'QUẢN TRỊ NGƯỜI DÙNG',settings:'QUẢN TRỊ DANH MỤC'};
+  const titles={dashboard:'TỔNG QUAN',calendar:'LỊCH CÔNG TÁC',summary:'TÓM TẮT LỊCH',duty:'LỊCH TRỰC BAN',manage:'QUẢN LÝ LỊCH',library:'THƯ VIỆN VĂN BẢN',notebook:'NOTEBOOK',quiz:'TRẮC NGHIỆM KIẾN THỨC',hkg:'HỌP KHÔNG GIẤY',users:'QUẢN TRỊ NGƯỜI DÙNG',settings:'QUẢN TRỊ DANH MỤC'};
   $('pageTitle').textContent=titles[screen]||'';
   if(window.innerWidth<768)closeSide();
   await render();
@@ -3202,7 +3231,7 @@ async function refreshAll(){
   const _futureMeetings=APP.meetings.filter(m=>{const e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau);return e&&e>=_today;});
   $('navMeetCount').textContent=_futureMeetings.length;
   const bnBadge=$('bnMeetBadge');if(bnBadge)bnBadge.textContent=_futureMeetings.length;
-  refreshNotebookUnreadBadge();
+  setTimeout(refreshNotebookUnreadBadge, 800);
   render();
 }
 async function refreshNotebookUnreadBadge(){
@@ -3798,10 +3827,10 @@ function updateLibraryButtons(){
 }
 function reloadLibraryFrame(){
   libraryEnsureState();
-  if(APP.libraryMode==='search') return searchLibraryDrive(false);
+  if(APP.libraryMode==='search') return searchLibraryDrive(false,true);
   if(APP.libraryMode==='preview') return renderLibraryContent();
   if(APP.libraryMode==='fallback') return renderLibraryFallback();
-  libraryLoadFolder(APP.libraryFolderId||DRIVE_LIBRARY_FOLDER_ID,false);
+  libraryLoadFolder(APP.libraryFolderId||DRIVE_LIBRARY_FOLDER_ID,false,true);
 }
 function libraryBack(){
   libraryEnsureState();
@@ -4097,7 +4126,8 @@ async function libraryUploadToFolder(folderId,files,source){
       await drivePopupFolderLoad(folderId,APP.popupDriveFolderTitle||'Thư mục tài liệu');
     }
     if(APP.libraryMode==='folder' && String(APP.libraryFolderId||'')===String(folderId||'')){
-      await libraryLoadFolder(folderId,false);
+      fastCacheClearPrefix('libraryListFolder');
+      await libraryLoadFolder(folderId,false,true);
     }
   }catch(e){
     const msg=(e&&e.message)||String(e||'Upload lỗi');
@@ -4158,20 +4188,33 @@ function showLibraryHelp(text,type){
   help.classList.toggle('show',!!text);
   help.style.color=type==='err'?'#991b1b':'#8a5a00';
 }
-async function libraryLoadFolder(folderId, push=true){
+async function libraryLoadFolder(folderId, push=true, force=false){
   libraryEnsureState();
   if(push)libraryPushState();
   APP.libraryMode='folder';
   APP.libraryFolderId=folderId||DRIVE_LIBRARY_FOLDER_ID;
-  APP.libraryLoading=true;
   APP.libraryError='';
+  const cachePayload={folderId:APP.libraryFolderId, rootFolderId:DRIVE_LIBRARY_FOLDER_ID};
+  const cached=!force ? fastCacheGet('libraryListFolder', cachePayload, 10*60*1000) : null;
+  if(cached){
+    APP.libraryLoading=false;
+    APP.libraryMode='folder';
+    APP.libraryData={folder:cached.folder||{},items:cached.items||[],path:cached.path||[]};
+    APP.libraryFolderId=(cached.folder&&cached.folder.id)||APP.libraryFolderId;
+    renderLibraryContent();
+    updateLibraryButtons();
+    showLibraryHelp('', '');
+    return;
+  }
+  APP.libraryLoading=true;
   renderLibraryContent();
   try{
-    const res=await api('libraryListFolder',{folderId:APP.libraryFolderId, rootFolderId:DRIVE_LIBRARY_FOLDER_ID});
+    const res=await api('libraryListFolder',cachePayload);
     APP.libraryLoading=false;
     APP.libraryMode='folder';
     APP.libraryData={folder:res.folder||{},items:res.items||[],path:res.path||[]};
     APP.libraryFolderId=(res.folder&&res.folder.id)||APP.libraryFolderId;
+    fastCacheSet('libraryListFolder', cachePayload, APP.libraryData);
     showLibraryHelp('', '');
   }catch(e){
     APP.libraryLoading=false;
@@ -4224,7 +4267,7 @@ function libraryCloseFilePopup(){
 function libraryPopupEscHandler(ev){
   if(ev.key==='Escape') libraryCloseFilePopup();
 }
-async function searchLibraryDrive(push=true){
+async function searchLibraryDrive(push=true, force=false){
   libraryEnsureState();
   const input=$('librarySearchInput');
   const q=input ? input.value.trim() : '';
@@ -4236,14 +4279,25 @@ async function searchLibraryDrive(push=true){
   if(push)libraryPushState();
   APP.libraryMode='search';
   APP.libraryKeyword=q;
-  APP.libraryLoading=true;
   APP.libraryError='';
+  const cachePayload={keyword:q, rootFolderId:DRIVE_LIBRARY_FOLDER_ID, max:200};
+  const cached=!force ? fastCacheGet('librarySearchFiles', cachePayload, 10*60*1000) : null;
+  if(cached){
+    APP.libraryLoading=false;
+    APP.libraryData={items:cached.items||[],path:[]};
+    renderLibraryContent();
+    updateLibraryButtons();
+    showLibraryHelp(`Đã mở kết quả tìm “${q}” từ bộ nhớ tạm. Bấm Tải lại để cập nhật mới.`);
+    return;
+  }
+  APP.libraryLoading=true;
   renderLibraryContent();
   try{
-    const res=await api('librarySearchFiles',{keyword:q, rootFolderId:DRIVE_LIBRARY_FOLDER_ID, max:200});
+    const res=await api('librarySearchFiles',cachePayload);
     APP.libraryLoading=false;
     APP.libraryMode='search';
     APP.libraryData={items:res.items||[],path:[]};
+    fastCacheSet('librarySearchFiles', cachePayload, APP.libraryData);
     showLibraryHelp(`Đã tìm trong thư viện nội bộ: ${q}`);
   }catch(e){
     APP.libraryLoading=false;
@@ -5020,10 +5074,8 @@ function noteCardHtml(n){
     </div>
   </div>`;
 }
-async function renderNotebook(){
+function renderNotebookShell(kw){
   const box=$('screen-notebook'); if(!box)return;
-  if(APP.currentScreen!=='notebook' && APP.notebook.loaded) return;
-  const kw=APP.notebook.kw||'';
   box.innerHTML=`<div class="panel">
     <div class="panel-h">
       <h3>📒 Notebook</h3>
@@ -5032,25 +5084,54 @@ async function renderNotebook(){
     <div class="panel-b">
       <div class="notebook-toolbar">
         <div class="search-wrap">
-          <input id="noteKw" value="${esc(kw)}" placeholder="Tìm tiêu đề, nội dung ghi chú, mã lịch...">
+          <input id="noteKw" value="${esc(kw||'')}" placeholder="Tìm tiêu đề, nội dung ghi chú, mã lịch...">
           <button onclick="searchNotebook()">🔍</button>
         </div>
-        <button class="btn ghost" onclick="APP.notebook.kw='';APP.notebook.loaded=false;renderNotebook()">Làm mới</button>
+        <button class="btn ghost" onclick="APP.notebook.kw='';APP.notebook.loaded=false;fastCacheClearPrefix('getNotes');APP.notebook.forceRefresh=true;renderNotebook()">Làm mới</button>
       </div>
-      <div id="notebookList"><div class="loading"><div class="spin"></div><span>Đang tải ghi chú...</span></div></div>
+      <div id="notebookList"></div>
     </div>
   </div>`;
+}
+function renderNotebookList(notes){
+  const list=$('notebookList'); if(!list)return;
+  notes=notes||[];
+  list.innerHTML=notes.length?`<div class="notes-grid">${notes.map(noteCardHtml).join('')}</div>`:'<div class="empty">Chưa có ghi chú nào.</div>';
+}
+async function renderNotebook(){
+  const box=$('screen-notebook'); if(!box)return;
+  const kw=APP.notebook.kw||'';
+  renderNotebookShell(kw);
+  const cachePayload={keyword:kw};
+  if(!APP.notebook.forceRefresh){
+    if(APP.notebook.loaded && APP.notebook.lastKw===kw){
+      renderNotebookList(APP.notebook.notes||[]);
+      return;
+    }
+    const cached=fastCacheGet('getNotes', cachePayload, 5*60*1000);
+    if(cached){
+      APP.notebook.notes=cached.notes||[];
+      APP.notebook.loaded=true;
+      APP.notebook.lastKw=kw;
+      updateNotebookUnreadBadge(cached.unreadSharedCount || 0);
+      renderNotebookList(APP.notebook.notes);
+      return;
+    }
+  }
+  APP.notebook.forceRefresh=false;
+  const list=$('notebookList');
+  if(list) list.innerHTML='<div class="loading"><div class="spin"></div><span>Đang tải ghi chú...</span></div>';
   try{
-    const res=await api('getNotes',{keyword:kw});
-    APP.notebook.notes=res.notes||[]; APP.notebook.loaded=true;
+    const res=await api('getNotes',cachePayload);
+    APP.notebook.notes=res.notes||[]; APP.notebook.loaded=true; APP.notebook.lastKw=kw;
+    fastCacheSet('getNotes', cachePayload, {notes:APP.notebook.notes, unreadSharedCount:res.unreadSharedCount||0});
     updateNotebookUnreadBadge(res.unreadSharedCount || 0);
-    const list=$('notebookList'); if(!list)return;
-    list.innerHTML=APP.notebook.notes.length?`<div class="notes-grid">${APP.notebook.notes.map(noteCardHtml).join('')}</div>`:'<div class="empty">Chưa có ghi chú nào.</div>';
+    renderNotebookList(APP.notebook.notes);
   }catch(e){
     const list=$('notebookList'); if(list) list.innerHTML=`<div class="msg err">${esc(e.message)}</div>`;
   }
 }
-function searchNotebook(){APP.notebook.kw=($('noteKw')?.value||'').trim();APP.notebook.loaded=false;renderNotebook();}
+function searchNotebook(){APP.notebook.kw=($('noteKw')?.value||'').trim();APP.notebook.loaded=false;APP.notebook.forceRefresh=false;renderNotebook();}
 async function loadDetailNotes(meetingId){
   const box=$('detailNotesBox'); if(!box)return;
   try{
@@ -5097,7 +5178,7 @@ async function openNoteViewer(noteId){
         n.shareUnread=false;
         if(n.shareInfo)n.shareInfo.isRead=true;
         updateNotebookUnreadBadge(rr.unreadSharedCount || 0);
-        APP.notebook.loaded=false;
+        APP.notebook.loaded=false;fastCacheClearPrefix('getNotes');
       }catch(_e){}
     }
     $('modalBody').innerHTML=`<div style="display:grid;gap:12px">
@@ -5247,7 +5328,7 @@ async function sendNoteShare(noteId){
   try{
     const res=await api('shareNote',{noteId,toUsername:NOTE_SHARE_SELECTED_USER.username,message:($('noteShareMessage')?.value||'').trim()});
     msg(msgBox,res.msg||'Đã gửi ghi chú.','ok');
-    APP.notebook.loaded=false;
+    APP.notebook.loaded=false;fastCacheClearPrefix('getNotes');
     setTimeout(()=>closeModal(),800);
   }catch(e){
     msg(msgBox,e.message||String(e),'err');
@@ -5325,7 +5406,7 @@ async function saveNoteFromEditor(meetingId, noteId){
     const savedNoteId=res.noteId||noteId;
     await uploadNoteQueuedFiles(savedNoteId);
     msg($('noteSaveMsg'),(res.msg||'Đã lưu ghi chú.') + ((APP.noteUploadQueue||[]).length?'':'') ,'ok');
-    APP.notebook.loaded=false;
+    APP.notebook.loaded=false;fastCacheClearPrefix('getNotes');
     setTimeout(async()=>{
       closeModal();
       if(meetingId && APP.currentScreen!=='notebook') openDetail(meetingId);
@@ -5338,14 +5419,14 @@ async function saveNoteFromEditor(meetingId, noteId){
 }
 async function deleteNoteFile(noteFileId){
   if(!confirm('Xóa file đính kèm khỏi ghi chú?'))return;
-  try{await api('deleteNoteFile',{noteFileId});APP.notebook.loaded=false;const cur=Array.from(document.querySelectorAll('.modal')).some(m=>!m.classList.contains('hide'));alert('Đã xóa file đính kèm. Mở lại ghi chú để cập nhật.');}catch(e){alert(e.message||String(e));}
+  try{await api('deleteNoteFile',{noteFileId});APP.notebook.loaded=false;fastCacheClearPrefix('getNotes');const cur=Array.from(document.querySelectorAll('.modal')).some(m=>!m.classList.contains('hide'));alert('Đã xóa file đính kèm. Mở lại ghi chú để cập nhật.');}catch(e){alert(e.message||String(e));}
 }
 async function hideSharedNote(noteId){
   if(!confirm('Xóa ghi chú được gửi khỏi Notebook của bạn? Ghi chú gốc của người gửi không bị xóa.'))return;
   try{
     const res=await api('hideSharedNote',{noteId});
     updateNotebookUnreadBadge(res.unreadSharedCount || 0);
-    APP.notebook.loaded=false;
+    APP.notebook.loaded=false;fastCacheClearPrefix('getNotes');
     closeModal();
     await renderNotebook();
   }catch(e){alert(e.message||String(e));}
@@ -5354,7 +5435,7 @@ async function deleteNote(noteId){
   const n=findCachedNote(noteId);
   if(n && n.isShared && !n.canEdit){ return hideSharedNote(noteId); }
   if(!confirm('Xóa ghi chú này?'))return;
-  try{const res=await api('deleteNote',{noteId}); if(res&&res.unreadSharedCount!==undefined)updateNotebookUnreadBadge(res.unreadSharedCount||0); APP.notebook.loaded=false;await renderNotebook();}catch(e){alert(e.message);}
+  try{const res=await api('deleteNote',{noteId}); if(res&&res.unreadSharedCount!==undefined)updateNotebookUnreadBadge(res.unreadSharedCount||0); APP.notebook.loaded=false;fastCacheClearPrefix('getNotes');await renderNotebook();}catch(e){alert(e.message);}
 }
 
 // ===== DETAIL =====
@@ -5839,14 +5920,14 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
 </script>
 
 <script src="modules/hkg.js?v=99"></script>
-<script src="modules/duty.js?v=123"></script>
+<script src="modules/duty.js?v=125"></script>
 
 <script>
 (function(){
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', async function(){
       try{
-        const resetKey = 'lct_sw_reset_v123';
+        const resetKey = 'lct_sw_reset_v125';
         if(localStorage.getItem(resetKey) !== '1'){
           const regs = await navigator.serviceWorker.getRegistrations();
           for(const r of regs){ try{ await r.unregister(); }catch(_){} }
@@ -5857,7 +5938,7 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
           localStorage.setItem(resetKey,'1');
         }
       }catch(e){ console.warn('Không reset được service worker/cache cũ:', e); }
-      navigator.serviceWorker.register('./service-worker.js?v=123').then(function(reg){
+      navigator.serviceWorker.register('./service-worker.js?v=125').then(function(reg){
         try { reg.update(); } catch(e) {}
       }).catch(function(err){
         console.warn('Không đăng ký được service worker PWA:', err);
