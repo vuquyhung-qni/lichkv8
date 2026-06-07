@@ -1,10 +1,10 @@
 /* ==========================================================
- * modules/duty.js — V125 Module Lịch trực ban HQKV8
+ * modules/duty.js — V127 Module Lịch trực ban HQKV8
  * Bỏ Trụ sở Đội Kiểm soát Hải quan và Văn phòng vì dùng chung Trụ sở Chi cục HQKV VIII.
- * Mặc định T7+CN tuần này, bỏ fallback lịch gần nhất, nền theo ngày, bỏ viền từng người.
+ * Mẫu Excel đi kèm, import theo đơn vị, bấm ô lịch để sửa trực tiếp.
  * ========================================================== */
 (function(){
-  const DUTY_VERSION = 'duty_v125_weekend_default_clean_rows';
+  const DUTY_VERSION = 'duty_v127_excel_template_unit_edit';
   const DEFAULT_UNITS = [
     {code:'CHICUC', name:'Trụ sở Chi cục HQKV VIII', order:1},
     {code:'HONGAI', name:'Trụ sở HQCK cảng Hòn Gai', order:2},
@@ -23,7 +23,7 @@
   function pad(n){ return String(n).padStart(2,'0'); }
   function iso(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
   function parseDate(v){ if(window.parseIsoDate) return parseIsoDate(v); if(!v)return null; const m=String(v).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); return m?new Date(+m[1],+m[2]-1,+m[3]):null; }
-  function dateShort(v){ if(window.dateVNShort) return dateVNShort(v); const d=parseDate(v); return d?pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear():String(v||''); }
+  function dateShort(v){ const d=parseDate(v); return d?pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear():String(v||''); }
   function weekday(v){ const d=parseDate(v); return d?['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'][d.getDay()]:''; }
   function todayIso(){ const d=new Date(); d.setHours(0,0,0,0); return iso(d); }
   function addDays(v,n){ const d=parseDate(v)||new Date(); d.setDate(d.getDate()+n); return iso(d); }
@@ -31,6 +31,7 @@
   function weekMonday(base){ const d=base?new Date(base):new Date(); d.setHours(0,0,0,0); const day=d.getDay(); const diff=(day===0?-6:1-day); d.setDate(d.getDate()+diff); return d; }
   function thisWeekSaturday(){ const m=weekMonday(new Date()); m.setDate(m.getDate()+5); return iso(m); }
   function previousWeekSaturday(){ const m=weekMonday(new Date()); m.setDate(m.getDate()-2); return iso(m); }
+  function nextWeekSaturday(){ const m=weekMonday(new Date()); m.setDate(m.getDate()+12); return iso(m); }
   function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
 
@@ -54,7 +55,7 @@
       .duty-toolbar-main .duty-left-tools,.duty-toolbar-main .duty-right-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
       .duty-toolbar-main .duty-left-tools{flex:1 1 auto;min-width:280px}
       .duty-toolbar-main .duty-right-tools{margin-left:auto;justify-content:flex-end}
-      .duty-toolbar-main label{font-size:.78rem;color:#475569;font-weight:800;display:inline-flex;align-items:center;gap:5px}.duty-date-text{width:104px;text-align:center;font-weight:800}
+      .duty-toolbar-main label{font-size:.78rem;color:#475569;font-weight:800;display:inline-flex;align-items:center;gap:5px}.duty-date-text{width:118px;text-align:center;font-weight:800}
       .duty-active-range{font-size:.82rem;color:#0f3a61;background:#eef7ff;border:1px solid #c7ddf3;border-radius:999px;padding:6px 11px;font-weight:800}
       .duty-fallback-note{display:none}
       .duty-matrix-scroll{overflow:auto;border:1px solid #cbdcf0;border-radius:18px;background:linear-gradient(180deg,#f8fbff 0%,#ffffff 100%);box-shadow:0 14px 36px rgba(15,23,42,.08);max-height:calc(100svh - 238px)}
@@ -77,6 +78,10 @@
       .duty-day-color-4 td:not(.duty-date-col),td.duty-day-color-4{background:#f0f9ff!important}
       .duty-day-color-5 td:not(.duty-date-col),td.duty-day-color-5{background:#fff1f2!important}
       .duty-empty-cell{display:block;color:#64748b;font-weight:800;font-style:italic;padding:8px 4px}
+      .duty-editable-cell{cursor:pointer;transition:filter .12s ease, box-shadow .12s ease}
+      .duty-editable-cell:hover{filter:brightness(.965);box-shadow:inset 0 0 0 2px rgba(11,103,178,.18)}
+      .duty-unit-locked{cursor:not-allowed;opacity:.72}
+      .duty-import-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
       .duty-cell-merged{vertical-align:middle!important;box-shadow:none!important}
       .duty-merge-badge{display:none!important}
       .duty-compact-note{display:none!important}
@@ -168,6 +173,7 @@
       st.inited=true;
       st.version=DUTY_VERSION;
       st.tab='summary';
+      st.rangeMode='thisWeek';
       st.startDate=thisWeekSaturday();
       st.endDate=addDays(st.startDate,1);
       st.unitFilter='all';
@@ -185,6 +191,7 @@
       st.importInvalid=[];
       st.importUploadId='';
       st.importFileName='';
+      st.importUnit='all';
       st.fallbackNotice='';
     }
     return st;
@@ -217,6 +224,38 @@
   function unitOrder(code){ const c=canonicalUnitCode(code); const u=cleanUnits(dutyState().units||DEFAULT_UNITS).find(x=>x.code===c); return u?Number(u.order||999):999; }
   function unitName(code){ const c=canonicalUnitCode(code); const u=cleanUnits(dutyState().units||DEFAULT_UNITS).find(x=>x.code===c); return u?u.name:(c||''); }
   function unitOptions(selected){ const sel=canonicalUnitCode(selected); return cleanUnits(dutyState().units||DEFAULT_UNITS).map(u=>`<option value="${E(u.code)}" ${u.code===sel?'selected':''}>${E(u.name)}</option>`).join(''); }
+  function importUnitOptions(selected){
+    const sel=String(selected||'all');
+    const opts=[`<option value="all" ${sel==='all'?'selected':''}>Theo mã đơn vị trong Excel</option>`];
+    cleanUnits(dutyState().units||DEFAULT_UNITS).forEach(u=>opts.push(`<option value="${E(u.code)}" ${u.code===canonicalUnitCode(sel)?'selected':''}>${E(u.name)}</option>`));
+    return opts.join('');
+  }
+  function userDutyUnitCode(){
+    try{
+      const u=(window.APP&&APP.user)||{};
+      const s=norm([u.donVi,u.department,u.unit,u.scope,u.username,u.fullname].filter(Boolean).join(' '));
+      if(!s) return '';
+      if(/khu vuc ha long/.test(s)) return 'KSHQ_HL';
+      if(/khu vuc mong cai/.test(s)) return 'KSHQ_MC';
+      if(/hon gai/.test(s)) return 'HONGAI';
+      if(/cam pha/.test(s)) return 'CAMPHA';
+      if(/van gia/.test(s)) return 'VANGIA';
+      if(/hoanh mo/.test(s)) return 'HOANHMO';
+      if(/bac phong sinh|bps/.test(s)) return 'BPS';
+      if(/mong cai|bac luan/.test(s)) return 'MONGCAI';
+      if(/van phong|chi cuc|hqkv|khu vuc viii|cntt|cong nghe thong tin|tai vu|quan tri/.test(s)) return 'CHICUC';
+    }catch(_){ }
+    return '';
+  }
+  function canEditDutyUnit(code){
+    try{
+      const role=String((window.APP&&APP.user&&APP.user.role)||'').toLowerCase();
+      if(/superadmin|admin|quantri|quan tri/.test(role)) return true;
+      const mine=userDutyUnitCode();
+      if(!mine) return true;
+      return canonicalUnitCode(code)===canonicalUnitCode(mine);
+    }catch(_){ return true; }
+  }
   function activeEntries(){
     const st=dutyState();
     return (st.entries||[]).map(normalizeDutyEntry).filter(e=>!(st.unitFilter && st.unitFilter!=='all' && canonicalUnitCode(e.unitCode)!==canonicalUnitCode(st.unitFilter))).sort(sortEntries);
@@ -289,7 +328,7 @@
     st.entries = (res.entries || []).map(normalizeDutyEntry);
     st.statuses = (res.statuses || []).map(x=>Object.assign({},x,{unitCode:canonicalUnitCode(x.unitCode||x.UNIT_CODE||'')}));
 
-    // V125: không tự nhảy sang lịch gần nhất; nếu tuần này chưa cập nhật thì vẫn hiển thị khung T7+CN và ghi rõ chưa cập nhật.
+    // V126: không tự nhảy sang lịch gần nhất; nếu tuần này chưa cập nhật thì vẫn hiển thị khung T7+CN và ghi rõ chưa cập nhật.
     st.loaded = true;
   }
 
@@ -311,7 +350,7 @@
 
   function renderDutyShell(){
     const st=dutyState();
-    const rangeText=dateRangeShort(st.startDate, st.endDate);
+    const activeBtn = mode => st.rangeMode===mode ? ' primary' : '';
     const fallbackHtml=st.fallbackNotice ? `<div class="duty-fallback-note">${E(st.fallbackNotice)}</div>` : '';
     return `
       <div class="duty-wrap" data-duty-version="${E(DUTY_VERSION)}">
@@ -335,9 +374,9 @@
           <div class="duty-left-tools">
             <button class="btn sm ${st.tab==='summary'?'primary':''}" onclick="dutySetTab('summary')">Bảng tổng hợp</button>
             <button class="btn sm ${st.tab==='detail'?'primary':''}" onclick="dutySetTab('detail')">Dữ liệu chi tiết</button>
-            <span class="duty-active-range">${E(rangeText)}</span>
-            <button class="btn sm" onclick="dutyQuickRange('prevWeekend')">T7+CN tuần trước</button>
-            <button class="btn sm primary" onclick="dutyQuickRange('thisWeekend')">T7+CN tuần này</button>
+            <button class="btn sm${activeBtn('prevWeek')}" onclick="dutyQuickRange('prevWeek')">Tuần trước</button>
+            <button class="btn sm${activeBtn('thisWeek')}" onclick="dutyQuickRange('thisWeek')">Tuần này</button>
+            <button class="btn sm${activeBtn('nextWeek')}" onclick="dutyQuickRange('nextWeek')">Tuần sau</button>
             <label>Từ ngày <input class="input mini duty-date-text" type="text" inputmode="numeric" placeholder="dd/mm/yyyy" value="${E(dateShort(st.startDate))}" onchange="dutySetDateRangeVN(this.value,null)"></label>
             <label>Đến ngày <input class="input mini duty-date-text" type="text" inputmode="numeric" placeholder="dd/mm/yyyy" value="${E(dateShort(st.endDate))}" onchange="dutySetDateRangeVN(null,this.value)"></label>
             <select class="select-field mini" onchange="dutySetUnitFilter(this.value)">
@@ -464,8 +503,11 @@
         if(sp.skip) return;
         const cell=matrixCellRows(rows||[],d,u.code);
         const rowAttr=sp.rowspan>1 ? ` rowspan="${sp.rowspan}"` : '';
-        const cellClass=` class="${sp.merged?'duty-cell-merged ':''}${rowColor}"`;
-        html += `<td${rowAttr}${cellClass} data-unit="${E(u.name)}">` + (cell.length ? `<div class="duty-matrix-cell">${cell.map(personCellHtml).join('')}</div>` : '<span class="duty-empty-cell">Chưa cập nhật lịch</span>') + '</td>';
+        const canEdit=canEditDutyUnit(u.code);
+        const editEnd=sp.rowspan>1 ? addDays(d, sp.rowspan-1) : d;
+        const cellClass=` class="${sp.merged?'duty-cell-merged ':''}${rowColor} ${canEdit?'duty-editable-cell':'duty-unit-locked'}"`;
+        const clickAttr=canEdit ? ` onclick="dutyEditCell('${E(d)}','${E(u.code)}','${E(editEnd)}')" title="Bấm để sửa lịch trực của ${E(u.name)}"` : ` title="Chỉ sửa được lịch trực của đơn vị mình"`;
+        html += `<td${rowAttr}${cellClass} data-unit="${E(u.name)}"${clickAttr}>` + (cell.length ? `<div class="duty-matrix-cell">${cell.map(personCellHtml).join('')}</div>` : '<span class="duty-empty-cell">Chưa cập nhật lịch</span>') + '</td>';
       });
       html += '</tr>';
     });
@@ -585,30 +627,42 @@
     </tr>`;
   }
 
+  function importRowsForSubmit(){
+    const st=dutyState();
+    const selected=String(st.importUnit||'all');
+    let rows=(st.importRows||[]).map(normalizeDutyEntry);
+    if(selected && selected!=='all'){
+      const code=canonicalUnitCode(selected);
+      rows=rows.map(r=>Object.assign({},r,{unitCode:code, unitName:unitName(code)}));
+    }
+    return rows;
+  }
   function renderDutyImportTab(){
     const st=dutyState(); const box=$('dutyContent'); if(!box) return;
-    const rows=st.importRows||[];
+    const rows=importRowsForSubmit();
+    const rawCount=(st.importRows||[]).length;
     const invalid=st.importInvalid||[];
     box.innerHTML=`
       <div class="duty-entry-grid duty-single">
         <div class="card-soft duty-entry-form">
           <h3>Nhập lịch trực ban từ Excel</h3>
           <div class="duty-help">
-            File Excel cần có các cột: <b>NGAY_TRUC, UNIT_CODE hoặc DON_VI/TRU_SO, HO_TEN, CHUC_VU, SO_DIEN_THOAI, GHI_CHU</b>.
-            Khi import, dữ liệu cũ cùng <b>ngày + đơn vị</b> sẽ được thay thế và cập nhật thẳng vào lịch trực ban.
+            Tải file mẫu, nhập dữ liệu rồi chọn <b>đơn vị cần nhập</b>. Nếu chọn một đơn vị cụ thể, hệ thống chỉ cập nhật lịch trực của đơn vị đó, không ảnh hưởng các đơn vị khác.
           </div>
-          <div class="duty-form-row">
+          <div class="duty-form-row multiday">
+            <label>Đơn vị cần nhập<br><select id="dutyImportUnit" class="select-field" onchange="dutySetImportUnit(this.value)">${importUnitOptions(st.importUnit||'all')}</select></label>
             <label>Chọn file Excel<br><input id="dutyExcelFile" class="input" type="file" accept=".xlsx,.xls,.csv" onchange="dutyReadExcelFile()"></label>
           </div>
-          <div class="duty-actions-line">
+          <div class="duty-import-actions">
+            <a class="btn" href="./Mau_import_lich_truc_ban_HQKV8_v127.xlsx" download>⬇ Tải Excel mẫu</a>
             <button class="btn primary" onclick="dutyReadExcelFile()">📥 Đọc file Excel</button>
             <button class="btn green" onclick="dutySubmitExcelImport()" ${rows.length?'':'disabled'}>✅ Cập nhật vào phần mềm</button>
           </div>
-          <div class="duty-help">V125: mặc định hiển thị T7+CN tuần này; nếu chưa có dữ liệu thì vẫn kẻ bảng và ghi Chưa cập nhật lịch.</div>
+          <div class="duty-help">Gợi ý: đơn vị có thể dùng chung file mẫu, chỉ nhập các dòng của đơn vị mình hoặc chọn đúng đơn vị trước khi cập nhật.</div>
         </div>
       </div>
       <div class="duty-table-card">
-        <h3>Dữ liệu đọc từ Excel (${rows.length} dòng hợp lệ)</h3>
+        <h3>Dữ liệu chuẩn bị cập nhật (${rows.length} dòng${rawCount&&rows.length!==rawCount?` / ${rawCount} dòng đã đọc`:''})</h3>
         ${invalid.length?`<div class="duty-msg err">Có ${invalid.length} dòng chưa hợp lệ: ${E(invalid.slice(0,5).map(x=>'dòng '+x.row+': '+x.msg).join('; '))}${invalid.length>5?'...':''}</div>`:''}
         <table class="duty-detail-table"><thead><tr><th>Ngày</th><th>Thứ</th><th>Trụ sở</th><th>Họ tên</th><th>Chức vụ</th><th>SĐT</th><th>Ghi chú</th></tr></thead><tbody>
           ${rows.slice(0,200).map(r=>`<tr><td>${E(dateShort(r.dutyDate))}</td><td>${E(r.dutyWeekday||weekday(r.dutyDate))}</td><td>${E(unitName(r.unitCode)||r.unitName)}</td><td>${E(r.fullname)}</td><td>${E(r.position)}</td><td>${E(formatPhoneDisplay(r.phone))}</td><td>${E(r.note)}</td></tr>`).join('') || '<tr><td colspan="7" class="empty-cell">Chưa đọc file Excel</td></tr>'}
@@ -747,10 +801,11 @@
         st.importRows=Array.isArray(parsed.rows)?parsed.rows.map(normalizeDutyEntry):[];
         st.importInvalid=Array.isArray(parsed.invalid)?parsed.invalid:[];
       }
-      if(!st.importRows || !st.importRows.length) throw new Error('Không có dòng hợp lệ để cập nhật.');
-      const groups=groupRowsForSave(st.importRows);
+      const rowsToSave=importRowsForSubmit();
+      if(!rowsToSave || !rowsToSave.length) throw new Error('Không có dòng hợp lệ để cập nhật.');
+      const groups=groupRowsForSave(rowsToSave);
       if(!groups.length) throw new Error('Không tạo được nhóm ngày + trụ sở từ dữ liệu Excel.');
-      const dates=st.importRows.map(r=>r.dutyDate).filter(Boolean).sort();
+      const dates=rowsToSave.map(r=>r.dutyDate).filter(Boolean).sort();
       if(dates.length){ st.startDate=dates[0]; st.endDate=dates[dates.length-1]; }
       const res=await saveDutyGroupsViaApi(groups, submit, 'Đang cập nhật Excel');
       st.loaded=false;
@@ -796,17 +851,32 @@
     if(m) return `${m[1]}-${pad(m[2])}-${pad(m[3])}`;
     return '';
   }
+  window.dutySetImportUnit=function(unit){ const st=dutyState(); st.importUnit=unit||'all'; renderDutyImportTab(); };
+  window.dutyEditCell=function(date, unitCode, endDate){
+    const st=dutyState();
+    const code=canonicalUnitCode(unitCode);
+    if(!canEditDutyUnit(code)){ setMsg('Tài khoản hiện tại chỉ sửa được lịch trực ban của đơn vị mình.', 'err'); return; }
+    st.formUnit=code;
+    st.formDate=date;
+    st.formEndDate=endDate||date;
+    st.formDateChecks=null;
+    st.formType='Thứ 7/CN';
+    st.tab='entry';
+    setMsg('Đang mở biểu mẫu sửa lịch trực ban: '+dateShort(date)+' - '+unitName(code), 'info');
+    renderDutyModule();
+  };
   window.dutySetTab=function(tab){ const st=dutyState(); st.tab=tab; renderDutyModule(); };
   window.dutyReload=async function(){ const st=dutyState(); st.loaded=false; await renderDutyModule(); };
-  window.dutySetDateRange=function(start,end){ const st=dutyState(); if(start)st.startDate=start; if(end)st.endDate=end; st.loaded=false; renderDutyModule(); };
+  window.dutySetDateRange=function(start,end){ const st=dutyState(); if(start)st.startDate=start; if(end)st.endDate=end; st.rangeMode='custom'; st.loaded=false; renderDutyModule(); };
   window.dutySetDateRangeVN=function(start,end){
     const st=dutyState();
     if(start!==null){ const v=parseVnDateToIso(start); if(!v){ alert('Ngày bắt đầu chưa đúng định dạng dd/mm/yyyy'); renderDutyModule(); return; } st.startDate=v; }
     if(end!==null){ const v=parseVnDateToIso(end); if(!v){ alert('Ngày kết thúc chưa đúng định dạng dd/mm/yyyy'); renderDutyModule(); return; } st.endDate=v; }
+    st.rangeMode='custom';
     st.loaded=false; renderDutyModule();
   };
   window.dutySetUnitFilter=function(unit){ const st=dutyState(); st.unitFilter=unit; renderDutyModule(); };
-  window.dutyQuickRange=function(kind){ const st=dutyState(); if(kind==='prevWeekend'){st.startDate=previousWeekSaturday();st.endDate=addDays(st.startDate,1);} else {st.startDate=thisWeekSaturday();st.endDate=addDays(st.startDate,1);} st.loaded=false; renderDutyModule(); };
+  window.dutyQuickRange=function(kind){ const st=dutyState(); if(kind==='prevWeek'){st.startDate=previousWeekSaturday();st.rangeMode='prevWeek';} else if(kind==='nextWeek'){st.startDate=nextWeekSaturday();st.rangeMode='nextWeek';} else {st.startDate=thisWeekSaturday();st.rangeMode='thisWeek';} st.endDate=addDays(st.startDate,1); st.loaded=false; renderDutyModule(); };
   window.dutyFormChanged=function(resetChecks){
     const st=dutyState();
     const unit=$('dutyFormUnit'); const d1=$('dutyFormDate'); const d2=$('dutyFormEndDate'); const typ=$('dutyFormType');

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lichkv8-v125-duty-weekend-default';
+const CACHE_NAME = 'lichkv8-v127-duty-excel-template-unit-edit-ddmmyyyy';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -8,7 +8,8 @@ const STATIC_ASSETS = [
   './modules/hkg.js',
   './modules/hkg.css',
   './modules/duty.js',
-  './modules/duty.css'
+  './modules/duty.css',
+  './Mau_import_lich_truc_ban_HQKV8_v127.xlsx'
 ];
 
 self.addEventListener('install', event => {
