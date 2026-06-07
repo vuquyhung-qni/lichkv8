@@ -2294,7 +2294,7 @@
 
 </style>
   <link rel="stylesheet" href="modules/hkg.css?v=99">
-  <link rel="stylesheet" href="modules/duty.css?v=122">
+  <link rel="stylesheet" href="modules/duty.css?v=123">
 </head>
 <body>
 
@@ -2702,7 +2702,7 @@ function msgToastError(text){
 }
 
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v122_duty_remove_vanphong';
+const APP_VERSION = 'HTML_v123_duty_fast_mobile_cards';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const QUIZ_MODULE_URL = 'https://vuquyhung-qni.github.io/tracnghiem/';
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
@@ -5839,14 +5839,14 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
 </script>
 
 <script src="modules/hkg.js?v=99"></script>
-<script src="modules/duty.js?v=122"></script>
+<script src="modules/duty.js?v=123"></script>
 
 <script>
 (function(){
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', async function(){
       try{
-        const resetKey = 'lct_sw_reset_v122';
+        const resetKey = 'lct_sw_reset_v123';
         if(localStorage.getItem(resetKey) !== '1'){
           const regs = await navigator.serviceWorker.getRegistrations();
           for(const r of regs){ try{ await r.unregister(); }catch(_){} }
@@ -5857,7 +5857,7 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
           localStorage.setItem(resetKey,'1');
         }
       }catch(e){ console.warn('Không reset được service worker/cache cũ:', e); }
-      navigator.serviceWorker.register('./service-worker.js?v=122').then(function(reg){
+      navigator.serviceWorker.register('./service-worker.js?v=123').then(function(reg){
         try { reg.update(); } catch(e) {}
       }).catch(function(err){
         console.warn('Không đăng ký được service worker PWA:', err);

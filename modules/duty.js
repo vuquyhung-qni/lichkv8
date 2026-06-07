@@ -1,10 +1,10 @@
 /* ==========================================================
- * modules/duty.js — V122 Module Lịch trực ban HQKV8
+ * modules/duty.js — V123 Module Lịch trực ban HQKV8
  * Bỏ Trụ sở Đội Kiểm soát Hải quan và Văn phòng vì dùng chung Trụ sở Chi cục HQKV VIII.
- * Trộn ô theo từng trụ sở khi các ngày liên tiếp có người trực giống nhau; tinh gọn giao diện tổng hợp.
+ * Tối ưu tải dữ liệu, giao diện desktop không viền từng người, mobile dạng card không kẻ bảng.
  * ========================================================== */
 (function(){
-  const DUTY_VERSION = 'duty_v122_remove_vanphong_merge_chicuc';
+  const DUTY_VERSION = 'duty_v123_fast_mobile_cards_no_person_border';
   const DEFAULT_UNITS = [
     {code:'CHICUC', name:'Trụ sở Chi cục HQKV VIII', order:1},
     {code:'HONGAI', name:'Trụ sở HQCK cảng Hòn Gai', order:2},
@@ -71,11 +71,11 @@
       .duty-merge-badge{display:inline-block;margin-top:8px;border-radius:999px;background:#dff2ff;color:#0a4b7a;border:1px solid #bee3f8;padding:2px 8px;font-size:.72rem;font-weight:900}
       .duty-compact-note{font-size:.84rem;color:#0f3a61;background:linear-gradient(90deg,#eef7ff 0%,#f8fcff 100%);border:1px solid #c7ddf3;border-radius:12px;padding:10px 12px;margin:0 0 10px 0;box-shadow:0 6px 18px rgba(15,23,42,.04)}
       .duty-matrix-cell{min-height:88px;display:flex;flex-direction:column;gap:8px;align-items:stretch;justify-content:center}
-      .duty-person{padding:9px 10px;border:1px solid #d7e6f5;border-left:4px solid #1c71b8;border-radius:12px;line-height:1.24;background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%);box-shadow:0 4px 12px rgba(15,23,42,.05)}
+      .duty-person{padding:6px 2px;border:0!important;border-radius:0;line-height:1.25;background:transparent!important;box-shadow:none!important}
       .duty-person:last-child{margin-bottom:0}
       .duty-person-name{font-weight:900;color:#0b2948;font-size:.95rem;line-height:1.2}
       .duty-person-pos{font-weight:700;color:#1e3a5f;margin-top:4px;font-size:.84rem}
-      .duty-person-phone{display:inline-block;font-weight:800;color:#0a4b7a;margin-top:6px;white-space:nowrap;background:#eaf4ff;border:1px solid #cfe3fb;border-radius:999px;padding:3px 10px;font-size:.82rem}
+      .duty-person-phone{display:inline-block;font-weight:800;color:#0a4b7a;margin-top:4px;white-space:nowrap;background:#eef7ff;border:0;border-radius:999px;padding:2px 9px;font-size:.82rem}
       .duty-person-note{font-size:.74rem;color:#64748b;margin-top:5px;font-style:italic}
       .duty-date-picks{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 2px}
       .duty-date-pick{display:inline-flex;align-items:center;gap:6px;border:1px solid #cbd5e1;background:#f8fafc;border-radius:999px;padding:6px 10px;font-size:.8rem;font-weight:800;color:#334155;cursor:pointer;user-select:none}
@@ -83,6 +83,38 @@
       .duty-form-row.multiday{grid-template-columns:repeat(4,minmax(0,1fr))}
       .duty-entry-grid.duty-single{grid-template-columns:1fr!important}
       .duty-progress{font-size:.82rem;color:#475569;margin-top:6px}
+
+      @media(max-width:768px){
+        .duty-shell-head{border-radius:14px;padding:13px 14px}
+        .duty-title-main{font-size:1.05rem;letter-spacing:.06em}
+        .duty-title-sub{display:none}
+        .duty-toolbar.card-soft{border-radius:14px;padding:9px;gap:7px}
+        .duty-toolbar-main .duty-left-tools,.duty-toolbar-main .duty-right-tools{width:100%;justify-content:flex-start;gap:6px}
+        .duty-toolbar-main .duty-left-tools .btn,.duty-toolbar-main .duty-right-tools .btn{flex:1 1 auto;justify-content:center}
+        .duty-active-range{width:100%;text-align:center;border-radius:12px}
+        .duty-toolbar-main label{width:calc(50% - 4px);display:block}
+        .duty-toolbar-main label input{width:100%;margin-top:3px}
+        .duty-toolbar-main select{width:100%}
+        .duty-table-card{padding:0;background:transparent;border:0;box-shadow:none;overflow:visible}
+        .duty-matrix-scroll{border:0!important;border-radius:0;background:transparent!important;box-shadow:none!important;overflow:visible;max-height:none}
+        .duty-matrix-table{display:block;width:100%;min-width:0!important;font-size:.9rem;background:transparent!important;border:0!important}
+        .duty-matrix-table thead{display:none!important}
+        .duty-matrix-table tbody{display:block;width:100%}
+        .duty-matrix-table tr{display:block;width:100%;margin:0 0 12px 0;padding:10px;background:#fff;border:0!important;border-radius:16px;box-shadow:0 8px 22px rgba(15,23,42,.08)}
+        .duty-matrix-table th,.duty-matrix-table td{display:block;width:auto!important;min-width:0!important;border:0!important;background:transparent!important;text-align:left!important;padding:7px 2px!important;position:static!important}
+        .duty-matrix-table .duty-date-col{color:#073b63;background:#eef7ff!important;border-radius:12px!important;padding:10px 12px!important;margin-bottom:6px!important;font-weight:900!important}
+        .duty-matrix-table td:not(.duty-date-col):empty{display:none!important}
+        .duty-matrix-table td:not(.duty-date-col)::before{content:attr(data-unit);display:block;margin:2px 0 5px;color:#0b67b2;font-size:.73rem;font-weight:900;text-transform:uppercase;letter-spacing:.03em}
+        .duty-cell-merged{box-shadow:none!important}
+        .duty-merge-badge{margin-top:4px;background:#f1f5f9;border:0;color:#475569}
+        .duty-matrix-cell{min-height:0;gap:3px;justify-content:flex-start}
+        .duty-person{padding:4px 0!important;border:0!important;background:transparent!important;box-shadow:none!important}
+        .duty-person-name{font-size:.92rem;color:#0b2948}
+        .duty-person-pos{font-size:.8rem;margin-top:2px}
+        .duty-person-phone{display:block;background:transparent!important;border:0!important;padding:0!important;margin-top:2px;color:#0f172a;font-weight:800}
+        .duty-person-note{font-size:.72rem;margin-top:2px}
+      }
+
       @media(max-width:1100px){.duty-shell-head{align-items:flex-start;flex-direction:column}.duty-head-actions{width:100%;justify-content:flex-start}.duty-toolbar-main .duty-right-tools{margin-left:0}}
       @media(max-width:900px){.duty-matrix-table{min-width:1020px;font-size:.8rem}.duty-matrix-table th,.duty-matrix-table td{padding:7px 6px}.duty-person{padding:8px 8px}.duty-person-name{font-size:.85rem}.duty-form-row.multiday{grid-template-columns:1fr}.duty-entry-grid.duty-single{grid-template-columns:1fr!important}.duty-matrix-scroll{max-height:none}.duty-toolbar-main .duty-left-tools,.duty-toolbar-main .duty-right-tools{width:100%;justify-content:flex-start}.duty-entry-menu-panel{left:0;right:auto}}
     
@@ -205,11 +237,41 @@
     return {startDate:start,endDate:latest};
   }
 
+
+  const DUTY_CACHE_TTL = 5 * 60 * 1000;
+  function dutyCacheKey(startDate,endDate){ return 'hqkv8_duty_cache_' + String(startDate||'') + '_' + String(endDate||''); }
+  function getDutyCache(startDate,endDate){
+    try{
+      const raw=sessionStorage.getItem(dutyCacheKey(startDate,endDate));
+      if(!raw) return null;
+      const obj=JSON.parse(raw);
+      if(!obj || !obj.time || (Date.now()-obj.time)>DUTY_CACHE_TTL) return null;
+      return obj.data || null;
+    }catch(_){ return null; }
+  }
+  function setDutyCache(startDate,endDate,data){
+    try{ sessionStorage.setItem(dutyCacheKey(startDate,endDate), JSON.stringify({time:Date.now(),data})); }catch(_){ }
+  }
+  function clearDutyCache(){
+    try{
+      Object.keys(sessionStorage).filter(k=>k.indexOf('hqkv8_duty_cache_')===0).forEach(k=>sessionStorage.removeItem(k));
+    }catch(_){ }
+  }
+  async function getDutyDataCached(startDate,endDate,force){
+    if(!force){
+      const cached=getDutyCache(startDate,endDate);
+      if(cached) return cached;
+    }
+    const res=await api('getDutyData', {startDate, endDate});
+    setDutyCache(startDate,endDate,res);
+    return res;
+  }
+
   async function loadDuty(force){
     const st=dutyState();
     if(st.loaded && !force) return;
     st.fallbackNotice='';
-    const res = await api('getDutyData', {startDate:st.startDate, endDate:st.endDate});
+    const res = await getDutyDataCached(st.startDate, st.endDate, !!force);
     st.units = cleanUnits((res.units && res.units.length) ? res.units : DEFAULT_UNITS.slice());
     if(st.unitFilter==='KSHQ' || st.unitFilter==='VANPHONG') st.unitFilter='all';
     if(st.formUnit==='KSHQ' || st.formUnit==='VANPHONG') st.formUnit='CHICUC';
@@ -220,7 +282,7 @@
     if(!st.entries.length){
       try{
         const t=todayIso();
-        const fbRes = await api('getDutyData', {startDate:addDays(t,-370), endDate:addDays(t,60)});
+        const fbRes = await getDutyDataCached(addDays(t,-120), addDays(t,45), !!force);
         const fbEntries=(fbRes.entries||[]).map(normalizeDutyEntry).filter(x=>x.dutyDate);
         const rg=chooseRecentDutyRange(fbEntries);
         if(rg){
@@ -229,7 +291,7 @@
           st.units=cleanUnits((fbRes.units&&fbRes.units.length)?fbRes.units:st.units);
           st.entries=fbEntries.filter(x=>x.dutyDate>=rg.startDate && x.dutyDate<=rg.endDate);
           st.statuses=(fbRes.statuses||[]).map(x=>Object.assign({},x,{unitCode:canonicalUnitCode(x.unitCode||x.UNIT_CODE||'')}));
-          st.fallbackNotice='Chưa có lịch trực mới trong khoảng đã chọn, đang hiển thị lịch trực ban gần nhất: '+dateRangeShort(rg.startDate,rg.endDate)+'.';
+          st.fallbackNotice='Chưa có lịch trực mới trong khoảng đã chọn, đang hiển thị lịch trực ban gần nhất trong khoảng rà soát 120 ngày: '+dateRangeShort(rg.startDate,rg.endDate)+'.';
         }
       }catch(_){ }
     }
@@ -241,6 +303,7 @@
     patchDutyLabels();
     const box=$('screen-duty'); if(!box) return;
     const st=dutyState();
+    try{ if($('pageTitle')) $('pageTitle').textContent='LỊCH TRỰC BAN'; if($('pageSub')) $('pageSub').textContent='Chi cục Hải quan khu vực VIII'; }catch(_){}
     box.innerHTML='<div class="loading"><div class="spin"></div><span>Đang tải lịch trực ban...</span></div>';
     try{ await loadDuty(false); }
     catch(e){ box.innerHTML=`<div class="msg err">Không tải được module Lịch trực ban: ${E(e.message||e)}</div>`; return; }
@@ -406,7 +469,7 @@
         const rowAttr=sp.rowspan>1 ? ` rowspan="${sp.rowspan}"` : '';
         const cellClass=sp.merged ? ' class="duty-cell-merged"' : '';
         const badge=sp.merged ? `<div class="duty-merge-badge">Trùng ${sp.rowspan} ngày</div>` : '';
-        html += `<td${rowAttr}${cellClass}>` + (cell.length ? `<div class="duty-matrix-cell">${cell.map(personCellHtml).join('')}${badge}</div>` : '') + '</td>';
+        html += `<td${rowAttr}${cellClass} data-unit="${E(u.name)}">` + (cell.length ? `<div class="duty-matrix-cell">${cell.map(personCellHtml).join('')}${badge}</div>` : '') + '</td>';
       });
       html += '</tr>';
     });
@@ -420,9 +483,12 @@
   }
   function formatPhoneDisplay(phone){
     const raw=String(phone||'').trim();
-    const digits=raw.replace(/\D+/g,'');
+    let digits=raw.replace(/\D+/g,'');
+    // Nếu Excel tự biến số điện thoại thành số, số 0 đầu thường bị mất: 913264387 -> 0913264387.
+    if(digits.length===9) digits='0'+digits;
+    // Hỗ trợ dạng mã quốc gia 84xxxxxxxxx -> 0xxxxxxxxx.
+    if(digits.length===11 && digits.indexOf('84')===0) digits='0'+digits.slice(2);
     if(digits.length===10) return `${digits.slice(0,4)}.${digits.slice(4,7)}.${digits.slice(7)}`;
-    if(digits.length===11) return `${digits.slice(0,4)}.${digits.slice(4,7)}.${digits.slice(7)}`;
     return raw;
   }
   function personCellHtml(r){
@@ -477,6 +543,7 @@
       const g=groups[i];
       setMsg(`${progressPrefix||'Đang lưu'} ${i+1}/${groups.length}: ${dateShort(g.dutyDate)} - ${unitName(g.unitCode)}...`, 'info');
       await api('saveDutyEntries',{unitCode:g.unitCode, unitName:g.unitName||unitName(g.unitCode), dutyDate:g.dutyDate, dutyType:g.dutyType||'Thứ 7/CN', entries:g.entries, submit:!!submit});
+      clearDutyCache();
       total += (g.entries||[]).length;
       await sleep(120);
     }
@@ -541,14 +608,14 @@
             <button class="btn primary" onclick="dutyReadExcelFile()">📥 Đọc file Excel</button>
             <button class="btn green" onclick="dutySubmitExcelImport()" ${rows.length?'':'disabled'}>✅ Cập nhật vào phần mềm</button>
           </div>
-          <div class="duty-help">V122: Văn phòng và Trụ sở Đội KSHQ dùng chung Trụ sở Chi cục HQKV VIII; nếu file cũ còn mã VANPHONG/KSHQ thì hệ thống tự gom về CHICUC.</div>
+          <div class="duty-help">V123: Văn phòng và Trụ sở Đội KSHQ dùng chung Trụ sở Chi cục HQKV VIII; giao diện mobile hiển thị dạng thẻ, không kẻ bảng.</div>
         </div>
       </div>
       <div class="duty-table-card">
         <h3>Dữ liệu đọc từ Excel (${rows.length} dòng hợp lệ)</h3>
         ${invalid.length?`<div class="duty-msg err">Có ${invalid.length} dòng chưa hợp lệ: ${E(invalid.slice(0,5).map(x=>'dòng '+x.row+': '+x.msg).join('; '))}${invalid.length>5?'...':''}</div>`:''}
         <table class="duty-detail-table"><thead><tr><th>Ngày</th><th>Thứ</th><th>Trụ sở</th><th>Họ tên</th><th>Chức vụ</th><th>SĐT</th><th>Ghi chú</th></tr></thead><tbody>
-          ${rows.slice(0,200).map(r=>`<tr><td>${E(dateShort(r.dutyDate))}</td><td>${E(r.dutyWeekday||weekday(r.dutyDate))}</td><td>${E(unitName(r.unitCode)||r.unitName)}</td><td>${E(r.fullname)}</td><td>${E(r.position)}</td><td>${E(r.phone)}</td><td>${E(r.note)}</td></tr>`).join('') || '<tr><td colspan="7" class="empty-cell">Chưa đọc file Excel</td></tr>'}
+          ${rows.slice(0,200).map(r=>`<tr><td>${E(dateShort(r.dutyDate))}</td><td>${E(r.dutyWeekday||weekday(r.dutyDate))}</td><td>${E(unitName(r.unitCode)||r.unitName)}</td><td>${E(r.fullname)}</td><td>${E(r.position)}</td><td>${E(formatPhoneDisplay(r.phone))}</td><td>${E(r.note)}</td></tr>`).join('') || '<tr><td colspan="7" class="empty-cell">Chưa đọc file Excel</td></tr>'}
         </tbody></table>
       </div>`;
   }
@@ -707,7 +774,7 @@
     box.innerHTML=`
       <div class="duty-table-card">
         <table class="duty-detail-table"><thead><tr><th>Ngày</th><th>Thứ</th><th>Trụ sở</th><th>Họ tên</th><th>Chức vụ</th><th>SĐT</th><th>Ghi chú</th></tr></thead><tbody>
-          ${rows.map(r=>`<tr><td>${E(dateShort(r.dutyDate))}</td><td>${E(r.dutyWeekday||weekday(r.dutyDate))}</td><td>${E(unitName(r.unitCode))}</td><td>${E(r.fullname)}</td><td>${E(r.position)}</td><td>${E(r.phone)}</td><td>${E(r.note)}</td></tr>`).join('') || '<tr><td colspan="7" class="empty-cell">Chưa có dữ liệu</td></tr>'}
+          ${rows.map(r=>`<tr><td>${E(dateShort(r.dutyDate))}</td><td>${E(r.dutyWeekday||weekday(r.dutyDate))}</td><td>${E(unitName(r.unitCode))}</td><td>${E(r.fullname)}</td><td>${E(r.position)}</td><td>${E(formatPhoneDisplay(r.phone))}</td><td>${E(r.note)}</td></tr>`).join('') || '<tr><td colspan="7" class="empty-cell">Chưa có dữ liệu</td></tr>'}
         </tbody></table>
       </div>`;
   }

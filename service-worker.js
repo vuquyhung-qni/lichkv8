@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lichkv8-v122-duty-remove-vanphong';
+const CACHE_NAME = 'lichkv8-v123-duty-fast-mobile-cards';
 const STATIC_ASSETS = [
   './',
   './index.html',
