@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lichkv8-v119-duty-compact-same-days';
+const CACHE_NAME = 'lichkv8-v122-duty-remove-vanphong';
 const STATIC_ASSETS = [
   './',
   './index.html',

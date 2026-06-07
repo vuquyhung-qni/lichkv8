@@ -1,21 +1,20 @@
 /* ==========================================================
- * modules/duty.js — V119 Module Lịch trực ban HQKV8
- * Bỏ Trụ sở Đội Kiểm soát Hải quan vì dùng chung Trụ sở Chi cục HQKV VIII.
- * Gộp các ngày trực liên tiếp có danh sách giống nhau để hiển thị gọn hơn.
+ * modules/duty.js — V122 Module Lịch trực ban HQKV8
+ * Bỏ Trụ sở Đội Kiểm soát Hải quan và Văn phòng vì dùng chung Trụ sở Chi cục HQKV VIII.
+ * Trộn ô theo từng trụ sở khi các ngày liên tiếp có người trực giống nhau; tinh gọn giao diện tổng hợp.
  * ========================================================== */
 (function(){
-  const DUTY_VERSION = 'duty_v119_compact_same_days';
+  const DUTY_VERSION = 'duty_v122_remove_vanphong_merge_chicuc';
   const DEFAULT_UNITS = [
     {code:'CHICUC', name:'Trụ sở Chi cục HQKV VIII', order:1},
-    {code:'VANPHONG', name:'Văn phòng', order:2},
-    {code:'HONGAI', name:'Trụ sở HQCK cảng Hòn Gai', order:3},
-    {code:'CAMPHA', name:'Trụ sở HQCK cảng Cẩm Phả', order:4},
-    {code:'VANGIA', name:'Trụ sở HQCK cảng Vạn Gia', order:5},
-    {code:'HOANHMO', name:'Trụ sở HQCK Hoành Mô', order:6},
-    {code:'BPS', name:'Trụ sở HQCK Bắc Phong Sinh', order:7},
-    {code:'MONGCAI', name:'Trụ sở HQCK quốc tế Móng Cái', order:8},
-    {code:'KSHQ_HL', name:'Đội Kiểm soát Hải quan - Khu vực Hạ Long', order:9},
-    {code:'KSHQ_MC', name:'Đội Kiểm soát Hải quan - Khu vực Móng Cái', order:10}
+    {code:'HONGAI', name:'Trụ sở HQCK cảng Hòn Gai', order:2},
+    {code:'CAMPHA', name:'Trụ sở HQCK cảng Cẩm Phả', order:3},
+    {code:'VANGIA', name:'Trụ sở HQCK cảng Vạn Gia', order:4},
+    {code:'HOANHMO', name:'Trụ sở HQCK Hoành Mô', order:5},
+    {code:'BPS', name:'Trụ sở HQCK Bắc Phong Sinh', order:6},
+    {code:'MONGCAI', name:'Trụ sở HQCK quốc tế Móng Cái', order:7},
+    {code:'KSHQ_HL', name:'Đội Kiểm soát Hải quan - Khu vực Hạ Long', order:8},
+    {code:'KSHQ_MC', name:'Đội Kiểm soát Hải quan - Khu vực Móng Cái', order:9}
   ];
 
   function $(id){ return document.getElementById(id); }
@@ -33,36 +32,63 @@
 
 
   function installDutyV119Styles(){
-    if(document.getElementById('dutyV119Styles')) return;
+    if(document.getElementById('dutyV121Styles')) return;
     const css = `
-      .duty-matrix-scroll{overflow:auto;border:1px solid #dbe4ee;border-radius:14px;background:#fff;max-height:calc(100svh - 250px)}
-      .duty-matrix-table{width:100%;min-width:1180px;border-collapse:collapse;table-layout:fixed;font-size:.88rem;background:#fff}
-      .duty-matrix-table th,.duty-matrix-table td{border:1px solid #1f2937;padding:8px 7px;vertical-align:top;text-align:center}
-      .duty-matrix-table th{background:#f8fafc;color:#0f172a;font-weight:900;line-height:1.25}
-      .duty-matrix-table .duty-date-col{width:106px;min-width:106px;background:#f8fafc;font-weight:800;color:#0f172a;vertical-align:middle;position:sticky;left:0;z-index:2}
-      .duty-matrix-table .duty-date-col.compact{background:#eef6ff;color:#073b63}
-      .duty-date-range{font-weight:900;font-size:.96rem;line-height:1.22}
-      .duty-date-weekdays{font-size:.78rem;color:#334155;line-height:1.25;margin-top:4px}
-      .duty-date-count{font-size:.72rem;color:#64748b;margin-top:4px}
-      .duty-compact-note{font-size:.82rem;color:#475569;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:10px;padding:8px 10px;margin-bottom:8px}
-      .duty-matrix-table thead .duty-date-col{z-index:3;background:#f1f5f9}
-      .duty-matrix-cell{min-height:76px;display:flex;flex-direction:column;gap:8px;align-items:stretch;justify-content:flex-start}
-      .duty-person{padding:3px 2px 6px;border-bottom:1px solid rgba(15,23,42,.12);line-height:1.25}
-      .duty-person:last-child{border-bottom:0}
-      .duty-person-name{font-weight:900;color:#020617;font-size:.92rem;line-height:1.22}
-      .duty-person-pos{font-weight:500;color:#0f172a;margin-top:3px}
-      .duty-person-phone{font-weight:700;color:#020617;margin-top:2px;white-space:nowrap}
-      .duty-person-note{font-size:.75rem;color:#64748b;margin-top:2px}
+      .duty-wrap{color:#0f172a;display:flex;flex-direction:column;gap:12px}
+      .duty-shell-head{display:flex;align-items:center;justify-content:space-between;gap:12px;background:linear-gradient(135deg,#063a63 0%,#0b67b2 100%);border-radius:18px;padding:16px 18px;color:#fff;box-shadow:0 12px 30px rgba(6,58,99,.18)}
+      .duty-title-block{display:flex;flex-direction:column;gap:4px;min-width:0}
+      .duty-title-main{font-size:1.28rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;line-height:1.15}
+      .duty-title-sub{font-size:.78rem;color:rgba(255,255,255,.82);font-weight:600}
+      .duty-head-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+      .duty-entry-menu{position:relative;display:inline-flex}
+      .duty-entry-menu-panel{display:none;position:absolute;right:0;top:calc(100% + 8px);z-index:60;min-width:210px;background:#fff;border:1px solid #d7e3f2;border-radius:14px;box-shadow:0 18px 40px rgba(15,23,42,.20);padding:7px;color:#0f172a}
+      .duty-entry-menu.open .duty-entry-menu-panel{display:block;animation:dutyMenuIn .14s ease-out}
+      @keyframes dutyMenuIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+      .duty-entry-menu-panel button{width:100%;border:0;background:#fff;color:#0f2f53;border-radius:10px;padding:10px 11px;text-align:left;font-weight:800;display:flex;align-items:center;gap:8px;cursor:pointer}
+      .duty-entry-menu-panel button:hover{background:#eef6ff;color:#0b67b2}
+      .duty-toolbar.card-soft,.duty-table-card,.duty-entry-form,.duty-side{border:1px solid #d7e3f2;box-shadow:0 10px 28px rgba(15,23,42,.06)}
+      .duty-toolbar.card-soft{padding:10px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#fff;border-radius:16px}
+      .duty-toolbar-main .duty-left-tools,.duty-toolbar-main .duty-right-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+      .duty-toolbar-main .duty-left-tools{flex:1 1 auto;min-width:280px}
+      .duty-toolbar-main .duty-right-tools{margin-left:auto;justify-content:flex-end}
+      .duty-toolbar-main label{font-size:.78rem;color:#475569;font-weight:800;display:inline-flex;align-items:center;gap:5px}
+      .duty-active-range{font-size:.82rem;color:#0f3a61;background:#eef7ff;border:1px solid #c7ddf3;border-radius:999px;padding:6px 11px;font-weight:800}
+      .duty-fallback-note{font-size:.84rem;color:#92400e;background:linear-gradient(90deg,#fff7ed 0%,#fffbeb 100%);border:1px solid #fed7aa;border-radius:12px;padding:9px 12px;margin:0;box-shadow:0 6px 18px rgba(15,23,42,.04)}
+      .duty-matrix-scroll{overflow:auto;border:1px solid #cbdcf0;border-radius:18px;background:linear-gradient(180deg,#f8fbff 0%,#ffffff 100%);box-shadow:0 14px 36px rgba(15,23,42,.08);max-height:calc(100svh - 238px)}
+      .duty-matrix-table{width:100%;min-width:1260px;border-collapse:separate;border-spacing:0;table-layout:fixed;font-size:.89rem;background:transparent}
+      .duty-matrix-table th,.duty-matrix-table td{border-right:1px solid #d6e2ef;border-bottom:1px solid #d6e2ef;padding:10px 8px;vertical-align:top;text-align:center;background:#fff}
+      .duty-matrix-table thead th{position:sticky;top:0;z-index:4;background:linear-gradient(180deg,#0f4c81 0%,#155f9f 100%);color:#fff;font-weight:800;line-height:1.3;box-shadow:inset 0 -1px 0 rgba(255,255,255,.08)}
+      .duty-matrix-table thead th:not(.duty-date-col){font-size:.84rem;padding-top:12px;padding-bottom:12px}
+      .duty-matrix-table th:first-child,.duty-matrix-table td:first-child{border-left:1px solid #d6e2ef}
+      .duty-matrix-table thead tr:first-child th{border-top:1px solid #0f4c81}
+      .duty-matrix-table tbody tr:nth-child(odd) td:not(.duty-date-col){background:#fbfdff}
+      .duty-matrix-table tbody tr:hover td:not(.duty-date-col){background:#f3f8fe}
+      .duty-matrix-table .duty-date-col{width:128px;min-width:128px;background:linear-gradient(180deg,#eff6ff 0%,#e0efff 100%);font-weight:800;color:#0f2f53;vertical-align:middle;position:sticky;left:0;z-index:2}
+      .duty-matrix-table thead .duty-date-col{z-index:6;background:linear-gradient(180deg,#08375f 0%,#0c4b7d 100%);color:#fff}
+      .duty-date-range{font-weight:900;font-size:1rem;line-height:1.18;color:inherit}
+      .duty-date-weekdays{font-size:.79rem;color:inherit;opacity:.92;line-height:1.25;margin-top:5px}
+      .duty-cell-merged{background:linear-gradient(180deg,#f9fcff 0%,#eef7ff 100%)!important;vertical-align:middle!important;box-shadow:inset 0 0 0 2px rgba(28,113,184,.06)}
+      .duty-merge-badge{display:inline-block;margin-top:8px;border-radius:999px;background:#dff2ff;color:#0a4b7a;border:1px solid #bee3f8;padding:2px 8px;font-size:.72rem;font-weight:900}
+      .duty-compact-note{font-size:.84rem;color:#0f3a61;background:linear-gradient(90deg,#eef7ff 0%,#f8fcff 100%);border:1px solid #c7ddf3;border-radius:12px;padding:10px 12px;margin:0 0 10px 0;box-shadow:0 6px 18px rgba(15,23,42,.04)}
+      .duty-matrix-cell{min-height:88px;display:flex;flex-direction:column;gap:8px;align-items:stretch;justify-content:center}
+      .duty-person{padding:9px 10px;border:1px solid #d7e6f5;border-left:4px solid #1c71b8;border-radius:12px;line-height:1.24;background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%);box-shadow:0 4px 12px rgba(15,23,42,.05)}
+      .duty-person:last-child{margin-bottom:0}
+      .duty-person-name{font-weight:900;color:#0b2948;font-size:.95rem;line-height:1.2}
+      .duty-person-pos{font-weight:700;color:#1e3a5f;margin-top:4px;font-size:.84rem}
+      .duty-person-phone{display:inline-block;font-weight:800;color:#0a4b7a;margin-top:6px;white-space:nowrap;background:#eaf4ff;border:1px solid #cfe3fb;border-radius:999px;padding:3px 10px;font-size:.82rem}
+      .duty-person-note{font-size:.74rem;color:#64748b;margin-top:5px;font-style:italic}
       .duty-date-picks{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 2px}
       .duty-date-pick{display:inline-flex;align-items:center;gap:6px;border:1px solid #cbd5e1;background:#f8fafc;border-radius:999px;padding:6px 10px;font-size:.8rem;font-weight:800;color:#334155;cursor:pointer;user-select:none}
       .duty-date-pick input{accent-color:#0b67b2}
       .duty-form-row.multiday{grid-template-columns:repeat(4,minmax(0,1fr))}
       .duty-entry-grid.duty-single{grid-template-columns:1fr!important}
       .duty-progress{font-size:.82rem;color:#475569;margin-top:6px}
-      @media(max-width:900px){.duty-matrix-table{min-width:980px;font-size:.8rem}.duty-matrix-table th,.duty-matrix-table td{padding:6px 5px}.duty-person-name{font-size:.84rem}.duty-form-row.multiday{grid-template-columns:1fr}.duty-entry-grid.duty-single{grid-template-columns:1fr!important}.duty-matrix-scroll{max-height:none}}
+      @media(max-width:1100px){.duty-shell-head{align-items:flex-start;flex-direction:column}.duty-head-actions{width:100%;justify-content:flex-start}.duty-toolbar-main .duty-right-tools{margin-left:0}}
+      @media(max-width:900px){.duty-matrix-table{min-width:1020px;font-size:.8rem}.duty-matrix-table th,.duty-matrix-table td{padding:7px 6px}.duty-person{padding:8px 8px}.duty-person-name{font-size:.85rem}.duty-form-row.multiday{grid-template-columns:1fr}.duty-entry-grid.duty-single{grid-template-columns:1fr!important}.duty-matrix-scroll{max-height:none}.duty-toolbar-main .duty-left-tools,.duty-toolbar-main .duty-right-tools{width:100%;justify-content:flex-start}.duty-entry-menu-panel{left:0;right:auto}}
+    
     `;
     const st=document.createElement('style');
-    st.id='dutyV119Styles';
+    st.id='dutyV121Styles';
     st.textContent=css;
     document.head.appendChild(st);
   }
@@ -116,36 +142,37 @@
       st.importInvalid=[];
       st.importUploadId='';
       st.importFileName='';
+      st.fallbackNotice='';
     }
     return st;
   }
   function canonicalUnitCode(code){
     const c=String(code||'').trim().toUpperCase();
-    // V119: Trụ sở Đội Kiểm soát Hải quan dùng chung Trụ sở Chi cục HQKV VIII.
-    // Dữ liệu cũ/import có mã KSHQ được quy về CHICUC để không tạo thêm cột riêng.
-    return c==='KSHQ' ? 'CHICUC' : c;
+    // V122: Văn phòng và Trụ sở Đội Kiểm soát Hải quan dùng chung Trụ sở Chi cục HQKV VIII.
+    // Dữ liệu cũ/import có mã VANPHONG hoặc KSHQ được quy về CHICUC để không tạo thêm cột riêng.
+    return (c==='KSHQ' || c==='VANPHONG') ? 'CHICUC' : c;
   }
   function cleanUnits(units){
     const source=(units&&units.length?units:DEFAULT_UNITS).map(u=>Object.assign({},u,{code:canonicalUnitCode(u.code)}));
     const map={};
     source.forEach(u=>{
-      if(!u.code || u.code==='KSHQ') return;
+      if(!u.code || u.code==='KSHQ' || u.code==='VANPHONG') return;
       if(!map[u.code]) map[u.code]=u;
     });
-    const arr=Object.values(map).filter(u=>u.code!=='KSHQ');
+    const arr=Object.values(map).filter(u=>u.code!=='KSHQ' && u.code!=='VANPHONG');
     arr.sort((a,b)=>Number(a.order||999)-Number(b.order||999));
     return arr;
   }
   function normalizeDutyEntry(r){
     r=Object.assign({},r||{});
     r.unitCode=canonicalUnitCode(r.unitCode || r.UNIT_CODE || '');
-    if(r.unitCode==='CHICUC' && /đội kiểm soát hải quan|doi kiem soat hai quan|kshq/i.test(String(r.unitName||r.UNIT_NAME||''))){
+    if(r.unitCode==='CHICUC' && /văn phòng|van phong|đội kiểm soát hải quan|doi kiem soat hai quan|kshq/i.test(String(r.unitName||r.UNIT_NAME||''))){
       r.unitName='Trụ sở Chi cục HQKV VIII';
     }
     return r;
   }
-  function unitOrder(code){ const c=canonicalUnitCode(code); const u=(dutyState().units||DEFAULT_UNITS).find(x=>x.code===c); return u?Number(u.order||999):999; }
-  function unitName(code){ const c=canonicalUnitCode(code); const u=(dutyState().units||DEFAULT_UNITS).find(x=>x.code===c); return u?u.name:(c||''); }
+  function unitOrder(code){ const c=canonicalUnitCode(code); const u=cleanUnits(dutyState().units||DEFAULT_UNITS).find(x=>x.code===c); return u?Number(u.order||999):999; }
+  function unitName(code){ const c=canonicalUnitCode(code); const u=cleanUnits(dutyState().units||DEFAULT_UNITS).find(x=>x.code===c); return u?u.name:(c||''); }
   function unitOptions(selected){ const sel=canonicalUnitCode(selected); return cleanUnits(dutyState().units||DEFAULT_UNITS).map(u=>`<option value="${E(u.code)}" ${u.code===sel?'selected':''}>${E(u.name)}</option>`).join(''); }
   function activeEntries(){
     const st=dutyState();
@@ -160,15 +187,52 @@
     const box=$('dutyMsg'); if(box) box.innerHTML=st.message;
   }
 
+  function chooseRecentDutyRange(entries){
+    const dates=Array.from(new Set((entries||[]).map(e=>e.dutyDate).filter(Boolean))).sort();
+    if(!dates.length) return null;
+    const today=todayIso();
+    const future=dates.filter(d=>d>=today);
+    if(future.length){
+      const first=future[0];
+      const prev=addDays(first,-1), next=addDays(first,1);
+      const start=(dates.includes(prev) && prev>=today) ? prev : first;
+      const end=dates.includes(next) ? next : first;
+      return {startDate:start,endDate:end};
+    }
+    const latest=dates[dates.length-1];
+    const prev=addDays(latest,-1);
+    const start=dates.includes(prev) ? prev : latest;
+    return {startDate:start,endDate:latest};
+  }
+
   async function loadDuty(force){
     const st=dutyState();
     if(st.loaded && !force) return;
+    st.fallbackNotice='';
     const res = await api('getDutyData', {startDate:st.startDate, endDate:st.endDate});
     st.units = cleanUnits((res.units && res.units.length) ? res.units : DEFAULT_UNITS.slice());
-    if(st.unitFilter==='KSHQ') st.unitFilter='all';
-    if(st.formUnit==='KSHQ') st.formUnit='CHICUC';
+    if(st.unitFilter==='KSHQ' || st.unitFilter==='VANPHONG') st.unitFilter='all';
+    if(st.formUnit==='KSHQ' || st.formUnit==='VANPHONG') st.formUnit='CHICUC';
     st.entries = (res.entries || []).map(normalizeDutyEntry);
     st.statuses = (res.statuses || []).map(x=>Object.assign({},x,{unitCode:canonicalUnitCode(x.unitCode||x.UNIT_CODE||'')}));
+
+    // V122: nếu khoảng đang xem chưa có lịch trực mới, tự hiển thị lịch trực gần nhất đã nhập; Văn phòng/KSHQ gom về Trụ sở Chi cục.
+    if(!st.entries.length){
+      try{
+        const t=todayIso();
+        const fbRes = await api('getDutyData', {startDate:addDays(t,-370), endDate:addDays(t,60)});
+        const fbEntries=(fbRes.entries||[]).map(normalizeDutyEntry).filter(x=>x.dutyDate);
+        const rg=chooseRecentDutyRange(fbEntries);
+        if(rg){
+          st.startDate=rg.startDate;
+          st.endDate=rg.endDate;
+          st.units=cleanUnits((fbRes.units&&fbRes.units.length)?fbRes.units:st.units);
+          st.entries=fbEntries.filter(x=>x.dutyDate>=rg.startDate && x.dutyDate<=rg.endDate);
+          st.statuses=(fbRes.statuses||[]).map(x=>Object.assign({},x,{unitCode:canonicalUnitCode(x.unitCode||x.UNIT_CODE||'')}));
+          st.fallbackNotice='Chưa có lịch trực mới trong khoảng đã chọn, đang hiển thị lịch trực ban gần nhất: '+dateRangeShort(rg.startDate,rg.endDate)+'.';
+        }
+      }catch(_){ }
+    }
     st.loaded = true;
   }
 
@@ -189,41 +253,47 @@
 
   function renderDutyShell(){
     const st=dutyState();
-    const count=activeEntries().length;
-    const unitSubmitted = new Set((st.entries||[]).map(x=>`${x.dutyDate}|${canonicalUnitCode(x.unitCode)}`)).size;
+    const rangeText=dateRangeShort(st.startDate, st.endDate);
+    const fallbackHtml=st.fallbackNotice ? `<div class="duty-fallback-note">${E(st.fallbackNotice)}</div>` : '';
     return `
       <div class="duty-wrap" data-duty-version="${E(DUTY_VERSION)}">
-        <div class="duty-hero">
-          <div>
-            <div class="duty-kicker">Module Lịch công tác HQKV8</div>
-            <h2>📋 Lịch trực ban</h2>
-            <p>Các đơn vị cập nhật trực tiếp lãnh đạo, công chức trực thứ 7, Chủ nhật, ngày lễ; hệ thống tự tổng hợp lịch trực ban theo ngày/trụ sở.</p>
+        <div class="duty-shell-head">
+          <div class="duty-title-block">
+            <div class="duty-title-main">LỊCH TRỰC BAN</div>
+            <div class="duty-title-sub">Tổng hợp lãnh đạo, công chức trực theo ngày và trụ sở</div>
           </div>
-          <div class="duty-hero-actions">
-            <button class="btn primary" onclick="dutySetTab('entry')">+ Nhập lịch trực</button>
+          <div class="duty-head-actions">
+            <div class="duty-entry-menu" id="dutyEntryMenuWrap">
+              <button class="btn primary" onclick="dutyToggleEntryMenu(event)">+ Nhập lịch trực ▾</button>
+              <div class="duty-entry-menu-panel" id="dutyEntryMenu">
+                <button onclick="dutySetTab('entry'); dutyCloseEntryMenu();">✍️ Nhập thủ công</button>
+                <button onclick="dutySetTab('import'); dutyCloseEntryMenu();">📥 Nhập từ Excel</button>
+              </div>
+            </div>
             <button class="btn" onclick="dutyReload()">↻ Tải lại</button>
           </div>
         </div>
-        <div class="duty-cards">
-          <div class="duty-card"><b>${E(count)}</b><span>Người trực trong khoảng</span></div>
-          <div class="duty-card"><b>${E(cleanUnits(st.units||DEFAULT_UNITS).length)}</b><span>Trụ sở/đơn vị</span></div>
-          <div class="duty-card"><b>${E(unitSubmitted)}</b><span>Lượt đã cập nhật</span></div>
+        <div class="duty-toolbar card-soft duty-toolbar-main">
+          <div class="duty-left-tools">
+            <button class="btn sm ${st.tab==='summary'?'primary':''}" onclick="dutySetTab('summary')">Bảng tổng hợp</button>
+            <button class="btn sm ${st.tab==='detail'?'primary':''}" onclick="dutySetTab('detail')">Dữ liệu chi tiết</button>
+            <span class="duty-active-range">${E(rangeText)}</span>
+            <button class="btn sm" onclick="dutyQuickRange('today')">Hôm nay</button>
+            <button class="btn sm" onclick="dutyQuickRange('weekend')">Cuối tuần này</button>
+            <button class="btn sm" onclick="dutyQuickRange('7days')">7 ngày</button>
+            <label>Từ <input class="input mini" type="date" value="${E(st.startDate)}" onchange="dutySetDateRange(this.value,null)"></label>
+            <label>Đến <input class="input mini" type="date" value="${E(st.endDate)}" onchange="dutySetDateRange(null,this.value)"></label>
+            <select class="select-field mini" onchange="dutySetUnitFilter(this.value)">
+              <option value="all">Tất cả trụ sở</option>${cleanUnits(st.units||DEFAULT_UNITS).map(u=>`<option value="${E(u.code)}" ${st.unitFilter===u.code?'selected':''}>${E(u.name)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="duty-right-tools">
+            <button class="btn sm primary" onclick="dutyCopyReport()">📋 Copy báo cáo</button>
+            <button class="btn sm" onclick="dutyExportExcel()">⬇ Xuất Excel</button>
+            <button class="btn sm" onclick="window.print()">🖨 In</button>
+          </div>
         </div>
-        <div class="duty-toolbar card-soft">
-          <button class="btn sm ${st.tab==='summary'?'primary':''}" onclick="dutySetTab('summary')">Bảng tổng hợp</button>
-          <button class="btn sm ${st.tab==='entry'?'primary':''}" onclick="dutySetTab('entry')">Nhập lịch trực</button>
-          <button class="btn sm ${st.tab==='import'?'primary':''}" onclick="dutySetTab('import')">Nhập từ Excel</button>
-          <button class="btn sm ${st.tab==='detail'?'primary':''}" onclick="dutySetTab('detail')">Dữ liệu chi tiết</button>
-          <span class="duty-sep"></span>
-          <button class="btn sm" onclick="dutyQuickRange('today')">Hôm nay</button>
-          <button class="btn sm" onclick="dutyQuickRange('weekend')">Cuối tuần này</button>
-          <button class="btn sm" onclick="dutyQuickRange('7days')">7 ngày</button>
-          <label>Từ <input class="input mini" type="date" value="${E(st.startDate)}" onchange="dutySetDateRange(this.value,null)"></label>
-          <label>Đến <input class="input mini" type="date" value="${E(st.endDate)}" onchange="dutySetDateRange(null,this.value)"></label>
-          <select class="select-field mini" onchange="dutySetUnitFilter(this.value)">
-            <option value="all">Tất cả trụ sở</option>${cleanUnits(st.units||DEFAULT_UNITS).map(u=>`<option value="${E(u.code)}" ${st.unitFilter===u.code?'selected':''}>${E(u.name)}</option>`).join('')}
-          </select>
-        </div>
+        ${fallbackHtml}
         <div id="dutyMsg">${st.message||''}</div>
         <div id="dutyContent"></div>
       </div>`;
@@ -232,13 +302,7 @@
   function renderDutySummaryTab(){
     const box=$('dutyContent'); if(!box) return;
     const rows=activeEntries();
-    box.innerHTML=`
-      <div class="duty-actions-line">
-        <button class="btn primary" onclick="dutyCopyReport()">📋 Copy báo cáo</button>
-        <button class="btn" onclick="dutyDownloadCsv()">⬇ Xuất CSV</button>
-        <button class="btn" onclick="window.print()">🖨 In</button>
-      </div>
-      <div class="duty-table-card">${renderSummaryTable(rows)}</div>`;
+    box.innerHTML=`<div class="duty-table-card">${renderSummaryTable(rows)}</div>`;
   }
   function groupByDate(rows){ const map={}; rows.forEach(r=>{ (map[r.dutyDate]||(map[r.dutyDate]=[])).push(r); }); return Object.keys(map).sort().map(d=>({date:d, rows:map[d].sort(sortEntries)})); }
   function groupByUnit(rows){ const units=dutyState().units||DEFAULT_UNITS; return units.map(u=>({unit:u, rows:rows.filter(r=>r.unitCode===u.code).sort(sortEntries)})).filter(x=>x.rows.length); }
@@ -246,14 +310,14 @@
     const st=dutyState();
     let units=cleanUnits(st.units&&st.units.length?st.units:DEFAULT_UNITS);
     if(st.unitFilter && st.unitFilter!=='all') return units.filter(u=>u.code===canonicalUnitCode(st.unitFilter));
-    // V119: không hiển thị cột Văn phòng và không hiển thị cột Trụ sở Đội Kiểm soát Hải quan.
+    // V122: không hiển thị cột Văn phòng và không hiển thị cột Trụ sở Đội Kiểm soát Hải quan.
     // Văn phòng và KSHQ cùng đưa vào cột Trụ sở Chi cục HQKV VIII.
     return units.filter(u=>u.code!=='VANPHONG' && u.code!=='KSHQ');
   }
   function matrixCellRows(rows, date, unitCode){
     return (rows||[]).filter(r=>{
       if(r.dutyDate!==date) return false;
-      if(unitCode==='CHICUC') return r.unitCode==='CHICUC' || r.unitCode==='VANPHONG' || r.unitCode==='KSHQ';
+      if(unitCode==='CHICUC') return canonicalUnitCode(r.unitCode)==='CHICUC';
       return r.unitCode===unitCode;
     }).sort(sortEntries);
   }
@@ -272,18 +336,38 @@
   function matrixSignature(rows, date, units){
     return JSON.stringify(units.map(u=>matrixCellRows(rows,date,u.code).map(personKey)));
   }
-  function compactMatrixDateGroups(rows, dates, units){
-    const out=[];
-    dates.forEach(d=>{
-      const sig=matrixSignature(rows,d,units);
-      const last=out[out.length-1];
-      if(last && last.sig===sig && addDays(last.end,1)===d){
-        last.end=d; last.dates.push(d);
-      }else{
-        out.push({start:d,end:d,dates:[d],sig});
+  function cellSignatureForRows(cell){
+    return (cell||[]).map(personKey).join('|');
+  }
+  function computeCellSpans(rows, dates, units){
+    const spans={};
+    let mergeCount=0;
+    units.forEach(u=>{
+      spans[u.code]={};
+      let i=0;
+      while(i<dates.length){
+        const d=dates[i];
+        const cell=matrixCellRows(rows,d,u.code);
+        const sig=cellSignatureForRows(cell);
+        let j=i+1;
+        while(j<dates.length){
+          const nextCell=matrixCellRows(rows,dates[j],u.code);
+          const nextSig=cellSignatureForRows(nextCell);
+          if(!sig || sig!==nextSig || addDays(dates[j-1],1)!==dates[j]) break;
+          j++;
+        }
+        const span=j-i;
+        spans[u.code][d]={rowspan:span,skip:false,merged:span>1 && !!sig};
+        if(span>1 && sig){
+          mergeCount++;
+          for(let k=i+1;k<j;k++) spans[u.code][dates[k]]={rowspan:0,skip:true,merged:true};
+        }else{
+          spans[u.code][d]={rowspan:1,skip:false,merged:false};
+        }
+        i=j;
       }
     });
-    return out;
+    return {spans, mergeCount};
   }
   function dateRangeShort(start,end){
     if(start===end) return dateShort(start);
@@ -297,12 +381,6 @@
     }
     return dateShort(start)+' - '+dateShort(end);
   }
-  function weekdayRangeLabel(group){
-    if(!group || !group.dates || !group.dates.length) return '';
-    if(group.dates.length===1) return weekday(group.start);
-    const first=weekday(group.start), last=weekday(group.end);
-    return first===last ? first : (first+' - '+last);
-  }
   function renderSummaryTable(rows){
     if(!rows.length) return '<div class="empty-state">Chưa có dữ liệu trực ban trong khoảng thời gian đã chọn.</div>';
     const st=dutyState();
@@ -311,29 +389,46 @@
     const dataDates=groupByDate(rows).map(x=>x.date);
     dates=dates.filter(d=>dataDates.includes(d));
     if(!dates.length) dates=dataDates;
-    const groups=compactMatrixDateGroups(rows, dates, units);
-    const mergedDays=dates.length-groups.length;
+    const calc=computeCellSpans(rows, dates, units);
     let html='';
-    if(mergedDays>0){
-      html += `<div class="duty-compact-note">Đã gộp ${E(mergedDays)} dòng ngày có lịch trực giống nhau. Ví dụ Thứ Bảy và Chủ nhật trực giống nhau sẽ hiển thị chung một dòng.</div>`;
+    if(calc.mergeCount>0){
+      html += `<div class="duty-compact-note">Đã trộn ${E(calc.mergeCount)} ô có lịch trực giống nhau giữa các ngày liên tiếp để bảng gọn và dễ đọc hơn.</div>`;
     }
     html += '<div class="duty-matrix-scroll"><table class="duty-matrix-table"><thead><tr><th class="duty-date-col">Ngày</th>';
     units.forEach(u=>{ html += `<th>${E(u.name)}</th>`; });
     html += '</tr></thead><tbody>';
-    groups.forEach(g=>{
-      const dateClass = g.dates.length>1 ? 'duty-date-col compact' : 'duty-date-col';
-      html += `<tr><td class="${dateClass}"><div class="duty-date-range">${E(dateRangeShort(g.start,g.end))}</div><div class="duty-date-weekdays">${E(weekdayRangeLabel(g))}</div>${g.dates.length>1?`<div class="duty-date-count">${E(g.dates.length)} ngày</div>`:''}</td>`;
+    dates.forEach(d=>{
+      html += `<tr><td class="duty-date-col"><div class="duty-date-range">${E(dateShort(d))}</div><div class="duty-date-weekdays">${E(weekday(d))}</div></td>`;
       units.forEach(u=>{
-        const cell=matrixCellRows(rows,g.start,u.code);
-        html += '<td>' + (cell.length ? `<div class="duty-matrix-cell">${cell.map(personCellHtml).join('')}</div>` : '') + '</td>';
+        const sp=(calc.spans[u.code]&&calc.spans[u.code][d]) || {rowspan:1,skip:false,merged:false};
+        if(sp.skip) return;
+        const cell=matrixCellRows(rows,d,u.code);
+        const rowAttr=sp.rowspan>1 ? ` rowspan="${sp.rowspan}"` : '';
+        const cellClass=sp.merged ? ' class="duty-cell-merged"' : '';
+        const badge=sp.merged ? `<div class="duty-merge-badge">Trùng ${sp.rowspan} ngày</div>` : '';
+        html += `<td${rowAttr}${cellClass}>` + (cell.length ? `<div class="duty-matrix-cell">${cell.map(personCellHtml).join('')}${badge}</div>` : '') + '</td>';
       });
       html += '</tr>';
     });
     html += '</tbody></table></div>';
     return html;
   }
+  function cleanPersonName(name){
+    let s=String(name||'').trim();
+    s=s.replace(/^\s*(đ\/c|đc|dc)\.?\s*/i,'').trim();
+    return s;
+  }
+  function formatPhoneDisplay(phone){
+    const raw=String(phone||'').trim();
+    const digits=raw.replace(/\D+/g,'');
+    if(digits.length===10) return `${digits.slice(0,4)}.${digits.slice(4,7)}.${digits.slice(7)}`;
+    if(digits.length===11) return `${digits.slice(0,4)}.${digits.slice(4,7)}.${digits.slice(7)}`;
+    return raw;
+  }
   function personCellHtml(r){
-    return `<div class="duty-person"><div class="duty-person-name">Đ/c ${E(r.fullname)}</div><div class="duty-person-pos">${E(r.position||'')}</div>${r.phone?`<div class="duty-person-phone">${E(r.phone)}</div>`:''}${r.note?`<div class="duty-person-note">${E(r.note)}</div>`:''}</div>`;
+    const name=cleanPersonName(r.fullname);
+    const phone=formatPhoneDisplay(r.phone);
+    return `<div class="duty-person"><div class="duty-person-name">Đ/c ${E(name)}</div><div class="duty-person-pos">${E(r.position||'')}</div>${phone?`<div class="duty-person-phone">${E(phone)}</div>`:''}${r.note?`<div class="duty-person-note">${E(r.note)}</div>`:''}</div>`;
   }
   function formDateOptionsHtml(st){
     const dates=dateRangeList(st.formDate, st.formEndDate||st.formDate, 31);
@@ -446,7 +541,7 @@
             <button class="btn primary" onclick="dutyReadExcelFile()">📥 Đọc file Excel</button>
             <button class="btn green" onclick="dutySubmitExcelImport()" ${rows.length?'':'disabled'}>✅ Cập nhật vào phần mềm</button>
           </div>
-          <div class="duty-help">V119: Sau khi đọc Excel, nút Cập nhật ghi trực tiếp bằng action saveDutyEntries theo từng ngày + trụ sở; không còn trạng thái nháp/chờ duyệt.</div>
+          <div class="duty-help">V122: Văn phòng và Trụ sở Đội KSHQ dùng chung Trụ sở Chi cục HQKV VIII; nếu file cũ còn mã VANPHONG/KSHQ thì hệ thống tự gom về CHICUC.</div>
         </div>
       </div>
       <div class="duty-table-card">
@@ -617,6 +712,19 @@
       </div>`;
   }
 
+  window.dutyToggleEntryMenu=function(ev){
+    if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+    const wrap=document.getElementById('dutyEntryMenuWrap');
+    if(wrap) wrap.classList.toggle('open');
+  };
+  window.dutyCloseEntryMenu=function(){
+    const wrap=document.getElementById('dutyEntryMenuWrap');
+    if(wrap) wrap.classList.remove('open');
+  };
+  document.addEventListener('click', function(ev){
+    const wrap=document.getElementById('dutyEntryMenuWrap');
+    if(wrap && !wrap.contains(ev.target)) wrap.classList.remove('open');
+  }, true);
   window.dutySetTab=function(tab){ const st=dutyState(); st.tab=tab; renderDutyModule(); };
   window.dutyReload=async function(){ const st=dutyState(); st.loaded=false; await renderDutyModule(); };
   window.dutySetDateRange=function(start,end){ const st=dutyState(); if(start)st.startDate=start; if(end)st.endDate=end; st.loaded=false; renderDutyModule(); };
@@ -662,12 +770,43 @@
     try{ await navigator.clipboard.writeText(text); setMsg('Đã copy danh sách trực.', 'ok'); }
     catch(e){ prompt('Copy thủ công nội dung dưới đây:', text); }
   };
-  window.dutyDownloadCsv=function(){
+  function htmlTableForExcel(rows){
+    const st=dutyState();
+    const units=matrixUnitColumns(rows);
+    let dates=dateRangeList(st.startDate, st.endDate, 62);
+    const dataDates=groupByDate(rows).map(x=>x.date);
+    dates=dates.filter(d=>dataDates.includes(d));
+    if(!dates.length) dates=dataDates;
+    const calc=computeCellSpans(rows, dates, units);
+    let html='<table border="1"><thead><tr><th>Ngày</th>';
+    units.forEach(u=>{ html += `<th>${E(u.name)}</th>`; });
+    html+='</tr></thead><tbody>';
+    dates.forEach(d=>{
+      html += `<tr><td><b>${E(dateShort(d))}</b><br>${E(weekday(d))}</td>`;
+      units.forEach(u=>{
+        const sp=(calc.spans[u.code]&&calc.spans[u.code][d]) || {rowspan:1,skip:false,merged:false};
+        if(sp.skip) return;
+        const cell=matrixCellRows(rows,d,u.code);
+        const rowAttr=sp.rowspan>1 ? ` rowspan="${sp.rowspan}"` : '';
+        html += `<td${rowAttr}>${cell.map(r=>`<b>Đ/c ${E(cleanPersonName(r.fullname))}</b><br>${E(r.position||'')}<br>${E(formatPhoneDisplay(r.phone)||'')}`).join('<hr>')}</td>`;
+      });
+      html += '</tr>';
+    });
+    html+='</tbody></table>';
+    return html;
+  }
+  window.dutyExportExcel=function(){
     const rows=activeEntries();
-    const csv=['Ngày,Thứ,Trụ sở,Họ tên,Chức vụ,Số điện thoại,Ghi chú'].concat(rows.map(r=>[dateShort(r.dutyDate),r.dutyWeekday||weekday(r.dutyDate),unitName(r.unitCode),r.fullname,r.position,r.phone,r.note].map(csvCell).join(','))).join('\n');
-    const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
-    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='danh-sach-truc.csv'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
+    if(!rows.length){ alert('Chưa có dữ liệu để xuất Excel.'); return; }
+    const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif}table{border-collapse:collapse}th{background:#0f4c81;color:#fff;font-weight:bold;text-align:center}td,th{border:1px solid #999;padding:8px;vertical-align:middle;text-align:center}td:first-child{background:#eef6ff;font-weight:bold}</style></head><body><h3>LỊCH TRỰC BAN HQKV8</h3>${htmlTableForExcel(rows)}</body></html>`;
+    const blob=new Blob(['\ufeff'+html],{type:'application/vnd.ms-excel;charset=utf-8'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='lich-truc-ban-HQKV8.xls';
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
   };
+  window.dutyDownloadCsv=window.dutyExportExcel;
   function csvCell(v){ return '"'+String(v||'').replace(/"/g,'""')+'"'; }
   function buildDutyReportText(rows){
     if(!rows.length) return 'DANH SÁCH LÃNH ĐẠO, CÔNG CHỨC TRỰC\n\nChưa có dữ liệu.';
@@ -677,15 +816,14 @@
     const dataDates=groupByDate(rows).map(x=>x.date);
     dates=dates.filter(d=>dataDates.includes(d));
     if(!dates.length) dates=dataDates;
-    const groups=compactMatrixDateGroups(rows, dates, units);
     let out='DANH SÁCH LÃNH ĐẠO, CÔNG CHỨC TRỰC\n';
-    groups.forEach((g,di)=>{
-      out += `\n${roman(di+1)}. Ngày ${dateRangeShort(g.start,g.end)} (${weekdayRangeLabel(g)})\n`;
+    dates.forEach((d,di)=>{
+      out += `\n${roman(di+1)}. Ngày ${dateShort(d)} (${weekday(d)})\n`;
       units.forEach((u,ui)=>{
-        const cell=matrixCellRows(rows,g.start,u.code);
+        const cell=matrixCellRows(rows,d,u.code);
         if(!cell.length) return;
         out += `\n${ui+1}. ${u.name}\n`;
-        cell.forEach((r,ri)=>{ out += `${ui+1}.${ri+1}. Đ/c ${r.fullname} - ${r.position}${r.phone?' - '+r.phone:''}${r.note?' ('+r.note+')':''}\n`; });
+        cell.forEach((r,ri)=>{ out += `${ui+1}.${ri+1}. Đ/c ${cleanPersonName(r.fullname)} - ${r.position}${r.phone?' - '+formatPhoneDisplay(r.phone):''}${r.note?' ('+r.note+')':''}\n`; });
       });
     });
     return out.trim();
