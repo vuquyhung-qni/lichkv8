@@ -328,7 +328,7 @@
     return 'duty_excel_' + Date.now() + '_' + Math.random().toString(36).slice(2);
   }
   async function dutyWaitUploadStatus(uploadId, fileName){
-    const deadline = Date.now() + 90000; // V113: chỉ upload/parse Excel một lần; khi import sẽ commit từ dữ liệu đã đọc trong CacheService.
+    const deadline = Date.now() + 90000; // V114: commit import qua POST ẩn + polling status, tránh JSONP GET dài/chặn mạng.
     let lastMsg = '';
     while(Date.now() < deadline){
       await new Promise(r=>setTimeout(r, 1800));
@@ -387,6 +387,26 @@
     return res;
   }
 
+  async function dutyPostActionAndWaitStatus(action, payload, label){
+    const statusUploadId=dutyMakeUploadId();
+    const full=Object.assign({}, payload||{}, {
+      action,
+      token: (window.APP && APP.token) || '',
+      statusUploadId
+    });
+    if(typeof apiViaHiddenUploadPost==='function'){
+      await apiViaHiddenUploadPost(full);
+    } else {
+      // fallback trong môi trường Apps Script hoặc khi không có iframe helper
+      const res=await api(action, Object.assign({}, payload||{}, {statusUploadId}));
+      if(res && res.ok!==false) return res;
+      throw new Error((res&&res.msg)||'Không gửi được yêu cầu cập nhật.');
+    }
+    const res=await dutyWaitUploadStatus(statusUploadId, label || action);
+    if(!res || res.ok===false) throw new Error((res&&res.msg)||'Lỗi cập nhật trên server.');
+    return res;
+  }
+
   window.dutyReadExcelFile=async function(){
     const input=$('dutyExcelFile');
     const file=input && input.files && input.files[0];
@@ -397,7 +417,7 @@
       const st=dutyState();
       st.importRows=Array.isArray(res.rows)?res.rows:[];
       st.importInvalid=Array.isArray(res.invalid)?res.invalid:[];
-      st.importUploadId=res.uploadId || '';
+      st.importUploadId=res.uploadId || res.parseUploadId || ''; // V114: dùng uploadId để commit dữ liệu đã đọc, không gửi lại 28 dòng qua JSONP.
       setMsg(`Đã đọc ${st.importRows.length} dòng hợp lệ từ Excel${st.importInvalid.length?`, ${st.importInvalid.length} dòng chưa hợp lệ`:''}.`, st.importRows.length?'ok':'err');
       renderDutyImportTab();
     }catch(e){ setMsg('Lỗi đọc Excel: '+(e.message||e), 'err'); }
@@ -413,12 +433,13 @@
     setMsg('Đang cập nhật dữ liệu từ Excel...', 'info');
     try{
       let res;
-      // V113: nếu đã bấm “Đọc file Excel” và có dữ liệu xem trước thì KHÔNG upload lại file lần 2.
-      // Server sẽ lấy các dòng đã parse từ CacheService theo uploadId và ghi vào DUTY_ENTRY.
+      // V114: bước cập nhật KHÔNG dùng JSONP GET nữa.
+      // Lý do: payload import có thể dài hoặc thao tác ghi Sheet lâu, trình duyệt sẽ báo script.onerror.
+      // Gửi bằng POST ẩn rồi polling trạng thái theo statusUploadId để nhận kết quả ổn định.
       if(st.importUploadId){
-        res=await api('commitDutyExcelImport',{uploadId:st.importUploadId, submit});
+        res=await dutyPostActionAndWaitStatus('commitDutyExcelImport', {uploadId:st.importUploadId, submit}, 'commitDutyExcelImport');
       } else if(st.importRows && st.importRows.length){
-        res=await api('importDutyEntries',{rows:st.importRows, submit});
+        res=await dutyPostActionAndWaitStatus('importDutyEntries', {rows:st.importRows, submit}, 'importDutyEntries');
       } else if(file){
         // Chỉ dùng fallback này khi người dùng chưa bấm Đọc file Excel.
         res=await dutyPostExcelToServer('importDutyExcelFile', file, {submit});
