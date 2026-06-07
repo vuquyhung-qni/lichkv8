@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lichkv8-v127-duty-excel-template-unit-edit-ddmmyyyy';
+const CACHE_NAME = 'lichkv8-v128-duty-compact-header-font-ddmmyyyy';
 const STATIC_ASSETS = [
   './',
   './index.html',
