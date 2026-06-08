@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lichkv8-v128-duty-compact-header-font-ddmmyyyy';
+const CACHE_NAME = 'lichkv8-v129-duty-inline-edit';
 const STATIC_ASSETS = [
   './',
   './index.html',

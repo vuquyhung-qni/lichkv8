@@ -1,10 +1,10 @@
 /* ==========================================================
- * modules/duty.js — V128 Module Lịch trực ban HQKV8
+ * modules/duty.js — V129 Module Lịch trực ban HQKV8
  * Bỏ Trụ sở Đội Kiểm soát Hải quan và Văn phòng vì dùng chung Trụ sở Chi cục HQKV VIII.
- * Tinh gọn đầu trang, đồng bộ font, chuyển nút nhập xuống thanh công cụ.
+ * Tinh gọn đầu trang, đồng bộ font; bổ sung sửa trực tiếp trên Bảng tổng hợp theo phân quyền đơn vị.
  * ========================================================== */
 (function(){
-  const DUTY_VERSION = 'duty_v128_compact_header_font';
+  const DUTY_VERSION = 'duty_v129_inline_edit_by_unit';
   const DEFAULT_UNITS = [
     {code:'CHICUC', name:'Trụ sở Chi cục HQKV VIII', order:1},
     {code:'HONGAI', name:'Trụ sở HQCK cảng Hòn Gai', order:2},
@@ -78,8 +78,16 @@
       .duty-day-color-4 td:not(.duty-date-col),td.duty-day-color-4{background:#f0f9ff!important}
       .duty-day-color-5 td:not(.duty-date-col),td.duty-day-color-5{background:#fff1f2!important}
       .duty-empty-cell{display:block;color:#64748b;font-weight:600;font-style:italic;padding:8px 4px}
-      .duty-editable-cell{cursor:pointer;transition:filter .12s ease, box-shadow .12s ease}
+      .duty-editable-cell{cursor:pointer;transition:filter .12s ease, box-shadow .12s ease;position:relative}
       .duty-editable-cell:hover{filter:brightness(.965);box-shadow:inset 0 0 0 2px rgba(11,103,178,.18)}
+      .duty-cell-edit-row{display:flex;justify-content:center;margin-bottom:5px}
+      .duty-cell-edit-btn{border:1px solid #bfdbfe;background:#fff;color:#0f4c81;border-radius:999px;padding:3px 9px;font-weight:700;font-size:.72rem;line-height:1.15;cursor:pointer;box-shadow:0 2px 7px rgba(15,23,42,.05)}
+      .duty-cell-edit-btn:hover{background:#eaf4ff;color:#063a63}
+      .duty-inline-edit-table{width:100%;border-collapse:separate;border-spacing:0 8px}
+      .duty-inline-edit-table th{font-size:.78rem;color:#475569;text-align:left;font-weight:700;padding:0 6px}
+      .duty-inline-edit-table td{padding:0 6px}
+      .duty-inline-edit-table .input{width:100%}
+      .duty-inline-modal-note{font-size:.82rem;color:#475569;background:#f8fbff;border:1px solid #d7e3f2;border-radius:12px;padding:9px 11px;margin-bottom:10px}
       .duty-unit-locked{cursor:not-allowed;opacity:.72}
       .duty-import-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
       .duty-cell-merged{vertical-align:middle!important;box-shadow:none!important}
@@ -223,12 +231,13 @@
   }
   function unitOrder(code){ const c=canonicalUnitCode(code); const u=cleanUnits(dutyState().units||DEFAULT_UNITS).find(x=>x.code===c); return u?Number(u.order||999):999; }
   function unitName(code){ const c=canonicalUnitCode(code); const u=cleanUnits(dutyState().units||DEFAULT_UNITS).find(x=>x.code===c); return u?u.name:(c||''); }
-  function unitOptions(selected){ const sel=canonicalUnitCode(selected); return cleanUnits(dutyState().units||DEFAULT_UNITS).map(u=>`<option value="${E(u.code)}" ${u.code===sel?'selected':''}>${E(u.name)}</option>`).join(''); }
+  function unitOptions(selected){ const sel=canonicalUnitCode(selected); const units=editableUnits(); return units.map(u=>`<option value="${E(u.code)}" ${u.code===sel?'selected':''}>${E(u.name)}</option>`).join('') || cleanUnits(dutyState().units||DEFAULT_UNITS).map(u=>`<option value="${E(u.code)}" ${u.code===sel?'selected':''}>${E(u.name)}</option>`).join(''); }
   function importUnitOptions(selected){
     const sel=String(selected||'all');
-    const opts=[`<option value="all" ${sel==='all'?'selected':''}>Theo mã đơn vị trong Excel</option>`];
-    cleanUnits(dutyState().units||DEFAULT_UNITS).forEach(u=>opts.push(`<option value="${E(u.code)}" ${u.code===canonicalUnitCode(sel)?'selected':''}>${E(u.name)}</option>`));
-    return opts.join('');
+    const opts=[];
+    if(isDutyGlobalEditor()) opts.push(`<option value="all" ${sel==='all'?'selected':''}>Theo mã đơn vị trong Excel</option>`);
+    editableUnits().forEach(u=>opts.push(`<option value="${E(u.code)}" ${u.code===canonicalUnitCode(sel)?'selected':''}>${E(u.name)}</option>`));
+    return opts.join('') || '<option value="">Không xác định đơn vị được phép sửa</option>';
   }
   function userDutyUnitCode(){
     try{
@@ -247,14 +256,31 @@
     }catch(_){ }
     return '';
   }
+  function isDutyGlobalEditor(){
+    try{
+      const u=(window.APP&&APP.user)||{};
+      const role=norm(u.role||'');
+      const text=norm([u.role,u.chucVu,u.position,u.title,u.donVi,u.department,u.unit,u.scope,u.username,u.fullname].filter(Boolean).join(' '));
+      if(/superadmin|super admin/.test(role) || /superadmin|super admin/.test(text)) return true;
+      // Lãnh đạo Văn phòng: Chánh/Phó Chánh Văn phòng hoặc role/tên nhóm thể hiện lãnh đạo Văn phòng.
+      if(/lanh dao van phong|ld van phong|lanhdaovanphong/.test(text)) return true;
+      if(/van phong/.test(text) && /chanh van phong|pho chanh van phong|lanh dao|truong|pho truong/.test(text)) return true;
+      return false;
+    }catch(_){ return false; }
+  }
   function canEditDutyUnit(code){
     try{
-      const role=String((window.APP&&APP.user&&APP.user.role)||'').toLowerCase();
-      if(/superadmin|admin|quantri|quan tri/.test(role)) return true;
+      if(isDutyGlobalEditor()) return true;
       const mine=userDutyUnitCode();
-      if(!mine) return true;
+      if(!mine) return false;
       return canonicalUnitCode(code)===canonicalUnitCode(mine);
-    }catch(_){ return true; }
+    }catch(_){ return false; }
+  }
+  function editableUnits(){
+    const units=cleanUnits(dutyState().units||DEFAULT_UNITS);
+    if(isDutyGlobalEditor()) return units;
+    const mine=userDutyUnitCode();
+    return units.filter(u=>canonicalUnitCode(u.code)===canonicalUnitCode(mine));
   }
   function activeEntries(){
     const st=dutyState();
@@ -325,6 +351,10 @@
     st.units = cleanUnits((res.units && res.units.length) ? res.units : DEFAULT_UNITS.slice());
     if(st.unitFilter==='KSHQ' || st.unitFilter==='VANPHONG') st.unitFilter='all';
     if(st.formUnit==='KSHQ' || st.formUnit==='VANPHONG') st.formUnit='CHICUC';
+    if(!isDutyGlobalEditor()){
+      const mine=userDutyUnitCode();
+      if(mine){ st.formUnit=canonicalUnitCode(mine); if(st.importUnit==='all') st.importUnit=canonicalUnitCode(mine); }
+    }
     st.entries = (res.entries || []).map(normalizeDutyEntry);
     st.statuses = (res.statuses || []).map(x=>Object.assign({},x,{unitCode:canonicalUnitCode(x.unitCode||x.UNIT_CODE||'')}));
 
@@ -498,7 +528,8 @@
         const editEnd=sp.rowspan>1 ? addDays(d, sp.rowspan-1) : d;
         const cellClass=` class="${sp.merged?'duty-cell-merged ':''}${rowColor} ${canEdit?'duty-editable-cell':'duty-unit-locked'}"`;
         const clickAttr=canEdit ? ` onclick="dutyEditCell('${E(d)}','${E(u.code)}','${E(editEnd)}')" title="Bấm để sửa lịch trực của ${E(u.name)}"` : ` title="Chỉ sửa được lịch trực của đơn vị mình"`;
-        html += `<td${rowAttr}${cellClass} data-unit="${E(u.name)}"${clickAttr}>` + (cell.length ? `<div class="duty-matrix-cell">${cell.map(personCellHtml).join('')}</div>` : '<span class="duty-empty-cell">Chưa cập nhật lịch</span>') + '</td>';
+        const editBtn=canEdit ? `<div class="duty-cell-edit-row"><button type="button" class="duty-cell-edit-btn" onclick="event.stopPropagation(); dutyEditCell('${E(d)}','${E(u.code)}','${E(editEnd)}')">✎ Sửa</button></div>` : '';
+        html += `<td${rowAttr}${cellClass} data-unit="${E(u.name)}"${clickAttr}>` + editBtn + (cell.length ? `<div class="duty-matrix-cell">${cell.map(personCellHtml).join('')}</div>` : '<span class="duty-empty-cell">Chưa cập nhật lịch</span>') + '</td>';
       });
       html += '</tr>';
     });
@@ -796,6 +827,8 @@
       if(!rowsToSave || !rowsToSave.length) throw new Error('Không có dòng hợp lệ để cập nhật.');
       const groups=groupRowsForSave(rowsToSave);
       if(!groups.length) throw new Error('Không tạo được nhóm ngày + trụ sở từ dữ liệu Excel.');
+      const denied=groups.find(g=>!canEditDutyUnit(g.unitCode));
+      if(denied) throw new Error('Tài khoản hiện tại không có quyền cập nhật lịch trực của '+unitName(denied.unitCode)+'.');
       const dates=rowsToSave.map(r=>r.dutyDate).filter(Boolean).sort();
       if(dates.length){ st.startDate=dates[0]; st.endDate=dates[dates.length-1]; }
       const res=await saveDutyGroupsViaApi(groups, submit, 'Đang cập nhật Excel');
@@ -834,6 +867,52 @@
     const wrap=document.getElementById('dutyEntryMenuWrap');
     if(wrap && !wrap.contains(ev.target)) wrap.classList.remove('open');
   }, true);
+  function inlineEditRowHtml(r){
+    return `<tr>
+      <td><input class="input duty-inline-fullname" value="${E(r.fullname||'')}" placeholder="Họ tên người trực"></td>
+      <td><input class="input duty-inline-position" value="${E(r.position||'')}" placeholder="Chức vụ"></td>
+      <td><input class="input duty-inline-phone" value="${E(formatPhoneDisplay(r.phone)||'')}" placeholder="Số điện thoại"></td>
+      <td><input class="input duty-inline-note" value="${E(r.note||'')}" placeholder="Ghi chú"></td>
+      <td style="width:62px;text-align:center"><button type="button" class="btn sm danger-light" onclick="this.closest('tr').remove()">Xóa</button></td>
+    </tr>`;
+  }
+  function readInlineEditRows(){
+    const entries=[];
+    document.querySelectorAll('#dutyInlineEditTable tbody tr').forEach(tr=>{
+      const fullname=tr.querySelector('.duty-inline-fullname')?.value.trim()||'';
+      const position=tr.querySelector('.duty-inline-position')?.value.trim()||'';
+      const phone=tr.querySelector('.duty-inline-phone')?.value.trim()||'';
+      const note=tr.querySelector('.duty-inline-note')?.value.trim()||'';
+      if(fullname) entries.push({fullname, position, phone, note});
+    });
+    return entries;
+  }
+  window.dutyAddInlineEditRow=function(){
+    const tb=document.querySelector('#dutyInlineEditTable tbody');
+    if(tb) tb.insertAdjacentHTML('beforeend', inlineEditRowHtml({}));
+  };
+  window.dutySaveInlineEdit=async function(date, unitCode, endDate){
+    const code=canonicalUnitCode(unitCode);
+    if(!canEditDutyUnit(code)){ alert('Tài khoản hiện tại chỉ sửa được lịch trực ban của đơn vị mình.'); return; }
+    const dates=dateRangeList(date, endDate||date, 31);
+    const entries=readInlineEditRows();
+    if(!entries.length && !confirm('Danh sách đang trống. Anh/chị có chắc muốn lưu danh sách trống cho ngày/đơn vị này?')) return;
+    const groups=dates.map(d=>({dutyDate:d, unitCode:code, unitName:unitName(code), dutyType:'Thứ 7/CN', entries}));
+    try{
+      setMsg('Đang lưu thay đổi lịch trực ban...', 'info');
+      await saveDutyGroupsViaApi(groups, true, 'Đang lưu sửa trực tiếp');
+      const st=dutyState();
+      st.loaded=false;
+      await loadDuty(true);
+      if(typeof closeModal==='function') closeModal();
+      st.tab='summary';
+      await renderDutyModule();
+      setMsg('Đã cập nhật lịch trực ban của '+unitName(code)+' ngày '+dateRangeShort(date,endDate||date)+'.', 'ok');
+    }catch(e){
+      alert('Lỗi lưu lịch trực ban: '+((e&&e.message)||e));
+    }
+  };
+
   function parseVnDateToIso(v){
     const s=String(v||'').trim();
     let m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
@@ -844,17 +923,27 @@
   }
   window.dutySetImportUnit=function(unit){ const st=dutyState(); st.importUnit=unit||'all'; renderDutyImportTab(); };
   window.dutyEditCell=function(date, unitCode, endDate){
-    const st=dutyState();
     const code=canonicalUnitCode(unitCode);
     if(!canEditDutyUnit(code)){ setMsg('Tài khoản hiện tại chỉ sửa được lịch trực ban của đơn vị mình.', 'err'); return; }
-    st.formUnit=code;
-    st.formDate=date;
-    st.formEndDate=endDate||date;
-    st.formDateChecks=null;
-    st.formType='Thứ 7/CN';
-    st.tab='entry';
-    setMsg('Đang mở biểu mẫu sửa lịch trực ban: '+dateShort(date)+' - '+unitName(code), 'info');
-    renderDutyModule();
+    const rows=matrixCellRows(activeEntries(), date, code);
+    const rangeLabel=dateRangeShort(date,endDate||date);
+    const body=`
+      <div class="duty-inline-modal-note">Sửa trực tiếp lịch trực ban của <b>${E(unitName(code))}</b>, ngày <b>${E(rangeLabel)}</b>. Khi bấm Lưu, dữ liệu cũ cùng ngày + đơn vị sẽ được thay thế.</div>
+      <div style="overflow:auto;max-height:58vh">
+        <table id="dutyInlineEditTable" class="duty-inline-edit-table">
+          <thead><tr><th>Họ tên</th><th>Chức vụ</th><th>Số điện thoại</th><th>Ghi chú</th><th></th></tr></thead>
+          <tbody>${(rows.length?rows:[{}]).map(inlineEditRowHtml).join('')}</tbody>
+        </table>
+      </div>
+      <div class="duty-actions-line" style="justify-content:flex-end;margin-top:12px">
+        <button class="btn" onclick="dutyAddInlineEditRow()">+ Thêm người</button>
+        <button class="btn green" onclick="dutySaveInlineEdit('${E(date)}','${E(code)}','${E(endDate||date)}')">✅ Lưu thay đổi</button>
+        <button class="btn" onclick="closeModal()">Đóng</button>
+      </div>`;
+    if(typeof showModal==='function') showModal(`<h3>✎ Sửa lịch trực ban</h3>`, body);
+    else {
+      const st=dutyState(); st.formUnit=code; st.formDate=date; st.formEndDate=endDate||date; st.formDateChecks=null; st.formType='Thứ 7/CN'; st.tab='entry'; renderDutyModule();
+    }
   };
   window.dutySetTab=function(tab){ const st=dutyState(); st.tab=tab; renderDutyModule(); };
   window.dutyReload=async function(){ const st=dutyState(); st.loaded=false; await renderDutyModule(); };
@@ -891,6 +980,7 @@
     const dates=selectedFormDates();
     const entries=readEntryRows();
     if(!unitCode || !dates.length){ alert('Vui lòng chọn đơn vị và ít nhất 01 ngày trực.'); return; }
+    if(!canEditDutyUnit(unitCode)){ alert('Tài khoản hiện tại chỉ sửa được lịch trực ban của đơn vị mình.'); return; }
     if(!entries.length && !confirm('Danh sách đang trống. Anh/chị có chắc muốn lưu danh sách trống cho các ngày đã chọn?')) return;
     const groups=dates.map(d=>({dutyDate:d, unitCode, unitName:unitName(unitCode), dutyType, entries}));
     setMsg(`Đang lưu ${groups.length} ngày trực ban...`, 'info');
