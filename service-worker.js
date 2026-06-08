@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lichkv8-v135-quiz-force-direct-setup';
+const CACHE_NAME = 'lichkv8-v138-quiz-force-defaults';
 const STATIC_ASSETS = [
   './',
   './index.html',
