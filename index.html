@@ -2728,7 +2728,7 @@ function saveRememberedLogin(username,password){
     }
   }catch(e){}
 }
-const APP_VERSION = 'HTML_v133_duty_person_soft_separator';
+const APP_VERSION = 'HTML_v135_quiz_force_direct_setup';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const QUIZ_MODULE_URL = 'https://vuquyhung-qni.github.io/tracnghiem/';
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
@@ -3328,7 +3328,7 @@ function makeQuizUrl(){
   u.searchParams.set('tab','quiz-setup');
   u.searchParams.set('compact','1');
   u.searchParams.set('portal','1');
-  u.searchParams.set('_v','134');
+  u.searchParams.set('_v','135');
   u.hash='quiz-setup';
   return u.toString();
 }
@@ -3336,22 +3336,35 @@ function forceQuizSetupScreen(frame){
   const f=frame||$('quizFrame');
   if(!f) return;
   let tries=0;
+  let reloaded=false;
   const run=()=>{
     tries++;
     try{
       const w=f.contentWindow;
       if(w && w.App && typeof w.App.goto==='function'){
         w.App.goto('quiz-setup');
+        try{
+          if(w.document){
+            const setup=w.document.getElementById('screen-quiz-setup');
+            if(setup && setup.classList.contains('active')) return true;
+          }
+        }catch(_e){}
         return true;
       }
     }catch(e){}
     try{
-      if(f.contentWindow) f.contentWindow.postMessage({type:'HQKV8_QUIZ_GOTO',screen:'quiz-setup'}, '*');
+      if(f.contentWindow){
+        f.contentWindow.postMessage({type:'HQKV8_QUIZ_GOTO',screen:'quiz-setup',view:'quiz-setup'}, '*');
+      }
     }catch(e){}
+    if(!reloaded && tries===10){
+      reloaded=true;
+      try{ f.src=makeQuizUrl()+'&forceSetup=1&_retry='+Date.now(); }catch(e){}
+    }
     return false;
   };
   if(run()) return;
-  const timer=setInterval(()=>{ if(run() || tries>=16) clearInterval(timer); }, 300);
+  const timer=setInterval(()=>{ if(run() || tries>=60) clearInterval(timer); }, 300);
 }
 function reloadQuizModule(){
   const f=$('quizFrame');
@@ -3363,10 +3376,8 @@ function openQuizNewTab(){
 }
 function renderQuizPortal(){
   const box=$('screen-quiz'); if(!box) return;
-  if(APP.quizLoaded){
-    setTimeout(()=>forceQuizSetupScreen($('quizFrame')), 120);
-    return;
-  }
+  // V135: luôn tạo lại iframe khi bấm Trắc nghiệm để tránh giữ màn Tổng quan cũ trong phiên SPA/service worker.
+  APP.quizLoaded=false;
   box.innerHTML=`<div class="quiz-embed-shell">
     <div class="quiz-embed-head">
       <h3>🧠 TRẮC NGHIỆM KIẾN THỨC</h3>
@@ -3377,7 +3388,11 @@ function renderQuizPortal(){
     </div>
   </div>`;
   APP.quizLoaded=true;
+  setTimeout(()=>forceQuizSetupScreen($('quizFrame')), 300);
+  setTimeout(()=>forceQuizSetupScreen($('quizFrame')), 1200);
+  setTimeout(()=>forceQuizSetupScreen($('quizFrame')), 2600);
 }
+
 
 
 
@@ -5989,7 +6004,7 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', async function(){
       try{
-        const resetKey = 'lct_sw_reset_v134';
+        const resetKey = 'lct_sw_reset_v135';
         if(localStorage.getItem(resetKey) !== '1'){
           const regs = await navigator.serviceWorker.getRegistrations();
           for(const r of regs){ try{ await r.unregister(); }catch(_){} }
@@ -6000,7 +6015,7 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
           localStorage.setItem(resetKey,'1');
         }
       }catch(e){ console.warn('Không reset được service worker/cache cũ:', e); }
-      navigator.serviceWorker.register('./service-worker.js?v=134').then(function(reg){
+      navigator.serviceWorker.register('./service-worker.js?v=135').then(function(reg){
         try { reg.update(); } catch(e) {}
       }).catch(function(err){
         console.warn('Không đăng ký được service worker PWA:', err);
