@@ -2302,7 +2302,7 @@
 
 </style>
   <link rel="stylesheet" href="modules/hkg.css?v=99">
-  <link rel="stylesheet" href="modules/duty.css?v=132">
+  <link rel="stylesheet" href="modules/duty.css?v=133">
 </head>
 <body>
 
@@ -2728,7 +2728,7 @@ function saveRememberedLogin(username,password){
     }
   }catch(e){}
 }
-const APP_VERSION = 'HTML_v132_duty_lighter_calendar_font';
+const APP_VERSION = 'HTML_v133_duty_person_soft_separator';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const QUIZ_MODULE_URL = 'https://vuquyhung-qni.github.io/tracnghiem/';
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
@@ -3321,10 +3321,37 @@ function makeQuizUrl(){
   const u=new URL(QUIZ_MODULE_URL);
   u.searchParams.set('embed','1');
   u.searchParams.set('from','lichkv8');
+  // V134: ép module Trắc nghiệm mở thẳng màn hình chọn lĩnh vực/bộ đề/số câu.
+  // Một số trình duyệt/service-worker giữ phiên cũ ở màn Tổng quan, nên truyền đủ view/screen/tab và hash.
   u.searchParams.set('view','quiz-setup');
+  u.searchParams.set('screen','quiz-setup');
+  u.searchParams.set('tab','quiz-setup');
   u.searchParams.set('compact','1');
   u.searchParams.set('portal','1');
+  u.searchParams.set('_v','134');
+  u.hash='quiz-setup';
   return u.toString();
+}
+function forceQuizSetupScreen(frame){
+  const f=frame||$('quizFrame');
+  if(!f) return;
+  let tries=0;
+  const run=()=>{
+    tries++;
+    try{
+      const w=f.contentWindow;
+      if(w && w.App && typeof w.App.goto==='function'){
+        w.App.goto('quiz-setup');
+        return true;
+      }
+    }catch(e){}
+    try{
+      if(f.contentWindow) f.contentWindow.postMessage({type:'HQKV8_QUIZ_GOTO',screen:'quiz-setup'}, '*');
+    }catch(e){}
+    return false;
+  };
+  if(run()) return;
+  const timer=setInterval(()=>{ if(run() || tries>=16) clearInterval(timer); }, 300);
 }
 function reloadQuizModule(){
   const f=$('quizFrame');
@@ -3336,14 +3363,17 @@ function openQuizNewTab(){
 }
 function renderQuizPortal(){
   const box=$('screen-quiz'); if(!box) return;
-  if(APP.quizLoaded) return;
+  if(APP.quizLoaded){
+    setTimeout(()=>forceQuizSetupScreen($('quizFrame')), 120);
+    return;
+  }
   box.innerHTML=`<div class="quiz-embed-shell">
     <div class="quiz-embed-head">
       <h3>🧠 TRẮC NGHIỆM KIẾN THỨC</h3>
       <button type="button" class="btn ghost sm quiz-reload-btn" onclick="reloadQuizModule()">↻ Tải lại</button>
     </div>
     <div class="quiz-embed-frame-wrap">
-      <iframe id="quizFrame" class="quiz-embed-frame" src="${makeQuizUrl()}" title="Trắc nghiệm kiến thức" loading="eager"></iframe>
+      <iframe id="quizFrame" class="quiz-embed-frame" src="${makeQuizUrl()}" title="Trắc nghiệm kiến thức" loading="eager" onload="forceQuizSetupScreen(this)"></iframe>
     </div>
   </div>`;
   APP.quizLoaded=true;
@@ -5952,14 +5982,14 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
 </script>
 
 <script src="modules/hkg.js?v=99"></script>
-<script src="modules/duty.js?v=132"></script>
+<script src="modules/duty.js?v=133"></script>
 
 <script>
 (function(){
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', async function(){
       try{
-        const resetKey = 'lct_sw_reset_v132';
+        const resetKey = 'lct_sw_reset_v134';
         if(localStorage.getItem(resetKey) !== '1'){
           const regs = await navigator.serviceWorker.getRegistrations();
           for(const r of regs){ try{ await r.unregister(); }catch(_){} }
@@ -5970,7 +6000,7 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
           localStorage.setItem(resetKey,'1');
         }
       }catch(e){ console.warn('Không reset được service worker/cache cũ:', e); }
-      navigator.serviceWorker.register('./service-worker.js?v=132').then(function(reg){
+      navigator.serviceWorker.register('./service-worker.js?v=134').then(function(reg){
         try { reg.update(); } catch(e) {}
       }).catch(function(err){
         console.warn('Không đăng ký được service worker PWA:', err);
