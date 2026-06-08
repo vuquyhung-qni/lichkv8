@@ -2292,9 +2292,17 @@
       .quiz-embed-frame{height:calc(100svh - 118px); min-height:720px;}
     }
 
+    /* V131: nhớ mật khẩu đăng nhập */
+    .login-remember{display:flex;align-items:center;gap:8px;margin:8px 0 10px;color:#3d5166;font-size:.83rem;font-weight:600;user-select:none}
+    .login-remember input{width:16px;height:16px;accent-color:var(--blue2)}
+
+    /* V130: bỏ tiêu đề lặp trong các module đã có topbar */
+    .panel-h.panel-h-no-title{justify-content:flex-end;min-height:0;padding-bottom:8px}
+    .panel-h.panel-h-no-title span{flex:1}
+
 </style>
   <link rel="stylesheet" href="modules/hkg.css?v=99">
-  <link rel="stylesheet" href="modules/duty.css?v=129">
+  <link rel="stylesheet" href="modules/duty.css?v=131">
 </head>
 <body>
 
@@ -2320,12 +2328,9 @@
         <label>Mật khẩu</label>
         <input id="lgPass" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu">
       </div>
+      <label class="login-remember"><input id="lgRemember" type="checkbox"> <span>Nhớ mật khẩu đăng nhập lần sau</span></label>
       <button id="btnLogin" class="btn primary full" onclick="login()">Đăng nhập</button>
       <div id="loginMsg"></div>
-      <div id="loginDebugTools" style="margin-top:8px;font-size:.72rem;color:#5f6b76;text-align:center">
-        <button type="button" class="btn ghost xs" onclick="openGasPing()" style="font-size:.72rem;padding:5px 9px">Kiểm tra kết nối GAS</button>
-        <div id="loginDebugText" style="margin-top:5px;word-break:break-word"></div>
-      </div>
     </div>
   </div>
 </div>
@@ -2702,7 +2707,28 @@ function msgToastError(text){
 }
 
 function msg(el,text,type){el.innerHTML=text?`<div class="msg ${type||''}">${esc(text)}</div>`:''}
-const APP_VERSION = 'HTML_v129_duty_inline_edit';
+function loadRememberedLogin(){
+  try{
+    const raw=localStorage.getItem('lct_remember_login');
+    if(!raw)return;
+    const saved=JSON.parse(raw);
+    const u=$('lgUser'), p=$('lgPass'), r=$('lgRemember');
+    if(u && saved.username) u.value=saved.username;
+    if(p && saved.password) p.value=saved.password;
+    if(r) r.checked=true;
+  }catch(e){}
+}
+function saveRememberedLogin(username,password){
+  try{
+    const r=$('lgRemember');
+    if(r && r.checked){
+      localStorage.setItem('lct_remember_login', JSON.stringify({username:String(username||''), password:String(password||'')}));
+    }else{
+      localStorage.removeItem('lct_remember_login');
+    }
+  }catch(e){}
+}
+const APP_VERSION = 'HTML_v131_default_calendar_remember_login';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const QUIZ_MODULE_URL = 'https://vuquyhung-qni.github.io/tracnghiem/';
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
@@ -3085,10 +3111,12 @@ function initials(name){return(name||'U').split(/\s+/).slice(-2).map(x=>x[0]).jo
 // ===== INIT =====
 window.addEventListener('load',()=>{
   try{localStorage.removeItem('lct_token');localStorage.removeItem('lct_user');}catch(e){}
+  loadRememberedLogin();
   APP.token=sessionStorage.getItem('lct_token')||'';
   const u=sessionStorage.getItem('lct_user');
   if(APP.token&&u){
     APP.user=JSON.parse(u);
+    APP.currentScreen='calendar';
     writePortalBridge();
     showApp();
     refreshAll().then(()=>handleInitialRoute()).catch(()=>showLogin());
@@ -3121,6 +3149,9 @@ async function login(){
     APP.token=res.token; APP.user=res.user;
     sessionStorage.setItem('lct_token',APP.token);
     sessionStorage.setItem('lct_user',JSON.stringify(APP.user));
+    saveRememberedLogin(username,password);
+    APP.currentScreen='calendar';
+    APP._handledInitialRoute=false;
     writePortalBridge();
     msg(loginMsg,'Đăng nhập thành công, đang tải dữ liệu...','ok');
     showApp();
@@ -3369,8 +3400,8 @@ function renderSummary(){
   const customEnd=f.endDate||dateInputValue_(endDateByRange_(f.range||'3DAYS'));
   box.innerHTML=`
     <div class="panel">
-      <div class="panel-h">
-        <h3>📋 TÓM TẮT LỊCH GỬI LÃNH ĐẠO</h3>
+      <div class="panel-h panel-h-no-title">
+        <span></span>
         <button class="btn sm ghost" onclick="refreshAll()">↻ Tải lại</button>
       </div>
       <div class="panel-b">
@@ -4641,8 +4672,8 @@ function renderManage(){
   const f=APP.manageFilters||{kw:'',leader:'all',scope:'CURRENT',kind:'ALL',status:'all'};
   $('screen-manage').innerHTML=`
     <div class="panel">
-      <div class="panel-h">
-        <h3>📋 Quản lý lịch công tác</h3>
+      <div class="panel-h panel-h-no-title">
+        <span></span>
         <button class="btn sm btn-export-excel desktop-only-inline" onclick="exportManageExcel()">📥 Xuất Excel</button>
         ${can?'<button class="btn primary sm" onclick="openMeetingForm()">＋ Thêm lịch</button>':''}
       </div>
@@ -5920,14 +5951,14 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
 </script>
 
 <script src="modules/hkg.js?v=99"></script>
-<script src="modules/duty.js?v=129"></script>
+<script src="modules/duty.js?v=131"></script>
 
 <script>
 (function(){
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', async function(){
       try{
-        const resetKey = 'lct_sw_reset_v129';
+        const resetKey = 'lct_sw_reset_v131';
         if(localStorage.getItem(resetKey) !== '1'){
           const regs = await navigator.serviceWorker.getRegistrations();
           for(const r of regs){ try{ await r.unregister(); }catch(_){} }
@@ -5938,7 +5969,7 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
           localStorage.setItem(resetKey,'1');
         }
       }catch(e){ console.warn('Không reset được service worker/cache cũ:', e); }
-      navigator.serviceWorker.register('./service-worker.js?v=129').then(function(reg){
+      navigator.serviceWorker.register('./service-worker.js?v=131').then(function(reg){
         try { reg.update(); } catch(e) {}
       }).catch(function(err){
         console.warn('Không đăng ký được service worker PWA:', err);

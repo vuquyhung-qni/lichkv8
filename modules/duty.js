@@ -70,7 +70,7 @@
       .duty-matrix-table .duty-date-col{width:128px;min-width:128px;background:#eef6ff;font-weight:700;color:#0f2f53;vertical-align:middle;position:sticky;left:0;z-index:2}
       .duty-matrix-table thead .duty-date-col{z-index:6;background:linear-gradient(180deg,#08375f 0%,#0c4b7d 100%);color:#fff}
       .duty-date-range{font-weight:800;font-size:.98rem;line-height:1.18;color:inherit}
-      .duty-date-weekdays{margin-top:6px}.duty-weekday-badge{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:#ffffff;border:1px solid #cfe3fb;color:#0f4c81;padding:3px 10px;font-size:.76rem;font-weight:700;line-height:1.1;box-shadow:0 2px 7px rgba(15,23,42,.04)}
+      .duty-date-weekdays{margin-top:6px}.duty-weekday-badge{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:#fff5f5;border:1px solid #f1c5c7;color:#b61e20;padding:3px 10px;font-size:.76rem;font-weight:700;line-height:1.1;box-shadow:0 2px 7px rgba(15,23,42,.04)}
       .duty-day-color-0 td:not(.duty-date-col),td.duty-day-color-0{background:#f8fbff!important}
       .duty-day-color-1 td:not(.duty-date-col),td.duty-day-color-1{background:#fffaf0!important}
       .duty-day-color-2 td:not(.duty-date-col),td.duty-day-color-2{background:#f0fdf4!important}
@@ -80,9 +80,9 @@
       .duty-empty-cell{display:block;color:#64748b;font-weight:600;font-style:italic;padding:8px 4px}
       .duty-editable-cell{cursor:pointer;transition:filter .12s ease, box-shadow .12s ease;position:relative}
       .duty-editable-cell:hover{filter:brightness(.965);box-shadow:inset 0 0 0 2px rgba(11,103,178,.18)}
-      .duty-cell-edit-row{display:flex;justify-content:center;margin-bottom:5px}
-      .duty-cell-edit-btn{border:1px solid #bfdbfe;background:#fff;color:#0f4c81;border-radius:999px;padding:3px 9px;font-weight:700;font-size:.72rem;line-height:1.15;cursor:pointer;box-shadow:0 2px 7px rgba(15,23,42,.05)}
-      .duty-cell-edit-btn:hover{background:#eaf4ff;color:#063a63}
+      .duty-cell-edit-row{display:flex;justify-content:center;margin-top:6px}
+      .duty-cell-update-btn{border:1px solid #bfdbfe;background:#fff;color:#0f4c81;border-radius:999px;padding:4px 12px;font-weight:700;font-size:.74rem;line-height:1.15;cursor:pointer;box-shadow:0 2px 7px rgba(15,23,42,.05)}
+      .duty-cell-update-btn:hover{background:#eaf4ff;color:#063a63}
       .duty-inline-edit-table{width:100%;border-collapse:separate;border-spacing:0 8px}
       .duty-inline-edit-table th{font-size:.78rem;color:#475569;text-align:left;font-weight:700;padding:0 6px}
       .duty-inline-edit-table td{padding:0 6px}
@@ -262,15 +262,38 @@
       const role=norm(u.role||'');
       const text=norm([u.role,u.chucVu,u.position,u.title,u.donVi,u.department,u.unit,u.scope,u.username,u.fullname].filter(Boolean).join(' '));
       if(/superadmin|super admin/.test(role) || /superadmin|super admin/.test(text)) return true;
+      if(/admin|quan tri/.test(role)) return true;
       // Lãnh đạo Văn phòng: Chánh/Phó Chánh Văn phòng hoặc role/tên nhóm thể hiện lãnh đạo Văn phòng.
       if(/lanh dao van phong|ld van phong|lanhdaovanphong/.test(text)) return true;
       if(/van phong/.test(text) && /chanh van phong|pho chanh van phong|lanh dao|truong|pho truong/.test(text)) return true;
       return false;
     }catch(_){ return false; }
   }
+  function isDutyClerkUser(){
+    try{
+      const u=(window.APP&&APP.user)||{};
+      const role=norm(u.role||'');
+      const text=norm([u.role,u.chucVu,u.position,u.title,u.donVi,u.department,u.unit,u.scope,u.username,u.fullname].filter(Boolean).join(' '));
+      if(/viewer|cong chuc|congchuc|user|nguoi dung|can bo|cbcc/.test(role)) return true;
+      if(/cong chuc|congchuc|can bo|cbcc/.test(text) && !/lanh dao|lanhdao|truong|pho truong|chanh|admin|quan tri|thu ky|thuky|dau moi/.test(text)) return true;
+      return false;
+    }catch(_){ return false; }
+  }
+  function isDutyUnitEditor(){
+    try{
+      if(isDutyGlobalEditor()) return true;
+      if(isDutyClerkUser()) return false;
+      const u=(window.APP&&APP.user)||{};
+      const role=norm(u.role||'');
+      const text=norm([u.role,u.chucVu,u.position,u.title,u.donVi,u.department,u.unit,u.scope,u.username,u.fullname].filter(Boolean).join(' '));
+      // Chỉ các tài khoản lãnh đạo/đầu mối/thư ký mới được sửa trong phạm vi đơn vị mình. Công chức thường chỉ xem.
+      return /lanh dao|lanhdao|truong|pho truong|doi truong|pho doi truong|chanh van phong|pho chanh van phong|thu ky|thuky|dau moi|admin/.test(role+' '+text);
+    }catch(_){ return false; }
+  }
   function canEditDutyUnit(code){
     try{
       if(isDutyGlobalEditor()) return true;
+      if(!isDutyUnitEditor()) return false;
       const mine=userDutyUnitCode();
       if(!mine) return false;
       return canonicalUnitCode(code)===canonicalUnitCode(mine);
@@ -279,6 +302,7 @@
   function editableUnits(){
     const units=cleanUnits(dutyState().units||DEFAULT_UNITS);
     if(isDutyGlobalEditor()) return units;
+    if(!isDutyUnitEditor()) return [];
     const mine=userDutyUnitCode();
     return units.filter(u=>canonicalUnitCode(u.code)===canonicalUnitCode(mine));
   }
@@ -401,13 +425,13 @@
             <button class="btn sm primary" onclick="dutyCopyReport()">📋 Copy báo cáo</button>
             <button class="btn sm" onclick="dutyExportExcel()">⬇ Xuất Excel</button>
             <button class="btn sm" onclick="window.print()">🖨 In</button>
-            <div class="duty-entry-menu" id="dutyEntryMenuWrap">
+            ${editableUnits().length ? `<div class="duty-entry-menu" id="dutyEntryMenuWrap">
               <button class="btn sm primary" onclick="dutyToggleEntryMenu(event)">+ Nhập lịch trực ▾</button>
               <div class="duty-entry-menu-panel" id="dutyEntryMenu">
                 <button onclick="dutySetTab('entry'); dutyCloseEntryMenu();">✍️ Nhập thủ công</button>
                 <button onclick="dutySetTab('import'); dutyCloseEntryMenu();">📥 Nhập từ Excel</button>
               </div>
-            </div>
+            </div>` : ''}
           </div>
         </div>
         ${fallbackHtml}
@@ -503,6 +527,13 @@
     const idx=Math.max(0, dates.indexOf(date));
     return 'duty-day-color-' + (idx % 6);
   }
+  function isCurrentOrNextWeekMode(){
+    const st=dutyState();
+    return st.rangeMode==='thisWeek' || st.rangeMode==='nextWeek';
+  }
+  function updateButtonHtml(date, unitCode, endDate){
+    return `<div class="duty-cell-edit-row"><button type="button" class="duty-cell-update-btn" onclick="event.stopPropagation(); dutyEditCell('${E(date)}','${E(unitCode)}','${E(endDate||date)}')">Cập nhật</button></div>`;
+  }
   function renderSummaryTable(rows){
     const st=dutyState();
     const units=matrixUnitColumns(rows || []);
@@ -528,8 +559,8 @@
         const editEnd=sp.rowspan>1 ? addDays(d, sp.rowspan-1) : d;
         const cellClass=` class="${sp.merged?'duty-cell-merged ':''}${rowColor} ${canEdit?'duty-editable-cell':'duty-unit-locked'}"`;
         const clickAttr=canEdit ? ` onclick="dutyEditCell('${E(d)}','${E(u.code)}','${E(editEnd)}')" title="Bấm để sửa lịch trực của ${E(u.name)}"` : ` title="Chỉ sửa được lịch trực của đơn vị mình"`;
-        const editBtn=canEdit ? `<div class="duty-cell-edit-row"><button type="button" class="duty-cell-edit-btn" onclick="event.stopPropagation(); dutyEditCell('${E(d)}','${E(u.code)}','${E(editEnd)}')">✎ Sửa</button></div>` : '';
-        html += `<td${rowAttr}${cellClass} data-unit="${E(u.name)}"${clickAttr}>` + editBtn + (cell.length ? `<div class="duty-matrix-cell">${cell.map(personCellHtml).join('')}</div>` : '<span class="duty-empty-cell">Chưa cập nhật lịch</span>') + '</td>';
+        const emptyUpdateBtn=(!cell.length && canEdit && isCurrentOrNextWeekMode()) ? updateButtonHtml(d, u.code, editEnd) : '';
+        html += `<td${rowAttr}${cellClass} data-unit="${E(u.name)}"${clickAttr}>` + (cell.length ? `<div class="duty-matrix-cell">${cell.map(personCellHtml).join('')}</div>` : `<span class="duty-empty-cell">Chưa cập nhật lịch</span>${emptyUpdateBtn}`) + '</td>';
       });
       html += '</tr>';
     });
@@ -612,6 +643,7 @@
 
   function renderDutyEntryTab(){
     const st=dutyState(); const box=$('dutyContent'); if(!box) return;
+    if(!editableUnits().length){ box.innerHTML='<div class="empty-state">Tài khoản công chức chỉ được xem lịch trực ban, không có quyền cập nhật.</div>'; return; }
     const rows=entriesForForm();
     const selectedDates=selectedFormDates();
     box.innerHTML=`
@@ -661,6 +693,7 @@
   }
   function renderDutyImportTab(){
     const st=dutyState(); const box=$('dutyContent'); if(!box) return;
+    if(!editableUnits().length){ box.innerHTML='<div class="empty-state">Tài khoản công chức chỉ được xem lịch trực ban, không có quyền import/cập nhật.</div>'; return; }
     const rows=importRowsForSubmit();
     const rawCount=(st.importRows||[]).length;
     const invalid=st.importInvalid||[];
@@ -940,7 +973,7 @@
         <button class="btn green" onclick="dutySaveInlineEdit('${E(date)}','${E(code)}','${E(endDate||date)}')">✅ Lưu thay đổi</button>
         <button class="btn" onclick="closeModal()">Đóng</button>
       </div>`;
-    if(typeof showModal==='function') showModal(`<h3>✎ Sửa lịch trực ban</h3>`, body);
+    if(typeof showModal==='function') showModal(`<h3>Sửa/Cập nhật lịch trực ban</h3>`, body);
     else {
       const st=dutyState(); st.formUnit=code; st.formDate=date; st.formEndDate=endDate||date; st.formDateChecks=null; st.formType='Thứ 7/CN'; st.tab='entry'; renderDutyModule();
     }
