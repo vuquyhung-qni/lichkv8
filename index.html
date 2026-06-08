@@ -2302,7 +2302,7 @@
 
 </style>
   <link rel="stylesheet" href="modules/hkg.css?v=99">
-  <link rel="stylesheet" href="modules/duty.css?v=131">
+  <link rel="stylesheet" href="modules/duty.css?v=132">
 </head>
 <body>
 
@@ -2728,7 +2728,7 @@ function saveRememberedLogin(username,password){
     }
   }catch(e){}
 }
-const APP_VERSION = 'HTML_v131_default_calendar_remember_login';
+const APP_VERSION = 'HTML_v132_duty_lighter_calendar_font';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const QUIZ_MODULE_URL = 'https://vuquyhung-qni.github.io/tracnghiem/';
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
@@ -3229,7 +3229,8 @@ function showLogin(){
   sessionStorage.removeItem('lct_token');
   sessionStorage.removeItem('lct_user');
   try{localStorage.removeItem('lct_token');localStorage.removeItem('lct_user');}catch(e){}
-  APP.token='';APP.user=null;
+  APP.token='';APP.user=null;APP.currentScreen='calendar';
+  loadRememberedLogin();
 }
 async function logout(){try{await api('logout')}catch(e){}showLogin()}
 
@@ -5951,14 +5952,14 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
 </script>
 
 <script src="modules/hkg.js?v=99"></script>
-<script src="modules/duty.js?v=131"></script>
+<script src="modules/duty.js?v=132"></script>
 
 <script>
 (function(){
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', async function(){
       try{
-        const resetKey = 'lct_sw_reset_v131';
+        const resetKey = 'lct_sw_reset_v132';
         if(localStorage.getItem(resetKey) !== '1'){
           const regs = await navigator.serviceWorker.getRegistrations();
           for(const r of regs){ try{ await r.unregister(); }catch(_){} }
@@ -5969,7 +5970,7 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
           localStorage.setItem(resetKey,'1');
         }
       }catch(e){ console.warn('Không reset được service worker/cache cũ:', e); }
-      navigator.serviceWorker.register('./service-worker.js?v=131').then(function(reg){
+      navigator.serviceWorker.register('./service-worker.js?v=132').then(function(reg){
         try { reg.update(); } catch(e) {}
       }).catch(function(err){
         console.warn('Không đăng ký được service worker PWA:', err);

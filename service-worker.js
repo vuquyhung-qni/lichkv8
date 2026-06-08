@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lichkv8-v131-default-calendar-remember-login';
+const CACHE_NAME = 'lichkv8-v132-duty-lighter-calendar-font';
 const STATIC_ASSETS = [
   './',
   './index.html',
