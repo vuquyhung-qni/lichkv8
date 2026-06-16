@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lichkv8-v138-quiz-force-defaults';
+const CACHE_NAME = 'lichkv8-v140-meeting-docs-report-office-invite-excluded';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -9,6 +9,8 @@ const STATIC_ASSETS = [
   './modules/hkg.css',
   './modules/duty.js',
   './modules/duty.css',
+  './modules/docreport.js',
+  './modules/docreport.css',
   './Mau_import_lich_truc_ban_HQKV8_v127.xlsx'
 ];
 

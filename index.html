@@ -2303,6 +2303,7 @@
 </style>
   <link rel="stylesheet" href="modules/hkg.css?v=99">
   <link rel="stylesheet" href="modules/duty.css?v=133">
+  <link rel="stylesheet" href="modules/docreport.css?v=140">
 </head>
 <body>
 
@@ -2360,6 +2361,9 @@
       <button class="nav-btn" data-screen="summary" onclick="go('summary')">
         <span class="nav-icon">📋</span>
         <span class="nav-label">Tóm tắt lịch</span>
+      </button>
+      <button class="nav-btn" data-screen="docsReport" onclick="go('docsReport')">
+        <span class="nav-icon">📎</span><span class="nav-label">Thống kê tài liệu họp</span>
       </button>
       <button class="nav-btn" data-screen="duty" onclick="go('duty')">
         <span class="nav-icon">📑</span>
@@ -2427,6 +2431,7 @@
       <section id="screen-dashboard" class="hide"></section>
       <section id="screen-calendar"></section>
       <section id="screen-summary" class="hide"></section>
+      <section id="screen-docsReport" class="hide"></section>
       <section id="screen-duty" class="hide"></section>
       <section id="screen-manage" class="hide"></section>
       <section id="screen-library" class="hide"></section>
@@ -2495,6 +2500,7 @@ const APP = {
   loadedAll:false, pendingFormFiles:[],
   libraryStack:[], libraryCurrentUrl:'', detailFiles:[], noteUploadQueue:[], notebook:{kw:'', notes:[], loaded:false},
   quizLoaded:false,
+  docsReport:{loaded:false,rows:[],stats:{},filters:null},
   hkg:{view:'list', loaded:false, dashboard:null, meetings:[], detail:null, meetingId:'', tab:'info', groups:[], groupDetail:null, voteTimer:null},
   duty:{inited:false, loaded:false, tab:'summary'}
 };
@@ -2728,7 +2734,7 @@ function saveRememberedLogin(username,password){
     }
   }catch(e){}
 }
-const APP_VERSION = 'HTML_v138_quiz_force_direct_defaults';
+const APP_VERSION = 'HTML_v139_meeting_docs_report';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const QUIZ_MODULE_URL = 'https://vuquyhung-qni.github.io/tracnghiem/';
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
@@ -3247,7 +3253,7 @@ async function go(screen){
   document.querySelectorAll('.bn-item').forEach(b=>b.classList.toggle('active',b.dataset.screen===screen));
   document.querySelectorAll('[id^="screen-"]').forEach(s=>s.classList.add('hide'));
   $('screen-'+screen).classList.remove('hide');
-  const titles={dashboard:'TỔNG QUAN',calendar:'LỊCH CÔNG TÁC',summary:'TÓM TẮT LỊCH',duty:'LỊCH TRỰC BAN',manage:'QUẢN LÝ LỊCH',library:'THƯ VIỆN VĂN BẢN',notebook:'NOTEBOOK',quiz:'TRẮC NGHIỆM KIẾN THỨC',hkg:'HỌP KHÔNG GIẤY',users:'QUẢN TRỊ NGƯỜI DÙNG',settings:'QUẢN TRỊ DANH MỤC'};
+  const titles={dashboard:'TỔNG QUAN',calendar:'LỊCH CÔNG TÁC',summary:'TÓM TẮT LỊCH',docsReport:'THỐNG KÊ TÀI LIỆU HỌP',duty:'LỊCH TRỰC BAN',manage:'QUẢN LÝ LỊCH',library:'THƯ VIỆN VĂN BẢN',notebook:'NOTEBOOK',quiz:'TRẮC NGHIỆM KIẾN THỨC',hkg:'HỌP KHÔNG GIẤY',users:'QUẢN TRỊ NGƯỜI DÙNG',settings:'QUẢN TRỊ DANH MỤC'};
   $('pageTitle').textContent=titles[screen]||'';
   if(window.innerWidth<768)closeSide();
   await render();
@@ -3275,7 +3281,7 @@ async function refreshNotebookUnreadBadge(){
 }
 
 function setLoading(){
-  ['screen-dashboard','screen-calendar','screen-summary','screen-duty','screen-manage','screen-library','screen-notebook','screen-quiz','screen-hkg','screen-users','screen-settings']
+  ['screen-dashboard','screen-calendar','screen-summary','screen-docsReport','screen-duty','screen-manage','screen-library','screen-notebook','screen-quiz','screen-hkg','screen-users','screen-settings']
     .forEach(id=>$(id).innerHTML='<div class="loading"><div class="spin"></div><span>Đang tải...</span></div>');
 }
 
@@ -3409,6 +3415,10 @@ async function renderScreen_(screen){
       case 'dashboard': renderDashboard(); break;
       case 'calendar': renderCalendar(); break;
       case 'summary': renderSummary(); break;
+      case 'docsReport':
+        if(typeof renderMeetingDocsReport==='function') await renderMeetingDocsReport();
+        else { const b=$('screen-docsReport'); if(b) b.innerHTML='<div class="msg err">Chưa tải được module Thống kê tài liệu họp. Vui lòng kiểm tra file modules/docreport.js.</div>'; }
+        break;
       case 'duty':
         if(typeof renderDutyModule==='function') await renderDutyModule();
         else { const b=$('screen-duty'); if(b) b.innerHTML='<div class="msg err">Chưa tải được module Lịch trực ban. Vui lòng kiểm tra file modules/duty.js.</div>'; }
@@ -5998,7 +6008,8 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
 
 </script>
 
-<script src="modules/hkg.js?v=99"></script>
+<script src="modules/docreport.js?v=140"></script>
+  <script src="modules/hkg.js?v=99"></script>
 <script src="modules/duty.js?v=133"></script>
 
 <script>
@@ -6006,7 +6017,7 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', async function(){
       try{
-        const resetKey = 'lct_sw_reset_v138';
+        const resetKey = 'lct_sw_reset_v139';
         if(localStorage.getItem(resetKey) !== '1'){
           const regs = await navigator.serviceWorker.getRegistrations();
           for(const r of regs){ try{ await r.unregister(); }catch(_){} }
@@ -6017,7 +6028,7 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
           localStorage.setItem(resetKey,'1');
         }
       }catch(e){ console.warn('Không reset được service worker/cache cũ:', e); }
-      navigator.serviceWorker.register('./service-worker.js?v=138').then(function(reg){
+      navigator.serviceWorker.register('./service-worker.js?v=139').then(function(reg){
         try { reg.update(); } catch(e) {}
       }).catch(function(err){
         console.warn('Không đăng ký được service worker PWA:', err);
