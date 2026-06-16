@@ -1,4 +1,4 @@
-/* modules/docreport.js — V141 Thống kê tài liệu họp: tối ưu chống timeout, giấy mời Văn phòng không tính */
+/* modules/docreport.js — V142 Thống kê tài liệu họp: tên file gốc, chỉ loại trừ giấy mời thuần */
 (function(){
   function E(s){return (typeof esc==='function'?esc(s):String(s==null?'':s).replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m])));}
   function fState(){APP.docsReport=APP.docsReport||{loaded:false,rows:[],stats:{},filters:null};return APP.docsReport;}
@@ -36,7 +36,7 @@
     const box=$('screen-docsReport'); if(!box)return;
     const f=filters();
     box.innerHTML=`<div class="doc-report-shell">
-      <div class="doc-report-hero"><div><h2>📎 Thống kê tài liệu họp</h2><p>Báo cáo liệt kê các lịch họp, hội nghị, làm việc, công tác, kể cả lịch giao ban; tự động loại trừ lịch trực ban. Dòng màu đỏ là lịch đã giao đơn vị chuẩn bị nhưng chưa có tài liệu chuyên môn được tính; giấy mời/tài liệu mời, đặc biệt file do Văn phòng upload, chỉ hiển thị để tham khảo và không làm chuyển trạng thái sang đã đủ tài liệu.</p></div><div class="doc-report-actions"><button class="btn sm" onclick="renderMeetingDocsReport(true)">↻ Tải lại</button><button class="btn primary sm" onclick="exportMeetingDocsReportExcel()">⬇ Xuất Excel</button></div></div>
+      <div class="doc-report-hero"><div><h2>📎 Thống kê tài liệu họp</h2><p>Báo cáo liệt kê các lịch họp, hội nghị, làm việc, công tác, kể cả lịch giao ban; tự động loại trừ lịch trực ban. Dòng màu đỏ là lịch đã giao đơn vị chuẩn bị nhưng chưa có tài liệu chuyên môn được tính; chỉ giấy mời/tài liệu mời thuần không được tính. Tài liệu chuyên môn do Văn phòng upload thay đơn vị vẫn được tính.</p></div><div class="doc-report-actions"><button class="btn sm" onclick="renderMeetingDocsReport(true)">↻ Tải lại</button><button class="btn primary sm" onclick="exportMeetingDocsReportExcel()">⬇ Xuất Excel</button></div></div>
       <div class="doc-report-toolbar">
         <label>Từ ngày<input id="docRpt_dateFrom" type="date" value="${E(f.dateFrom||'')}"></label>
         <label>Đến ngày<input id="docRpt_dateTo" type="date" value="${E(f.dateTo||'')}"></label>
@@ -51,13 +51,13 @@
       <div id="docReportContent"><div class="loading"><div class="spin"></div><span>Đang tải thống kê tài liệu họp...</span></div></div>
     </div>`;
     try{await loadReport(force || !fState().loaded);renderContent();}
-    catch(e){const c=$('docReportContent');if(c)c.innerHTML=`<div class="doc-report-note err">${E((e&&e.message)||e)}<br>Cần cập nhật Code.gs bản v141 và deploy Web App phiên bản mới. Nếu vẫn timeout, giảm Giới hạn xuống 100–200 rồi lọc theo khoảng ngày ngắn hơn.</div>`;}
+    catch(e){const c=$('docReportContent');if(c)c.innerHTML=`<div class="doc-report-note err">${E((e&&e.message)||e)}<br>Cần cập nhật Code.gs bản v142 và deploy Web App phiên bản mới. Nếu vẫn timeout, giảm Giới hạn xuống 100–200 rồi lọc theo khoảng ngày ngắn hơn.</div>`;}
   };
   function renderContent(){
     const c=$('docReportContent');if(!c)return;
     const st=fState(),rows=st.rows||[],s=st.stats||{};
     c.innerHTML=`<div class="doc-stat-grid">${stat('Tổng lịch',s.total||0,'')}${stat('Có giao chuẩn bị',s.assigned||0,'warn')}${stat('Đã có TL được tính',s.withFiles||0,'ok')}${stat('Thiếu TL đơn vị',s.missing||0,'danger')}${stat('Giấy mời không tính',s.excludedFiles||0,'muted')}${stat('Tổng file gắn lịch',s.totalFiles||0,'')}</div>
-    <div class="doc-report-note">Quy tắc: <b>có Đơn vị chuẩn bị</b> + <b>0 tài liệu được tính</b> = <span style="color:#991b1b;font-weight:900">❌ Thiếu tài liệu</span>. <b>Giấy mời/tài liệu mời không tính</b> là tài liệu đơn vị được giao chuẩn bị; file do Văn phòng upload chỉ hiển thị để tham khảo. Lịch giao ban được tính; lịch trực ban không đưa vào báo cáo.</div>
+    <div class="doc-report-note">Quy tắc: <b>có Đơn vị chuẩn bị</b> + <b>0 tài liệu được tính</b> = <span style="color:#991b1b;font-weight:900">❌ Thiếu tài liệu</span>. <b>Giấy mời/tài liệu mời thuần không tính</b> là tài liệu đơn vị được giao chuẩn bị; tài liệu chuyên môn do Văn phòng upload thay đơn vị vẫn được tính. Lịch giao ban được tính; lịch trực ban không đưa vào báo cáo.</div>
     <div class="doc-table-wrap">${rows.length?table(rows):'<div class="doc-empty">Không có lịch phù hợp điều kiện lọc.</div>'}</div>`;
   }
   function stat(label,val,cls){return `<div class="doc-stat ${E(cls||'')}"><b>${E(val)}</b><span>${E(label)}</span></div>`;}
@@ -68,13 +68,13 @@
     const excluded=Number(r.excludedFileCount||0);
     const cls=r.missingDocs?'doc-missing':(counted>0?'doc-ok':'');
     const status=r.missingDocs?'<span class="doc-badge missing">❌ Thiếu tài liệu</span>':(counted>0?'<span class="doc-badge ok">✅ Đã có '+E(counted)+' TL được tính</span>':'<span class="doc-badge none">— Chưa giao CB</span>');
-    const fileSummary=excluded?`<span class="doc-meta warn-text">Có ${E(excluded)} giấy mời/tài liệu mời VP không tính${total?` · Tổng ${E(total)} file`:''}</span>`:(total&&total!==counted?`<span class="doc-meta">Tổng ${E(total)} file; tính ${E(counted)}</span>`:'');
+    const fileSummary=excluded?`<span class="doc-meta warn-text">Có ${E(excluded)} giấy mời/tài liệu mời không tính${total?` · Tổng ${E(total)} file`:''}</span>`:(total&&total!==counted?`<span class="doc-meta">Tổng ${E(total)} file; tính ${E(counted)}</span>`:'');
     const gb=r.isGiaoBan?'<span class="doc-badge giaoban">Giao ban</span> ':'';
     return `<tr class="${cls}"><td class="mono" style="text-align:center">${i+1}<br>${E(r.meetingId||'')}</td><td class="nowrap"><b>${E(dateVN(r.ngayBatDau||r.ngayHienThi))}</b><br><span class="doc-meta">${E(r.thu||'')} · ${E(r.gioBatDau||'')}${r.gioKetThuc?'–'+E(r.gioKetThuc):''}</span></td><td><div class="doc-title">${gb}${E(r.noiDung||'')}</div><span class="doc-meta">${E(typeLabel(r.loaiLich||''))} · ${E(statusLabel(r.trangThai||''))}</span><span class="doc-meta">📍 ${E(r.diaDiem||'')}</span></td><td>${E(r.chuTri||'')}<span class="doc-meta">${E(r.lanhDaoLienQuan||'')}</span></td><td><b>${E(r.donViChuanBi||'')}</b></td><td>${status}${fileSummary}</td><td>${fileList(r.files||[])}</td><td>${E(r.ghiChu||'')}</td></tr>`;
   }
   function fileList(files){
     if(!files||!files.length)return '<span class="muted">Chưa có tài liệu</span>';
-    return `<div class="doc-file-list">${files.map(f=>{const url=f.fileUrl||'';const meta=[f.fileType,f.fileVisibilityLabel,f.uploadedBy,f.uploadedAt].filter(Boolean).join(' · ');const ex=f.excludeFromPrep||f.countForPrep===false;const reason=f.excludeReason||'Không tính vào tài liệu đơn vị chuẩn bị';return `<div class="doc-file-item ${ex?'excluded':''}">${url?`<a href="${E(url)}" target="_blank" rel="noopener">📎 ${E(f.fileName||'Tài liệu')}</a>`:`<b>📎 ${E(f.fileName||'Tài liệu')}</b>`}<span>${E(meta)}</span>${ex?`<em>⚠ ${E(reason)}</em>`:''}</div>`;}).join('')}</div>`;
+    return `<div class="doc-file-list">${files.map(f=>{const url=f.fileUrl||'';const meta=[f.fileType,f.fileVisibilityLabel,f.uploadedBy,f.uploadedAt].filter(Boolean).join(' · ');const ex=f.excludeFromPrep||f.countForPrep===false;const reason=f.excludeReason||'Không tính vào tài liệu đơn vị chuẩn bị';return `<div class="doc-file-item ${ex?'excluded':''}">${url?`<a href="${E(url)}" target="_blank" rel="noopener">📎 ${E(f.displayFileName||f.fileDisplayName||f.fileName||'Tài liệu')}</a>`:`<b>📎 ${E(f.displayFileName||f.fileDisplayName||f.fileName||'Tài liệu')}</b>`}<span>${E(meta)}</span>${ex?`<em>⚠ ${E(reason)}</em>`:''}</div>`;}).join('')}</div>`;
   }
   window.exportMeetingDocsReportExcel=function(){
     const rows=(fState().rows)||[]; if(!rows.length){alert('Không có dữ liệu để xuất Excel.');return;}
@@ -84,8 +84,8 @@
     const th=v=>'<th style="background:#0f4c81;color:#fff;border:1px solid #0f4c81;padding:6px 7px;text-align:center">'+safe(v)+'</th>';
     const cell=(v,extra='')=>'<td style="vertical-align:top;border:1px solid #d9e3ec;padding:5px 7px;'+extra+'">'+safe(v)+'</td>';
     const trs=[];
-    rows.forEach((r,idx)=>{const files=(r.files&&r.files.length)?r.files:[{}];files.forEach(file=>{const red=r.missingDocs?'background:#fee2e2;color:#991b1b;font-weight:bold;':'';trs.push('<tr>'+[idx+1,r.meetingId,dateVN(r.ngayBatDau||r.ngayHienThi),r.thu,(r.gioBatDau||'')+(r.gioKetThuc?' - '+r.gioKetThuc:''),typeLabel(r.loaiLich||''),r.isGiaoBan?'Có':'',r.noiDung,r.diaDiem,r.chuTri,r.lanhDaoLienQuan,r.donViChuanBi,r.missingDocs?'THIẾU TÀI LIỆU':((r.countedFileCount||r.fileCount)>0?'Đã có tài liệu được tính':'Chưa giao chuẩn bị'),r.countedFileCount!=null?r.countedFileCount:(r.fileCount||0),r.totalFileCount!=null?r.totalFileCount:(r.fileCount||0),r.excludedFileCount||0,(file.excludeFromPrep?'[KHÔNG TÍNH] ':'')+(file.fileName||''),file.uploadedBy||'',file.uploadedAt||'',file.fileVisibilityLabel||'',file.fileUrl||'',r.ghiChu||''].map(v=>cell(v,red)).join('')+'</tr>');});});
-    const filterText='Từ '+(f.dateFrom||'')+' đến '+(f.dateTo||'')+' | Tình trạng: '+docStatusLabel(f.docStatus)+' | Từ khóa: '+(f.keyword||'Tất cả')+' | Đã loại trừ lịch trực ban | Giấy mời/tài liệu mời không tính là tài liệu đơn vị chuẩn bị';
+    rows.forEach((r,idx)=>{const files=(r.files&&r.files.length)?r.files:[{}];files.forEach(file=>{const red=r.missingDocs?'background:#fee2e2;color:#991b1b;font-weight:bold;':'';trs.push('<tr>'+[idx+1,r.meetingId,dateVN(r.ngayBatDau||r.ngayHienThi),r.thu,(r.gioBatDau||'')+(r.gioKetThuc?' - '+r.gioKetThuc:''),typeLabel(r.loaiLich||''),r.isGiaoBan?'Có':'',r.noiDung,r.diaDiem,r.chuTri,r.lanhDaoLienQuan,r.donViChuanBi,r.missingDocs?'THIẾU TÀI LIỆU':((r.countedFileCount||r.fileCount)>0?'Đã có tài liệu được tính':'Chưa giao chuẩn bị'),r.countedFileCount!=null?r.countedFileCount:(r.fileCount||0),r.totalFileCount!=null?r.totalFileCount:(r.fileCount||0),r.excludedFileCount||0,(file.excludeFromPrep?'[KHÔNG TÍNH] ':'')+(file.displayFileName||file.fileDisplayName||file.fileName||''),file.uploadedBy||'',file.uploadedAt||'',file.fileVisibilityLabel||'',file.fileUrl||'',r.ghiChu||''].map(v=>cell(v,red)).join('')+'</tr>');});});
+    const filterText='Từ '+(f.dateFrom||'')+' đến '+(f.dateTo||'')+' | Tình trạng: '+docStatusLabel(f.docStatus)+' | Từ khóa: '+(f.keyword||'Tất cả')+' | Đã loại trừ lịch trực ban | Giấy mời/tài liệu mời thuần không tính; tài liệu chuyên môn do Văn phòng upload thay đơn vị vẫn được tính';
     const html='<!doctype html><html><head><meta charset="UTF-8"></head><body><h2 style="font-family:Arial;color:#063a63">THỐNG KÊ TÀI LIỆU HỌP HQKV8</h2><p style="font-family:Arial">'+safe(filterText)+'</p><table style="border-collapse:collapse;font-family:Arial;font-size:10pt"><thead><tr>'+cols.map(th).join('')+'</tr></thead><tbody>'+trs.join('')+'</tbody></table></body></html>';
     const blob=new Blob(['\ufeff',html],{type:'application/vnd.ms-excel;charset=utf-8'});
     const a=document.createElement('a'),now=new Date(),pad=n=>String(n).padStart(2,'0');

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lichkv8-v141-docreport-fast';
+const CACHE_NAME = 'lichkv8-v142-docreport-clean-filename';
 const STATIC_ASSETS = [
   './',
   './index.html',
