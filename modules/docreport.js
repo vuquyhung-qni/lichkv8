@@ -1,4 +1,4 @@
-/* modules/docreport.js — V140 Thống kê tài liệu họp: giấy mời Văn phòng không tính là TL đơn vị chuẩn bị */
+/* modules/docreport.js — V141 Thống kê tài liệu họp: tối ưu chống timeout, giấy mời Văn phòng không tính */
 (function(){
   function E(s){return (typeof esc==='function'?esc(s):String(s==null?'':s).replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m])));}
   function fState(){APP.docsReport=APP.docsReport||{loaded:false,rows:[],stats:{},filters:null};return APP.docsReport;}
@@ -51,7 +51,7 @@
       <div id="docReportContent"><div class="loading"><div class="spin"></div><span>Đang tải thống kê tài liệu họp...</span></div></div>
     </div>`;
     try{await loadReport(force || !fState().loaded);renderContent();}
-    catch(e){const c=$('docReportContent');if(c)c.innerHTML=`<div class="doc-report-note err">${E((e&&e.message)||e)}<br>Cần cập nhật Code.gs và deploy Web App phiên bản mới để dùng menu này.</div>`;}
+    catch(e){const c=$('docReportContent');if(c)c.innerHTML=`<div class="doc-report-note err">${E((e&&e.message)||e)}<br>Cần cập nhật Code.gs bản v141 và deploy Web App phiên bản mới. Nếu vẫn timeout, giảm Giới hạn xuống 100–200 rồi lọc theo khoảng ngày ngắn hơn.</div>`;}
   };
   function renderContent(){
     const c=$('docReportContent');if(!c)return;

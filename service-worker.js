@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lichkv8-v140-meeting-docs-report-office-invite-excluded';
+const CACHE_NAME = 'lichkv8-v141-docreport-fast';
 const STATIC_ASSETS = [
   './',
   './index.html',
