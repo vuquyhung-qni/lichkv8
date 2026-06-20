@@ -2302,7 +2302,7 @@
 
 </style>
   <link rel="stylesheet" href="modules/hkg.css?v=99">
-  <link rel="stylesheet" href="modules/duty.css?v=133">
+  <link rel="stylesheet" href="modules/duty.css?v=143">
   <link rel="stylesheet" href="modules/docreport.css?v=142">
 </head>
 <body>
@@ -2734,7 +2734,7 @@ function saveRememberedLogin(username,password){
     }
   }catch(e){}
 }
-const APP_VERSION = 'HTML_v139_meeting_docs_report';
+const APP_VERSION = 'HTML_v143_duty_nguyen_minh_tuan_permission_on_v142';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const QUIZ_MODULE_URL = 'https://vuquyhung-qni.github.io/tracnghiem/';
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
@@ -6010,14 +6010,14 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
 
 <script src="modules/docreport.js?v=142"></script>
   <script src="modules/hkg.js?v=99"></script>
-<script src="modules/duty.js?v=133"></script>
+<script src="modules/duty.js?v=143"></script>
 
 <script>
 (function(){
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', async function(){
       try{
-        const resetKey = 'lct_sw_reset_v139';
+        const resetKey = 'lct_sw_reset_v143';
         if(localStorage.getItem(resetKey) !== '1'){
           const regs = await navigator.serviceWorker.getRegistrations();
           for(const r of regs){ try{ await r.unregister(); }catch(_){} }

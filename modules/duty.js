@@ -1,10 +1,10 @@
 /* ==========================================================
- * modules/duty.js — V129 Module Lịch trực ban HQKV8
+ * modules/duty.js — V143 Module Lịch trực ban HQKV8
  * Bỏ Trụ sở Đội Kiểm soát Hải quan và Văn phòng vì dùng chung Trụ sở Chi cục HQKV VIII.
  * Tinh gọn đầu trang, đồng bộ font; bổ sung sửa trực tiếp trên Bảng tổng hợp theo phân quyền đơn vị.
  * ========================================================== */
 (function(){
-  const DUTY_VERSION = 'duty_v129_inline_edit_by_unit';
+  const DUTY_VERSION = 'duty_v143_nguyen_minh_tuan_global_editor';
   const DEFAULT_UNITS = [
     {code:'CHICUC', name:'Trụ sở Chi cục HQKV VIII', order:1},
     {code:'HONGAI', name:'Trụ sở HQCK cảng Hòn Gai', order:2},
@@ -256,8 +256,28 @@
     }catch(_){ }
     return '';
   }
+
+  function isNguyenMinhTuan1986VanPhongDutyAdmin(){
+    try{
+      const u=(window.APP&&APP.user)||{};
+      const raw=[
+        u.username,u.user,u.account,u.email,u.fullname,u.name,u.hoTen,u.displayName,
+        u.donVi,u.department,u.unit,u.scope,u.chucVu,u.position,u.title,u.role,
+        u.ngaySinh,u.birthDate,u.namSinh,u.birthYear,u.yearOfBirth
+      ].filter(Boolean).join(' ');
+      const s=norm(raw);
+      const isTuan =
+        (/nguyen minh tuan/.test(s) && (/1986/.test(s) || /van phong/.test(s))) ||
+        /nmtuan|nm tuan|tuan1986|nguyenminhtuan/.test(s);
+      const isVanPhong = /van phong|chi cuc|hqkv|khu vuc viii/.test(s);
+      const isNotOtherTuan = !/truong anh tuan|anh tuan|quang tuan/.test(s);
+      return !!(isTuan && isVanPhong && isNotOtherTuan);
+    }catch(_){ return false; }
+  }
+
   function isDutyGlobalEditor(){
     try{
+      if(isNguyenMinhTuan1986VanPhongDutyAdmin()) return true;
       const u=(window.APP&&APP.user)||{};
       const role=norm(u.role||'');
       const text=norm([u.role,u.chucVu,u.position,u.title,u.donVi,u.department,u.unit,u.scope,u.username,u.fullname].filter(Boolean).join(' '));
