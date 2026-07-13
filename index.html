@@ -6023,7 +6023,7 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', async function(){
       try{
-        const resetKey = 'lct_sw_reset_v145';
+        const resetKey = 'lct_sw_reset_v146';
         if(localStorage.getItem(resetKey) !== '1'){
           const regs = await navigator.serviceWorker.getRegistrations();
           for(const r of regs){ try{ await r.unregister(); }catch(_){} }
@@ -6034,7 +6034,7 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
           localStorage.setItem(resetKey,'1');
         }
       }catch(e){ console.warn('Không reset được service worker/cache cũ:', e); }
-      navigator.serviceWorker.register('./service-worker.js?v=141').then(function(reg){
+      navigator.serviceWorker.register('./service-worker.js?v=146').then(function(reg){
         try { reg.update(); } catch(e) {}
       }).catch(function(err){
         console.warn('Không đăng ký được service worker PWA:', err);

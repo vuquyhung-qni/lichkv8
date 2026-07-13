@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lichkv8-v143-duty-nguyen-minh-tuan-on-v142';
+const CACHE_NAME = 'lichkv8-v146-summary-draft-cache-fix';
 const STATIC_ASSETS = [
   './',
   './index.html',
