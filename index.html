@@ -3264,7 +3264,12 @@ async function refreshAll(){
   const res=await api('getBootstrap');
   APP.setup=res.setup||{};APP.depts=res.depts||[];
   APP.usersLite=res.usersLite||[];APP.dashboard=res.dashboard;
-  APP.meetings=res.meetings||[];APP.loadedAll=false;
+  APP.meetings=res.meetings||[];
+APP.loadedAll=false;
+
+// Xóa bộ dữ liệu toàn bộ lịch đã lưu trước đó
+// để các màn hình khác không sử dụng dữ liệu cũ
+APP.allMeetings=null;
   const _today=new Date();_today.setHours(0,0,0,0);
   const _futureMeetings=APP.meetings.filter(m=>{const e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau);return e&&e>=_today;});
   $('navMeetCount').textContent=_futureMeetings.length;
@@ -3527,7 +3532,7 @@ function dateInputValue_(d){if(!(d instanceof Date)||isNaN(d))return'';return d.
 function endDateByRange_(range){const today=new Date();today.setHours(0,0,0,0);const d=new Date(today);if(range==='TODAY')return d;if(range==='TOMORROW'){d.setDate(d.getDate()+1);return d;}if(range==='3DAYS'){d.setDate(d.getDate()+2);return d;}if(range==='MONTH')return new Date(today.getFullYear(),today.getMonth()+1,0);const day=today.getDay()||7;d.setDate(today.getDate()+(7-day));return d;}
 function summaryEndDate_(){const f=APP.summaryFilters||{};const raw=f.endDate||dateInputValue_(endDateByRange_(f.range||'3DAYS'));const d=parseIsoDate(raw);if(d){d.setHours(23,59,59,999);return d;}const e=endDateByRange_(f.range||'3DAYS');e.setHours(23,59,59,999);return e;}
 function isPublishedForSummary_(m){const st=String(m.trangThai||m.status||'').toUpperCase();return !st||st==='PUBLISHED'||st==='COMPLETED'||st==='ACTIVE'||st==='DA_DUYET'||st==='ĐÃ DUYỆT';}
-function summaryMeetings_(){const f=APP.summaryFilters||{};const today=new Date();today.setHours(0,0,0,0);const end=summaryEndDate_();const src=(APP.allMeetings&&APP.allMeetings.length)?APP.allMeetings:APP.meetings;return(src||[]).filter(m=>{const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;if(!s||!e)return false;if(e<today||s>end)return false;if(!f.includeTruc&&(isTrucBanMeeting(m)||isGiaoBanMeeting(m)))return false;if(f.onlyPublished!==false&&!isPublishedForSummary_(m))return false;if(String(m.trangThai||'').toUpperCase()==='CANCELLED')return false;return true;}).sort((a,b)=>dateKey_(a.ngayBatDau)-dateKey_(b.ngayBatDau)||String(a.gioBatDau||'').localeCompare(String(b.gioBatDau||''))||String(a.meetingId||'').localeCompare(String(b.meetingId||'')));}
+function summaryMeetings_(){const f=APP.summaryFilters||{};const today=new Date();today.setHours(0,0,0,0);const end=summaryEndDate_();const src=APP.meetings||[];return(src||[]).filter(m=>{const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;if(!s||!e)return false;if(e<today||s>end)return false;if(!f.includeTruc&&(isTrucBanMeeting(m)||isGiaoBanMeeting(m)))return false;if(f.onlyPublished!==false&&!isPublishedForSummary_(m))return false;if(String(m.trangThai||'').toUpperCase()==='CANCELLED')return false;return true;}).sort((a,b)=>dateKey_(a.ngayBatDau)-dateKey_(b.ngayBatDau)||String(a.gioBatDau||'').localeCompare(String(b.gioBatDau||''))||String(a.meetingId||'').localeCompare(String(b.meetingId||'')));}
 function summaryLeaderIndex_(m){for(let i=0;i<SUMMARY_LEADERS.length;i++)if(matchLeaderExact(m,SUMMARY_LEADERS[i].name))return i;return 99;}
 function summaryLeaderKey_(m){const idx=summaryLeaderIndex_(m);return idx<99?SUMMARY_LEADERS[idx].key:'other';}
 function summaryLeaderLabelByKey_(key){const l=SUMMARY_LEADERS.find(x=>x.key===key);return l?l.label:'Lịch chung / thành phần khác';}
@@ -6017,7 +6022,7 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', async function(){
       try{
-        const resetKey = 'lct_sw_reset_v143';
+        const resetKey = 'lct_sw_reset_v144';
         if(localStorage.getItem(resetKey) !== '1'){
           const regs = await navigator.serviceWorker.getRegistrations();
           for(const r of regs){ try{ await r.unregister(); }catch(_){} }
@@ -6028,7 +6033,7 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
           localStorage.setItem(resetKey,'1');
         }
       }catch(e){ console.warn('Không reset được service worker/cache cũ:', e); }
-      navigator.serviceWorker.register('./service-worker.js?v=139').then(function(reg){
+      navigator.serviceWorker.register('./service-worker.js?v=140').then(function(reg){
         try { reg.update(); } catch(e) {}
       }).catch(function(err){
         console.warn('Không đăng ký được service worker PWA:', err);
