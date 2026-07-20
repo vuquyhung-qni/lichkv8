@@ -1,12 +1,10 @@
-const CACHE_NAME = 'lichkv8-v146-summary-draft-cache-fix';
+const CACHE_NAME = 'lichkv8-v148-perf-security-patch';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
-  './modules/hkg.js',
-  './modules/hkg.css',
   './modules/duty.js',
   './modules/duty.css',
   './modules/docreport.js',

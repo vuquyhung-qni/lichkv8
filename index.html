@@ -2231,65 +2231,8 @@
       .module-head { padding:10px 12px; justify-content:flex-start; gap:8px; }
       .module-head h3 { font-size:.88rem; text-align:left; flex:1; min-width:0; line-height:1.25; }
       .module-head .btn.sm { padding:7px 9px; font-size:.76rem; }
-      .module-head .quiz-back-btn, .module-head .quiz-newtab-btn { display:none !important; }
       .module-frame-wrap, .module-frame { min-height:calc(100svh - 126px); }
       .module-note { display:none; }
-    }
-
-    /* ===== V101: Trắc nghiệm nhúng trong Portal - giao diện gọn, không nút quay lại/tab mới ===== */
-    .quiz-embed-shell{
-      min-height:calc(100svh - 116px);
-      background:#f7f9fc;
-      border:1px solid var(--border2);
-      border-radius:14px;
-      box-shadow:var(--shadow-sm);
-      overflow:hidden;
-    }
-    .quiz-embed-head{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      padding:12px 16px;
-      background:linear-gradient(90deg,#f7fbff,#fff);
-      border-bottom:1px solid var(--border2);
-    }
-    .quiz-embed-head h3{
-      margin:0;
-      flex:1;
-      min-width:0;
-      color:var(--navy);
-      font-size:1rem;
-      font-weight:900;
-      text-transform:uppercase;
-      letter-spacing:.45px;
-      text-align:left;
-      line-height:1.25;
-    }
-    .quiz-embed-frame-wrap{
-      width:100%;
-      min-height:calc(100svh - 176px);
-      background:#f7f9fc;
-      overflow:hidden;
-    }
-    .quiz-embed-frame{
-      width:100%;
-      height:calc(100svh - 176px);
-      min-height:760px;
-      border:0;
-      display:block;
-      background:#f7f9fc;
-    }
-    @media(max-width:768px){
-      .quiz-embed-shell{
-        min-height:calc(100svh - 70px);
-        border-left:0;
-        border-right:0;
-        border-radius:0;
-      }
-      .quiz-embed-head{padding:10px 12px;}
-      .quiz-embed-head h3{font-size:.92rem;}
-      .quiz-embed-frame-wrap{min-height:calc(100svh - 118px);}
-      .quiz-embed-frame{height:calc(100svh - 118px); min-height:720px;}
     }
 
     /* V131: nhớ mật khẩu đăng nhập */
@@ -2301,7 +2244,6 @@
     .panel-h.panel-h-no-title span{flex:1}
 
 </style>
-  <link rel="stylesheet" href="modules/hkg.css?v=99">
   <link rel="stylesheet" href="modules/duty.css?v=143">
   <link rel="stylesheet" href="modules/docreport.css?v=142">
 </head>
@@ -2329,7 +2271,7 @@
         <label>Mật khẩu</label>
         <input id="lgPass" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu">
       </div>
-      <label class="login-remember"><input id="lgRemember" type="checkbox"> <span>Nhớ mật khẩu đăng nhập lần sau</span></label>
+      <label class="login-remember"><input id="lgRemember" type="checkbox"> <span>Nhớ tên đăng nhập lần sau</span></label>
       <button id="btnLogin" class="btn primary full" onclick="login()">Đăng nhập</button>
       <div id="loginMsg"></div>
     </div>
@@ -2382,14 +2324,6 @@
         <span class="nav-label">Notebook</span>
         <span id="navNotebookUnread" class="badge hide">0</span>
       </button>
-      <button class="nav-btn" data-screen="quiz" id="navQuiz" onclick="go('quiz')">
-        <span class="nav-icon">🧠</span>
-        <span class="nav-label">Trắc nghiệm kiến thức</span>
-      </button>
-      <button class="nav-btn" data-screen="hkg" id="navHkg" onclick="go('hkg')">
-        <span class="nav-icon">📋</span>
-        <span class="nav-label">Họp không giấy</span>
-      </button>
       <button class="nav-btn" data-screen="users" id="navUsers" onclick="go('users')">
         <span class="nav-icon">👥</span>
         <span class="nav-label">Quản trị người dùng</span>
@@ -2436,8 +2370,6 @@
       <section id="screen-manage" class="hide"></section>
       <section id="screen-library" class="hide"></section>
       <section id="screen-notebook" class="hide"></section>
-      <section id="screen-quiz" class="hide"></section>
-      <section id="screen-hkg" class="hide"></section>
       <section id="screen-users" class="hide"></section>
       <section id="screen-settings" class="hide"></section>
     </div>
@@ -2499,9 +2431,7 @@ const APP = {
   manageFilters:{kw:'', leader:'all', scope:'CURRENT', kind:'ALL', status:'all'},
   loadedAll:false, pendingFormFiles:[],
   libraryStack:[], libraryCurrentUrl:'', detailFiles:[], noteUploadQueue:[], notebook:{kw:'', notes:[], loaded:false},
-  quizLoaded:false,
   docsReport:{loaded:false,rows:[],stats:{},filters:null},
-  hkg:{view:'list', loaded:false, dashboard:null, meetings:[], detail:null, meetingId:'', tab:'info', groups:[], groupDetail:null, voteTimer:null},
   duty:{inited:false, loaded:false, tab:'summary'}
 };
 
@@ -2718,25 +2648,26 @@ function loadRememberedLogin(){
     const raw=localStorage.getItem('lct_remember_login');
     if(!raw)return;
     const saved=JSON.parse(raw);
-    const u=$('lgUser'), p=$('lgPass'), r=$('lgRemember');
+    const u=$('lgUser'), r=$('lgRemember');
     if(u && saved.username) u.value=saved.username;
-    if(p && saved.password) p.value=saved.password;
     if(r) r.checked=true;
+    // Dữ liệu cũ (trước bản vá bảo mật) có thể còn lưu mật khẩu dạng thô trong localStorage.
+    // Tự động ghi đè lại chỉ với tên đăng nhập để dọn sạch mật khẩu cũ khỏi trình duyệt người dùng.
+    if(saved.password) saveRememberedLogin(saved.username);
   }catch(e){}
 }
-function saveRememberedLogin(username,password){
+function saveRememberedLogin(username){
   try{
     const r=$('lgRemember');
     if(r && r.checked){
-      localStorage.setItem('lct_remember_login', JSON.stringify({username:String(username||''), password:String(password||'')}));
+      localStorage.setItem('lct_remember_login', JSON.stringify({username:String(username||'')}));
     }else{
       localStorage.removeItem('lct_remember_login');
     }
   }catch(e){}
 }
-const APP_VERSION = 'HTML_v143_duty_nguyen_minh_tuan_permission_on_v142';
+const APP_VERSION = 'HTML_v144_perf_security_patch';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
-const QUIZ_MODULE_URL = 'https://vuquyhung-qni.github.io/tracnghiem/';
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
 function driveFolderEmbedUrl(folderId=DRIVE_LIBRARY_FOLDER_ID){
@@ -3123,9 +3054,8 @@ window.addEventListener('load',()=>{
   if(APP.token&&u){
     APP.user=JSON.parse(u);
     APP.currentScreen='calendar';
-    writePortalBridge();
     showApp();
-    refreshAll().then(()=>handleInitialRoute()).catch(()=>showLogin());
+    refreshAll().catch(()=>showLogin());
   }
   $('lgPass').addEventListener('keydown',e=>{if(e.key==='Enter')login()})
 });
@@ -3155,15 +3085,12 @@ async function login(){
     APP.token=res.token; APP.user=res.user;
     sessionStorage.setItem('lct_token',APP.token);
     sessionStorage.setItem('lct_user',JSON.stringify(APP.user));
-    saveRememberedLogin(username,password);
+    saveRememberedLogin(username);
     APP.currentScreen='calendar';
-    APP._handledInitialRoute=false;
-    writePortalBridge();
     msg(loginMsg,'Đăng nhập thành công, đang tải dữ liệu...','ok');
     showApp();
     try{
       await refreshAll();
-      await handleInitialRoute();
     }catch(loadErr){
       console.error('LOAD_AFTER_LOGIN_ERROR', loadErr);
       if(typeof msgToast==='function') msgToast('Đã đăng nhập nhưng tải dữ liệu ban đầu lỗi: ' + ((loadErr&&loadErr.message)||loadErr));
@@ -3253,7 +3180,7 @@ async function go(screen){
   document.querySelectorAll('.bn-item').forEach(b=>b.classList.toggle('active',b.dataset.screen===screen));
   document.querySelectorAll('[id^="screen-"]').forEach(s=>s.classList.add('hide'));
   $('screen-'+screen).classList.remove('hide');
-  const titles={dashboard:'TỔNG QUAN',calendar:'LỊCH CÔNG TÁC',summary:'TÓM TẮT LỊCH',docsReport:'THỐNG KÊ TÀI LIỆU HỌP',duty:'LỊCH TRỰC BAN',manage:'QUẢN LÝ LỊCH',library:'THƯ VIỆN VĂN BẢN',notebook:'NOTEBOOK',quiz:'TRẮC NGHIỆM KIẾN THỨC',hkg:'HỌP KHÔNG GIẤY',users:'QUẢN TRỊ NGƯỜI DÙNG',settings:'QUẢN TRỊ DANH MỤC'};
+  const titles={dashboard:'TỔNG QUAN',calendar:'LỊCH CÔNG TÁC',summary:'TÓM TẮT LỊCH',docsReport:'THỐNG KÊ TÀI LIỆU HỌP',duty:'LỊCH TRỰC BAN',manage:'QUẢN LÝ LỊCH',library:'THƯ VIỆN VĂN BẢN',notebook:'NOTEBOOK',users:'QUẢN TRỊ NGƯỜI DÙNG',settings:'QUẢN TRỊ DANH MỤC'};
   $('pageTitle').textContent=titles[screen]||'';
   if(window.innerWidth<768)closeSide();
   await render();
@@ -3286,125 +3213,10 @@ async function refreshNotebookUnreadBadge(){
 }
 
 function setLoading(){
-  ['screen-dashboard','screen-calendar','screen-summary','screen-docsReport','screen-duty','screen-manage','screen-library','screen-notebook','screen-quiz','screen-hkg','screen-users','screen-settings']
+  ['screen-dashboard','screen-calendar','screen-summary','screen-docsReport','screen-duty','screen-manage','screen-library','screen-notebook','screen-users','screen-settings']
     .forEach(id=>$(id).innerHTML='<div class="loading"><div class="spin"></div><span>Đang tải...</span></div>');
 }
 
-function writePortalBridge(){
-  try{
-    if(!APP.user || !APP.token) return;
-    const bridge={
-      user: APP.user,
-      token: APP.token,
-      exp: Date.now()+2*60*60*1000,
-      source:'lichkv8'
-    };
-    localStorage.setItem('hqkv8_portal_bridge', JSON.stringify(bridge));
-  }catch(e){}
-}
-function getInitialRoute(){
-  try{
-    const p=new URLSearchParams(window.location.search||'');
-    const next=(p.get('next')||'').toLowerCase();
-    if(next==='quiz'||next==='tracnghiem') return 'quiz';
-    const h=(window.location.hash||'').replace(/^#/,'').toLowerCase();
-    if(h==='quiz'||h==='tracnghiem') return 'quiz';
-  }catch(e){}
-  return '';
-}
-async function handleInitialRoute(){
-  if(APP._handledInitialRoute) return;
-  const route=getInitialRoute();
-  if(!route) return;
-  APP._handledInitialRoute=true;
-  if(route==='quiz'){
-    writePortalBridge();
-    await go('quiz');
-    try{
-      const url=new URL(window.location.href);
-      url.searchParams.delete('next');
-      history.replaceState(null,'',url.pathname+url.search+url.hash);
-    }catch(e){}
-  }
-}
-function makeQuizUrl(){
-  writePortalBridge();
-  const u=new URL(QUIZ_MODULE_URL);
-  u.searchParams.set('embed','1');
-  u.searchParams.set('from','lichkv8');
-  // V134: ép module Trắc nghiệm mở thẳng màn hình chọn lĩnh vực/bộ đề/số câu.
-  // Một số trình duyệt/service-worker giữ phiên cũ ở màn Tổng quan, nên truyền đủ view/screen/tab và hash.
-  u.searchParams.set('view','quiz-setup');
-  u.searchParams.set('screen','quiz-setup');
-  u.searchParams.set('tab','quiz-setup');
-  u.searchParams.set('compact','1');
-  u.searchParams.set('portal','1');
-  u.searchParams.set('_v','138');
-  u.searchParams.set('forceSetup','1');
-  u.searchParams.set('useDefaults','1');
-  u.hash='quiz-setup';
-  return u.toString();
-}
-function forceQuizSetupScreen(frame){
-  const f=frame||$('quizFrame');
-  if(!f) return;
-  let tries=0;
-  let reloaded=false;
-  const run=()=>{
-    tries++;
-    try{
-      const w=f.contentWindow;
-      if(w && w.App && typeof w.App.goto==='function'){
-        w.App.goto('quiz-setup');
-        try{
-          if(w.document){
-            const setup=w.document.getElementById('screen-quiz-setup');
-            if(setup && setup.classList.contains('active')) return true;
-          }
-        }catch(_e){}
-        return true;
-      }
-    }catch(e){}
-    try{
-      if(f.contentWindow){
-        f.contentWindow.postMessage({type:'HQKV8_QUIZ_GOTO',screen:'quiz-setup',view:'quiz-setup',forceDefaults:true}, '*');
-      }
-    }catch(e){}
-    if(!reloaded && tries===10){
-      reloaded=true;
-      try{ f.src=makeQuizUrl()+'&forceSetup=1&_retry='+Date.now(); }catch(e){}
-    }
-    return false;
-  };
-  if(run()) return;
-  const timer=setInterval(()=>{ if(run() || tries>=60) clearInterval(timer); }, 300);
-}
-function reloadQuizModule(){
-  const f=$('quizFrame');
-  if(f){ f.src=makeQuizUrl()+'&_r='+Date.now(); }
-}
-function openQuizNewTab(){
-  writePortalBridge();
-  window.open(makeQuizUrl(), '_blank');
-}
-function renderQuizPortal(){
-  const box=$('screen-quiz'); if(!box) return;
-  // V135: luôn tạo lại iframe khi bấm Trắc nghiệm để tránh giữ màn Tổng quan cũ trong phiên SPA/service worker.
-  APP.quizLoaded=false;
-  box.innerHTML=`<div class="quiz-embed-shell">
-    <div class="quiz-embed-head">
-      <h3>🧠 TRẮC NGHIỆM KIẾN THỨC</h3>
-      <button type="button" class="btn ghost sm quiz-reload-btn" onclick="reloadQuizModule()">↻ Tải lại</button>
-    </div>
-    <div class="quiz-embed-frame-wrap">
-      <iframe id="quizFrame" class="quiz-embed-frame" src="${makeQuizUrl()}" title="Trắc nghiệm kiến thức" loading="eager" onload="forceQuizSetupScreen(this)"></iframe>
-    </div>
-  </div>`;
-  APP.quizLoaded=true;
-  setTimeout(()=>forceQuizSetupScreen($('quizFrame')), 300);
-  setTimeout(()=>forceQuizSetupScreen($('quizFrame')), 1200);
-  setTimeout(()=>forceQuizSetupScreen($('quizFrame')), 2600);
-}
 
 
 
@@ -3431,11 +3243,6 @@ async function renderScreen_(screen){
       case 'manage': renderManage(); break;
       case 'library': renderLibrary(); break;
       case 'notebook': await renderNotebook(); break;
-      case 'quiz': renderQuizPortal(); break;
-      case 'hkg':
-        if(typeof renderHkgModule==='function') await renderHkgModule();
-        else { const b=$('screen-hkg'); if(b) b.innerHTML='<div class="msg err">Chưa tải được module Họp không giấy. Vui lòng kiểm tra file modules/hkg.js.</div>'; }
-        break;
       case 'users': await renderUsers(); break;
       case 'settings': renderSettings(); break;
       default: renderCalendar(); break;
@@ -4721,7 +4528,6 @@ function meetingCards(arr,compact){
       </div>
       <div class="m-actions">
         <button type="button" class="btn sm js-open-detail" data-action="open-detail" data-meeting-id="${esc(m.meetingId)}">👁 Xem chi tiết</button>
-        <button type="button" class="btn sm" data-action="open-hkg" data-meeting-id="${esc(m.meetingId)}">📋 Hồ sơ họp</button>
         ${canUseMeetingNote(m)?`<button type="button" class="btn sm note-btn" data-action="open-note" data-meeting-id="${esc(m.meetingId)}" data-meeting-title="${esc(m.noiDung)}">📒 Note</button>`:''}
         ${prepRatingStarsHtml(m,'card')}
         ${hasRole(ROLE_EDIT)?`<button type="button" class="btn primary sm js-edit-meeting" data-action="edit-meeting" data-meeting-id="${esc(m.meetingId)}">✏️ Sửa</button>`:''}
@@ -5992,7 +5798,7 @@ function handleDelegatedMeetingAction_(ev){
   const btn = target.closest('[data-action]');
   if(!btn) return;
   const action = btn.getAttribute('data-action');
-  if(action !== 'open-detail' && action !== 'edit-meeting' && action !== 'open-note' && action !== 'open-hkg') return;
+  if(action !== 'open-detail' && action !== 'edit-meeting' && action !== 'open-note') return;
 
   // Tránh mobile chạy 2 lần: touchend xong trình duyệt phát sinh click.
   const now = Date.now();
@@ -6007,7 +5813,6 @@ function handleDelegatedMeetingAction_(ev){
   if(action === 'open-detail') openDetail(id);
   if(action === 'edit-meeting') openMeetingForm(id);
   if(action === 'open-note') openMeetingNote(id, btn.getAttribute('data-meeting-title')||'');
-  if(action === 'open-hkg'){ if(typeof openHkgDetail==='function') openHkgDetail(id); else alert('Chưa tải được module Họp không giấy. Vui lòng kiểm tra file modules/hkg.js.'); }
 }
 document.addEventListener('click', handleDelegatedMeetingAction_, true);
 document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:true, passive:false});
@@ -6015,7 +5820,6 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
 </script>
 
 <script src="modules/docreport.js?v=142"></script>
-  <script src="modules/hkg.js?v=99"></script>
 <script src="modules/duty.js?v=143"></script>
 
 <script>
@@ -6023,7 +5827,7 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', async function(){
       try{
-        const resetKey = 'lct_sw_reset_v146';
+        const resetKey = 'lct_sw_reset_v148';
         if(localStorage.getItem(resetKey) !== '1'){
           const regs = await navigator.serviceWorker.getRegistrations();
           for(const r of regs){ try{ await r.unregister(); }catch(_){} }
@@ -6034,7 +5838,7 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
           localStorage.setItem(resetKey,'1');
         }
       }catch(e){ console.warn('Không reset được service worker/cache cũ:', e); }
-      navigator.serviceWorker.register('./service-worker.js?v=146').then(function(reg){
+      navigator.serviceWorker.register('./service-worker.js?v=148').then(function(reg){
         try { reg.update(); } catch(e) {}
       }).catch(function(err){
         console.warn('Không đăng ký được service worker PWA:', err);
