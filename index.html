@@ -2260,6 +2260,7 @@
     .lc-date-sub{font-size:.79rem;font-weight:700;color:var(--text2);margin-top:1px}
     .lc-session-main{font-weight:700;color:var(--navy);font-size:.86rem}
     .lc-session-sub{font-size:.75rem;font-weight:700;color:var(--text2);margin-top:1px}
+    .lc-cell-merged{vertical-align:middle!important;text-align:left}
     .lc-table td.leader-bg-moc{background:#f3faff}
     .lc-table td.leader-bg-tho{background:#fff8eb}
     .lc-table td.leader-bg-thuy{background:#eff7ef}
@@ -2704,7 +2705,7 @@ function saveRememberedLogin(username){
     }
   }catch(e){}
 }
-const APP_VERSION = 'HTML_v150_leadercard_frontend_merge';
+const APP_VERSION = 'HTML_v151_leadercard_merged_align';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
@@ -3556,8 +3557,9 @@ function leaderCardHtml_(st){
         const cell=plans[ld.key][slotIdx];
         if(cell.skip) return '';
         const bg=LEADER_CARD_BG_[ld.key]||'';
+        const merged=cell.span>1?' lc-cell-merged':'';
         const rs=cell.span>1?` rowspan="${cell.span}"`:'';
-        return `<td class="${bg}"${rs}>${leaderCardCellHtml_(cell.list)}</td>`;
+        return `<td class="${bg}${merged}"${rs}>${leaderCardCellHtml_(cell.list)}</td>`;
       }).join('');
       return `<tr class="${altClass.trim()}">${dateCell}${sessionCell}${leaderCells}</tr>`;
     }).join('');
@@ -6046,7 +6048,7 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', async function(){
       try{
-        const resetKey = 'lct_sw_reset_v154';
+        const resetKey = 'lct_sw_reset_v155';
         if(localStorage.getItem(resetKey) !== '1'){
           const regs = await navigator.serviceWorker.getRegistrations();
           for(const r of regs){ try{ await r.unregister(); }catch(_){} }
@@ -6057,7 +6059,7 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
           localStorage.setItem(resetKey,'1');
         }
       }catch(e){ console.warn('Không reset được service worker/cache cũ:', e); }
-      navigator.serviceWorker.register('./service-worker.js?v=154').then(function(reg){
+      navigator.serviceWorker.register('./service-worker.js?v=155').then(function(reg){
         try { reg.update(); } catch(e) {}
       }).catch(function(err){
         console.warn('Không đăng ký được service worker PWA:', err);
