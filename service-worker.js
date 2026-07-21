@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lichkv8-v151-calendar-current-scope-fix';
+const CACHE_NAME = 'lichkv8-v152-leadercard-merge-colors';
 const STATIC_ASSETS = [
   './',
   './index.html',
