@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lichkv8-v152-leadercard-merge-colors';
+const CACHE_NAME = 'lichkv8-v153-leadercard-flat-colors';
 const STATIC_ASSETS = [
   './',
   './index.html',

@@ -2251,30 +2251,30 @@
     .lc-card-head .lc-org{font-size:.72rem;font-weight:700;letter-spacing:.5px;color:#7a1f1f;text-transform:uppercase}
     .lc-card-head .lc-title{font-size:1.05rem;font-weight:800;color:var(--navy);margin-top:2px}
     .lc-card-head .lc-sub{font-size:.78rem;color:var(--muted);margin-top:2px}
-    .lc-table{width:100%;border-collapse:collapse;font-size:.79rem;border:1px solid #a8b4c0}
-    .lc-table th{background:var(--navy);color:#fff;font-size:.74rem;font-weight:700;text-align:center;padding:8px 6px;border:1px solid #a8b4c0}
+    .lc-table{width:100%;border-collapse:collapse;font-size:.87rem;border:1px solid #a8b4c0}
+    .lc-table th{background:var(--navy);color:#fff;font-size:.81rem;font-weight:700;text-align:center;padding:8px 6px;border:1px solid #a8b4c0}
     .lc-table td{padding:6px 8px;border:1px solid #a8b4c0;vertical-align:top}
     .lc-table tr.lc-day-alt td.lc-cell-date,.lc-table tr.lc-day-alt td.lc-cell-session{background:#f4f6f8}
     .lc-cell-date,.lc-cell-session{text-align:center;vertical-align:middle}
-    .lc-date-main{font-weight:800;color:var(--navy);font-size:.83rem}
-    .lc-date-sub{font-size:.72rem;color:var(--muted);margin-top:1px}
-    .lc-session-main{font-weight:700;color:var(--navy);font-size:.78rem}
-    .lc-session-sub{font-size:.68rem;color:#94a3b8;margin-top:1px}
-    .lc-table td.leader-bg-moc{background:linear-gradient(90deg,#ffffff 0%,#f7fcff 54%,#e6f5ff 100%)}
-    .lc-table td.leader-bg-tho{background:linear-gradient(90deg,#ffffff 0%,#fffdf5 54%,#fff1d6 100%)}
-    .lc-table td.leader-bg-thuy{background:linear-gradient(90deg,#ffffff 0%,#f5fbff 54%,#e7f4ff 100%)}
-    .lc-table td.leader-bg-kim{background:linear-gradient(90deg,#ffffff 0%,#fbfcfe 54%,#eef3f8 100%)}
-    .lc-empty{color:#b8c0c9;font-size:.75rem;text-align:center;display:block}
+    .lc-date-main{font-weight:800;color:var(--navy);font-size:.91rem}
+    .lc-date-sub{font-size:.79rem;font-weight:700;color:var(--text2);margin-top:1px}
+    .lc-session-main{font-weight:700;color:var(--navy);font-size:.86rem}
+    .lc-session-sub{font-size:.75rem;font-weight:700;color:var(--text2);margin-top:1px}
+    .lc-table td.leader-bg-moc{background:#e6f5ff}
+    .lc-table td.leader-bg-tho{background:#fff1d6}
+    .lc-table td.leader-bg-thuy{background:#e7f4ff}
+    .lc-table td.leader-bg-kim{background:#eef3f8}
+    .lc-empty{color:#b8c0c9;font-size:.83rem;text-align:center;display:block}
     .lc-item{cursor:pointer;border-radius:6px;padding:2px 3px;margin:-2px -3px 4px}
     .lc-item:last-child{margin-bottom:0}
     .lc-item:hover{background:rgba(15,76,129,.08)}
-    .lc-item-title{font-weight:800;color:var(--navy);font-size:.82rem;line-height:1.35}
-    .lc-item-place{color:var(--muted);font-size:.72rem;margin-top:2px}
-    .lc-item-badge{display:inline-block;margin-top:4px;background:#fff;color:#475569;font-size:.66rem;font-weight:700;padding:1px 6px;border:1px solid #c9d2db;border-radius:3px}
+    .lc-item-title{font-weight:800;color:var(--navy);font-size:.90rem;line-height:1.35}
+    .lc-item-place{color:var(--muted);font-size:.79rem;margin-top:2px}
+    .lc-item-badge{display:inline-block;margin-top:4px;background:#fff;color:#475569;font-size:.73rem;font-weight:700;padding:1px 6px;border:1px solid #c9d2db;border-radius:3px}
     .lc-legend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:10px;font-size:.7rem;color:var(--muted)}
     @media(max-width:768px){
-      .lc-table{font-size:.72rem}
-      .lc-item-title{font-size:.72rem}
+      .lc-table{font-size:.79rem}
+      .lc-item-title{font-size:.79rem}
     }
 </style>
   <link rel="stylesheet" href="modules/duty.css?v=143">
@@ -2704,7 +2704,7 @@ function saveRememberedLogin(username){
     }
   }catch(e){}
 }
-const APP_VERSION = 'HTML_v148_leadercard_merge_colors';
+const APP_VERSION = 'HTML_v149_leadercard_flat_colors';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
@@ -6023,7 +6023,7 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', async function(){
       try{
-        const resetKey = 'lct_sw_reset_v152';
+        const resetKey = 'lct_sw_reset_v153';
         if(localStorage.getItem(resetKey) !== '1'){
           const regs = await navigator.serviceWorker.getRegistrations();
           for(const r of regs){ try{ await r.unregister(); }catch(_){} }
@@ -6034,7 +6034,7 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
           localStorage.setItem(resetKey,'1');
         }
       }catch(e){ console.warn('Không reset được service worker/cache cũ:', e); }
-      navigator.serviceWorker.register('./service-worker.js?v=152').then(function(reg){
+      navigator.serviceWorker.register('./service-worker.js?v=153').then(function(reg){
         try { reg.update(); } catch(e) {}
       }).catch(function(err){
         console.warn('Không đăng ký được service worker PWA:', err);
