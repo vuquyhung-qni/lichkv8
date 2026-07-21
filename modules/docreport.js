@@ -36,7 +36,7 @@
     const box=$('screen-docsReport'); if(!box)return;
     const f=filters();
     box.innerHTML=`<div class="doc-report-shell">
-      <div class="doc-report-hero"><div><h2>📎 Thống kê tài liệu họp</h2><p>Báo cáo liệt kê các lịch họp, hội nghị, làm việc, công tác, kể cả lịch giao ban; tự động loại trừ lịch trực ban. Dòng màu đỏ là lịch đã giao đơn vị chuẩn bị nhưng chưa có tài liệu chuyên môn được tính; chỉ giấy mời/tài liệu mời thuần không được tính. Tài liệu chuyên môn do Văn phòng upload thay đơn vị vẫn được tính.</p></div><div class="doc-report-actions"><button class="btn sm" onclick="renderMeetingDocsReport(true)">↻ Tải lại</button><button class="btn primary sm" onclick="exportMeetingDocsReportExcel()">⬇ Xuất Excel</button></div></div>
+      <div class="doc-report-hero"><div><h2>📎 Thống kê tài liệu họp</h2><p>Cột "Đính kèm" cho biết đơn vị được giao chuẩn bị đã nộp tài liệu hay chưa. Bấm vào nội dung lịch để xem chi tiết tài liệu. Báo cáo gồm cả lịch giao ban, tự động loại trừ lịch trực ban.</p></div><div class="doc-report-actions"><button class="btn sm" onclick="renderMeetingDocsReport(true)">↻ Tải lại</button><button class="btn primary sm" onclick="exportMeetingDocsReportExcel()">⬇ Xuất Excel</button></div></div>
       <div class="doc-report-toolbar">
         <label>Từ ngày<input id="docRpt_dateFrom" type="date" value="${E(f.dateFrom||'')}"></label>
         <label>Đến ngày<input id="docRpt_dateTo" type="date" value="${E(f.dateTo||'')}"></label>
@@ -56,25 +56,17 @@
   function renderContent(){
     const c=$('docReportContent');if(!c)return;
     const st=fState(),rows=st.rows||[],s=st.stats||{};
-    c.innerHTML=`<div class="doc-stat-grid">${stat('Tổng lịch',s.total||0,'')}${stat('Có giao chuẩn bị',s.assigned||0,'warn')}${stat('Đã có TL được tính',s.withFiles||0,'ok')}${stat('Thiếu TL đơn vị',s.missing||0,'danger')}${stat('Giấy mời không tính',s.excludedFiles||0,'muted')}${stat('Tổng file gắn lịch',s.totalFiles||0,'')}</div>
-    <div class="doc-report-note">Quy tắc: <b>có Đơn vị chuẩn bị</b> + <b>0 tài liệu được tính</b> = <span style="color:#991b1b;font-weight:900">❌ Thiếu tài liệu</span>. <b>Giấy mời/tài liệu mời thuần không tính</b> là tài liệu đơn vị được giao chuẩn bị; tài liệu chuyên môn do Văn phòng upload thay đơn vị vẫn được tính. Lịch giao ban được tính; lịch trực ban không đưa vào báo cáo.</div>
+    c.innerHTML=`<div class="doc-stat-grid">${stat('Tổng lịch',s.total||0)}${stat('Có giao chuẩn bị',s.assigned||0)}${stat('Đã đính kèm',s.withFiles||0)}${stat('Chưa đính kèm',s.missing||0,'danger')}</div>
+    <div class="doc-report-note">Đơn vị được giao chuẩn bị mà chưa nộp tài liệu chuyên môn nào sẽ hiện "Chưa đính kèm". Giấy mời/thư mời thuần không tính là tài liệu đã nộp.</div>
     <div class="doc-table-wrap">${rows.length?table(rows):'<div class="doc-empty">Không có lịch phù hợp điều kiện lọc.</div>'}</div>`;
   }
   function stat(label,val,cls){return `<div class="doc-stat ${E(cls||'')}"><b>${E(val)}</b><span>${E(label)}</span></div>`;}
-  function table(rows){return `<table class="doc-report-table"><thead><tr><th>STT</th><th>Ngày/Giờ</th><th>Nội dung lịch</th><th>Lãnh đạo</th><th>Đơn vị chuẩn bị</th><th>Tình trạng</th><th>Tài liệu đã gắn lên lịch</th><th>Ghi chú</th></tr></thead><tbody>${rows.map(row).join('')}</tbody></table>`;}
+  function table(rows){return `<table class="doc-report-table"><thead><tr><th>STT</th><th>Ngày/Giờ</th><th>Nội dung lịch</th><th>Lãnh đạo</th><th>Đơn vị chuẩn bị</th><th>Đính kèm</th><th>Ghi chú</th></tr></thead><tbody>${rows.map(row).join('')}</tbody></table>`;}
   function row(r,i){
     const counted=Number(r.countedFileCount!=null?r.countedFileCount:(r.fileCount||0));
-    const total=Number(r.totalFileCount!=null?r.totalFileCount:(r.fileCount||0));
-    const excluded=Number(r.excludedFileCount||0);
-    const cls=r.missingDocs?'doc-missing':(counted>0?'doc-ok':'');
-    const status=r.missingDocs?'<span class="doc-badge missing">❌ Thiếu tài liệu</span>':(counted>0?'<span class="doc-badge ok">✅ Đã có '+E(counted)+' TL được tính</span>':'<span class="doc-badge none">— Chưa giao CB</span>');
-    const fileSummary=excluded?`<span class="doc-meta warn-text">Có ${E(excluded)} giấy mời/tài liệu mời không tính${total?` · Tổng ${E(total)} file`:''}</span>`:(total&&total!==counted?`<span class="doc-meta">Tổng ${E(total)} file; tính ${E(counted)}</span>`:'');
-    const gb=r.isGiaoBan?'<span class="doc-badge giaoban">Giao ban</span> ':'';
-    return `<tr class="${cls}"><td class="mono" style="text-align:center">${i+1}<br>${E(r.meetingId||'')}</td><td class="nowrap"><b>${E(dateVN(r.ngayBatDau||r.ngayHienThi))}</b><br><span class="doc-meta">${E(r.thu||'')} · ${E(r.gioBatDau||'')}${r.gioKetThuc?'–'+E(r.gioKetThuc):''}</span></td><td><div class="doc-title">${gb}${E(r.noiDung||'')}</div><span class="doc-meta">${E(typeLabel(r.loaiLich||''))} · ${E(statusLabel(r.trangThai||''))}</span><span class="doc-meta">📍 ${E(r.diaDiem||'')}</span></td><td>${E(r.chuTri||'')}<span class="doc-meta">${E(r.lanhDaoLienQuan||'')}</span></td><td><b>${E(r.donViChuanBi||'')}</b></td><td>${status}${fileSummary}</td><td>${fileList(r.files||[])}</td><td>${E(r.ghiChu||'')}</td></tr>`;
-  }
-  function fileList(files){
-    if(!files||!files.length)return '<span class="muted">Chưa có tài liệu</span>';
-    return `<div class="doc-file-list">${files.map(f=>{const url=f.fileUrl||'';const meta=[f.fileType,f.fileVisibilityLabel,f.uploadedBy,f.uploadedAt].filter(Boolean).join(' · ');const ex=f.excludeFromPrep||f.countForPrep===false;const reason=f.excludeReason||'Không tính vào tài liệu đơn vị chuẩn bị';return `<div class="doc-file-item ${ex?'excluded':''}">${url?`<a href="${E(url)}" target="_blank" rel="noopener">📎 ${E(f.displayFileName||f.fileDisplayName||f.fileName||'Tài liệu')}</a>`:`<b>📎 ${E(f.displayFileName||f.fileDisplayName||f.fileName||'Tài liệu')}</b>`}<span>${E(meta)}</span>${ex?`<em>⚠ ${E(reason)}</em>`:''}</div>`;}).join('')}</div>`;
+    const status=r.missingDocs?'<span class="doc-status missing">✕ Chưa đính kèm</span>':(counted>0?`<span class="doc-status ok">✓ Đã đính kèm (${E(counted)})</span>`:'<span class="doc-status none">— Chưa giao CB</span>');
+    const gb=r.isGiaoBan?'<span class="doc-tag">Giao ban</span> ':'';
+    return `<tr><td class="mono" style="text-align:center">${i+1}<br>${E(r.meetingId||'')}</td><td class="nowrap"><b>${E(dateVN(r.ngayBatDau||r.ngayHienThi))}</b><br><span class="doc-meta">${E(r.thu||'')} · ${E(r.gioBatDau||'')}${r.gioKetThuc?'–'+E(r.gioKetThuc):''}</span></td><td class="doc-clickable" onclick='openDetail(${jss(r.meetingId||'')})'><div class="doc-title">${gb}${E(r.noiDung||'')}</div><span class="doc-meta">${E(typeLabel(r.loaiLich||''))} · ${E(statusLabel(r.trangThai||''))}</span><span class="doc-meta">📍 ${E(r.diaDiem||'')}</span></td><td>${E(r.chuTri||'')}<span class="doc-meta">${E(r.lanhDaoLienQuan||'')}</span></td><td><b>${E(r.donViChuanBi||'')}</b></td><td>${status}</td><td>${E(r.ghiChu||'')}</td></tr>`;
   }
   window.exportMeetingDocsReportExcel=function(){
     const rows=(fState().rows)||[]; if(!rows.length){alert('Không có dữ liệu để xuất Excel.');return;}

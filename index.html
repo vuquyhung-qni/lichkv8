@@ -2274,7 +2274,7 @@
     }
 </style>
   <link rel="stylesheet" href="modules/duty.css?v=143">
-  <link rel="stylesheet" href="modules/docreport.css?v=142">
+  <link rel="stylesheet" href="modules/docreport.css?v=145">
 </head>
 <body>
 
@@ -2700,7 +2700,7 @@ function saveRememberedLogin(username){
     }
   }catch(e){}
 }
-const APP_VERSION = 'HTML_v145_leader_schedule_card';
+const APP_VERSION = 'HTML_v147_calendar_current_scope_fix';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
@@ -4592,7 +4592,8 @@ function applyCalendarFilters(read=true){
   }
   let arr=srcMeetings.filter(m=>{
     const s=parseIsoDate(m.ngayBatDau),e=parseIsoDate(m.ngayKetThuc||m.ngayBatDau)||s;
-    if(f.scope==='CURRENT'&&e&&e<today)return false;
+    // Lịch thiếu/lỗi ngày không được coi là "hiện thời" mãi mãi — loại khỏi danh sách thay vì hiện mặc định.
+    if(f.scope==='CURRENT'&&(!s||!e||e<today))return false;
     if(f.scope==='WEEK'&&(!s||!e||e<wStart||s>wEnd))return false;
     if(f.scope==='MONTH'&&(!s||!e||s>mEnd||e<mStart))return false;
     if(f.scope==='YEAR'&&(!s||!e||s>yEnd||e<yStart))return false;
@@ -4605,7 +4606,13 @@ function applyCalendarFilters(read=true){
     return true;
   });
   if($('calCount'))$('calCount').textContent=`${arr.length} lịch · ${scopeLabel(f.scope)}`;
-  if($('calList'))$('calList').innerHTML=meetingCards(arr);
+  if($('calList')){
+    if(!arr.length&&f.scope==='CURRENT'){
+      $('calList').innerHTML='<div class="empty">Chưa có lịch cập nhật cho ngày hôm nay và các ngày tiếp theo.</div>';
+    }else{
+      $('calList').innerHTML=meetingCards(arr);
+    }
+  }
 }
 function scopeLabel(v){return({CURRENT:'Từ hôm nay',ALL:'Toàn bộ',WEEK:'Tuần này',MONTH:'Tháng này',YEAR:'Năm nay'}[v]||v)}
 function dateVNShort(iso){if(!iso)return'';var s=String(iso).trim();var m1=s.match(/^([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})/);if(m1)return Number(m1[3])+'/'+(+m1[2])+'/'+m1[1];var m2=s.match(/^([0-9]{1,2})\/([0-9]{1,2})\/([0-9]{4})/);if(m2)return Number(m2[1])+'/'+(+m2[2])+'/'+m2[3];try{var dt=new Date(s);if(!isNaN(dt.getTime()))return dt.getDate()+'/'+(dt.getMonth()+1)+'/'+dt.getFullYear();}catch(e){}return s;}
@@ -4652,7 +4659,8 @@ function meetingCards(arr,compact){
     const thu=weekdayLabel(m);
     const isWE=(thu==='Thứ Bảy'||thu==='Chủ Nhật');
     const isTd=isToday(m);
-    const dateText=dateVNShort(m.ngayHienThi||m.ngayBatDau);
+    const isRange=m.ngayBatDau&&m.ngayKetThuc&&m.ngayBatDau!==m.ngayKetThuc;
+    const dateText=isRange?(dateVNShort(m.ngayBatDau)+' – '+dateVNShort(m.ngayKetThuc)):dateVNShort(m.ngayHienThi||m.ngayBatDau);
     return`<div class="meeting-card${isGiaoBanMeeting(m)?' truc':''}">
       <div class="m-top">
         <div class="m-badges">
@@ -5966,7 +5974,7 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
 
 </script>
 
-<script src="modules/docreport.js?v=142"></script>
+<script src="modules/docreport.js?v=145"></script>
 <script src="modules/duty.js?v=143"></script>
 
 <script>
@@ -5974,7 +5982,7 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', async function(){
       try{
-        const resetKey = 'lct_sw_reset_v149';
+        const resetKey = 'lct_sw_reset_v151';
         if(localStorage.getItem(resetKey) !== '1'){
           const regs = await navigator.serviceWorker.getRegistrations();
           for(const r of regs){ try{ await r.unregister(); }catch(_){} }
@@ -5985,7 +5993,7 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
           localStorage.setItem(resetKey,'1');
         }
       }catch(e){ console.warn('Không reset được service worker/cache cũ:', e); }
-      navigator.serviceWorker.register('./service-worker.js?v=149').then(function(reg){
+      navigator.serviceWorker.register('./service-worker.js?v=151').then(function(reg){
         try { reg.update(); } catch(e) {}
       }).catch(function(err){
         console.warn('Không đăng ký được service worker PWA:', err);
