@@ -2260,10 +2260,10 @@
     .lc-date-sub{font-size:.79rem;font-weight:700;color:var(--text2);margin-top:1px}
     .lc-session-main{font-weight:700;color:var(--navy);font-size:.86rem}
     .lc-session-sub{font-size:.75rem;font-weight:700;color:var(--text2);margin-top:1px}
-    .lc-table td.leader-bg-moc{background:#e6f5ff}
-    .lc-table td.leader-bg-tho{background:#fff1d6}
-    .lc-table td.leader-bg-thuy{background:#e7f4ff}
-    .lc-table td.leader-bg-kim{background:#eef3f8}
+    .lc-table td.leader-bg-moc{background:#f3faff}
+    .lc-table td.leader-bg-tho{background:#fff8eb}
+    .lc-table td.leader-bg-thuy{background:#eff7ef}
+    .lc-table td.leader-bg-kim{background:#f7f9fc}
     .lc-empty{color:#b8c0c9;font-size:.83rem;text-align:center;display:block}
     .lc-item{cursor:pointer;border-radius:6px;padding:2px 3px;margin:-2px -3px 4px}
     .lc-item:last-child{margin-bottom:0}
@@ -2704,7 +2704,7 @@ function saveRememberedLogin(username){
     }
   }catch(e){}
 }
-const APP_VERSION = 'HTML_v149_leadercard_flat_colors';
+const APP_VERSION = 'HTML_v150_leadercard_frontend_merge';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
@@ -3464,6 +3464,28 @@ function leaderCardCellHtml_(list){
   return list.map(leaderCardItemHtml_).join('');
 }
 const LEADER_CARD_BG_={hung:'leader-bg-moc',duong:'leader-bg-tho',loi:'leader-bg-thuy',thang:'leader-bg-kim'};
+function leaderCardIsFullDay_(m){
+  const h1=parseInt(String(m.gioBatDau||'').split(':')[0],10);
+  const h2=parseInt(String(m.gioKetThuc||'').split(':')[0],10);
+  return !isNaN(h1)&&h1<12&&!isNaN(h2)&&h2>=12;
+}
+// Bù trực tiếp trên frontend: lịch cả ngày (giờ bắt đầu <12h, giờ kết thúc >=12h)
+// nhưng backend chỉ xếp vào 1 buổi (SANG) thì tự thêm vào buổi còn lại để gộp ô đúng,
+// không phụ thuộc việc backend đã deploy bản mới hay chưa.
+function leaderCardFillFullDay_(days,leaders){
+  days.forEach(day=>{
+    leaders.forEach(ld=>{
+      const sang=day.sessions.SANG[ld.key]||(day.sessions.SANG[ld.key]=[]);
+      const chieu=day.sessions.CHIEU[ld.key]||(day.sessions.CHIEU[ld.key]=[]);
+      sang.filter(leaderCardIsFullDay_).forEach(m=>{
+        if(!chieu.some(x=>x.meetingId===m.meetingId)) chieu.push(m);
+      });
+      chieu.filter(leaderCardIsFullDay_).forEach(m=>{
+        if(!sang.some(x=>x.meetingId===m.meetingId)) sang.push(m);
+      });
+    });
+  });
+}
 function leaderCardBuildPlans_(days,leaders){
   const slots=[];
   days.forEach(day=>['SANG','CHIEU'].forEach(sk=>slots.push({day,sk})));
@@ -3515,6 +3537,7 @@ function leaderCardHtml_(st){
   }
   const days=(st.data&&st.data.days)||[];
   const leaders=(st.data&&st.data.leaders)||LEADER_CARD_KEYS_.map(k=>({key:k,label:'Đ/c '+k}));
+  leaderCardFillFullDay_(days,leaders);
   const plans=leaderCardBuildPlans_(days,leaders);
   const rows=days.map((day,di)=>{
     const altClass=di%2===1?' lc-day-alt':'';
@@ -6023,7 +6046,7 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', async function(){
       try{
-        const resetKey = 'lct_sw_reset_v153';
+        const resetKey = 'lct_sw_reset_v154';
         if(localStorage.getItem(resetKey) !== '1'){
           const regs = await navigator.serviceWorker.getRegistrations();
           for(const r of regs){ try{ await r.unregister(); }catch(_){} }
@@ -6034,7 +6057,7 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
           localStorage.setItem(resetKey,'1');
         }
       }catch(e){ console.warn('Không reset được service worker/cache cũ:', e); }
-      navigator.serviceWorker.register('./service-worker.js?v=153').then(function(reg){
+      navigator.serviceWorker.register('./service-worker.js?v=154').then(function(reg){
         try { reg.update(); } catch(e) {}
       }).catch(function(err){
         console.warn('Không đăng ký được service worker PWA:', err);
