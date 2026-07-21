@@ -2243,6 +2243,35 @@
     .panel-h.panel-h-no-title{justify-content:flex-end;min-height:0;padding-bottom:8px}
     .panel-h.panel-h-no-title span{flex:1}
 
+    /* V144: Thẻ lịch lãnh đạo - bảng tối giản để chụp ảnh gửi sếp */
+    .lc-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+    .lc-toolbar .lc-range{font-size:.86rem;color:var(--navy);font-weight:700;background:#eef4fa;border:1px solid var(--border2);border-radius:999px;padding:6px 12px}
+    .lc-card{background:#fff;border-radius:10px;overflow:hidden}
+    .lc-card-head{text-align:center;margin-bottom:12px}
+    .lc-card-head .lc-org{font-size:.72rem;font-weight:700;letter-spacing:.5px;color:#7a1f1f;text-transform:uppercase}
+    .lc-card-head .lc-title{font-size:1.05rem;font-weight:800;color:var(--navy);margin-top:2px}
+    .lc-card-head .lc-sub{font-size:.78rem;color:var(--muted);margin-top:2px}
+    .lc-table{width:100%;border-collapse:collapse;font-size:.79rem;border:1px solid #a8b4c0}
+    .lc-table th{background:var(--navy);color:#fff;font-size:.74rem;font-weight:700;text-align:center;padding:8px 6px;border:1px solid #a8b4c0}
+    .lc-table td{padding:6px 8px;border:1px solid #a8b4c0;vertical-align:top}
+    .lc-table tr.lc-day-alt td{background:#f4f6f8}
+    .lc-cell-date,.lc-cell-session{text-align:center;vertical-align:middle}
+    .lc-date-main{font-weight:800;color:var(--navy);font-size:.83rem}
+    .lc-date-sub{font-size:.72rem;color:var(--muted);margin-top:1px}
+    .lc-session-main{font-weight:700;color:var(--navy);font-size:.78rem}
+    .lc-session-sub{font-size:.68rem;color:#94a3b8;margin-top:1px}
+    .lc-empty{color:#b8c0c9;font-size:.75rem;text-align:center;display:block}
+    .lc-item{cursor:pointer;border-radius:6px;padding:2px 3px;margin:-2px -3px 4px}
+    .lc-item:last-child{margin-bottom:0}
+    .lc-item:hover{background:#f1f5f9}
+    .lc-item-title{font-weight:700;color:#1e293b;font-size:.78rem;line-height:1.3}
+    .lc-item-place{color:var(--muted);font-size:.72rem;margin-top:2px}
+    .lc-item-badge{display:inline-block;margin-top:4px;background:#eef1f4;color:#475569;font-size:.66rem;font-weight:700;padding:1px 6px;border:1px solid #c9d2db;border-radius:3px}
+    .lc-legend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:10px;font-size:.7rem;color:var(--muted)}
+    @media(max-width:768px){
+      .lc-table{font-size:.72rem}
+      .lc-item-title{font-size:.72rem}
+    }
 </style>
   <link rel="stylesheet" href="modules/duty.css?v=143">
   <link rel="stylesheet" href="modules/docreport.css?v=142">
@@ -2303,6 +2332,10 @@
       <button class="nav-btn" data-screen="summary" onclick="go('summary')">
         <span class="nav-icon">📋</span>
         <span class="nav-label">Tóm tắt lịch</span>
+      </button>
+      <button class="nav-btn" data-screen="leaderCard" onclick="go('leaderCard')">
+        <span class="nav-icon">🗂️</span>
+        <span class="nav-label">Lịch 3 ngày</span>
       </button>
       <button class="nav-btn" data-screen="docsReport" onclick="go('docsReport')">
         <span class="nav-icon">📎</span><span class="nav-label">Thống kê tài liệu họp</span>
@@ -2365,6 +2398,7 @@
       <section id="screen-dashboard" class="hide"></section>
       <section id="screen-calendar"></section>
       <section id="screen-summary" class="hide"></section>
+      <section id="screen-leaderCard" class="hide"></section>
       <section id="screen-docsReport" class="hide"></section>
       <section id="screen-duty" class="hide"></section>
       <section id="screen-manage" class="hide"></section>
@@ -2666,7 +2700,7 @@ function saveRememberedLogin(username){
     }
   }catch(e){}
 }
-const APP_VERSION = 'HTML_v144_perf_security_patch';
+const APP_VERSION = 'HTML_v145_leader_schedule_card';
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyrF-AVo-uoGpXHwKIWGPsH534FdyD73q4pibABqybBfTGPK_BL2SV313-JSkmd3qh2/exec";
 const DRIVE_LIBRARY_FOLDER_ID = '1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv';
 const DRIVE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1nDn4qEgJ99rRpdn5x-2VEEPA_SkX6rvv?hl=vi';
@@ -3180,7 +3214,7 @@ async function go(screen){
   document.querySelectorAll('.bn-item').forEach(b=>b.classList.toggle('active',b.dataset.screen===screen));
   document.querySelectorAll('[id^="screen-"]').forEach(s=>s.classList.add('hide'));
   $('screen-'+screen).classList.remove('hide');
-  const titles={dashboard:'TỔNG QUAN',calendar:'LỊCH CÔNG TÁC',summary:'TÓM TẮT LỊCH',docsReport:'THỐNG KÊ TÀI LIỆU HỌP',duty:'LỊCH TRỰC BAN',manage:'QUẢN LÝ LỊCH',library:'THƯ VIỆN VĂN BẢN',notebook:'NOTEBOOK',users:'QUẢN TRỊ NGƯỜI DÙNG',settings:'QUẢN TRỊ DANH MỤC'};
+  const titles={dashboard:'TỔNG QUAN',calendar:'LỊCH CÔNG TÁC',summary:'TÓM TẮT LỊCH',leaderCard:'LỊCH 3 NGÀY',docsReport:'THỐNG KÊ TÀI LIỆU HỌP',duty:'LỊCH TRỰC BAN',manage:'QUẢN LÝ LỊCH',library:'THƯ VIỆN VĂN BẢN',notebook:'NOTEBOOK',users:'QUẢN TRỊ NGƯỜI DÙNG',settings:'QUẢN TRỊ DANH MỤC'};
   $('pageTitle').textContent=titles[screen]||'';
   if(window.innerWidth<768)closeSide();
   await render();
@@ -3213,7 +3247,7 @@ async function refreshNotebookUnreadBadge(){
 }
 
 function setLoading(){
-  ['screen-dashboard','screen-calendar','screen-summary','screen-docsReport','screen-duty','screen-manage','screen-library','screen-notebook','screen-users','screen-settings']
+  ['screen-dashboard','screen-calendar','screen-summary','screen-leaderCard','screen-docsReport','screen-duty','screen-manage','screen-library','screen-notebook','screen-users','screen-settings']
     .forEach(id=>$(id).innerHTML='<div class="loading"><div class="spin"></div><span>Đang tải...</span></div>');
 }
 
@@ -3232,6 +3266,7 @@ async function renderScreen_(screen){
       case 'dashboard': renderDashboard(); break;
       case 'calendar': renderCalendar(); break;
       case 'summary': renderSummary(); break;
+      case 'leaderCard': await renderLeaderCard(); break;
       case 'docsReport':
         if(typeof renderMeetingDocsReport==='function') await renderMeetingDocsReport();
         else { const b=$('screen-docsReport'); if(b) b.innerHTML='<div class="msg err">Chưa tải được module Thống kê tài liệu họp. Vui lòng kiểm tra file modules/docreport.js.</div>'; }
@@ -3367,6 +3402,118 @@ function summaryTextToHtml_(text){
   // V107: hiển thị dạng plain text giống nội dung copy sang Zalo.
   // Không dùng thẻ <b> vì Zalo thường chỉ nhận text/plain.
   return esc(String(text||'')).replace(/\n/g,'<br>');
+}
+
+// ===== V144: THẺ LỊCH LÃNH ĐẠO (bảng tối giản để chụp ảnh gửi sếp) =====
+function leaderCardTodayIso_(){const d=new Date();d.setHours(0,0,0,0);return dateInputValue_(d);}
+function leaderCardEnsureState_(){
+  if(!APP.leaderCard) APP.leaderCard={startDate:leaderCardTodayIso_(),data:null,loading:false};
+  return APP.leaderCard;
+}
+async function renderLeaderCard(){
+  const box=$('screen-leaderCard'); if(!box) return;
+  const st=leaderCardEnsureState_();
+  if(!st.data && !st.loading){
+    st.loading=true;
+    try{
+      const res=await api('getLeaderScheduleCard',{dateFrom:st.startDate});
+      st.data=res;
+    }catch(e){
+      st.error=(e&&e.message)||'Không tải được dữ liệu.';
+    }
+    st.loading=false;
+  }
+  box.innerHTML=leaderCardHtml_(st);
+}
+function leaderCardShift_(deltaDays){
+  const st=leaderCardEnsureState_();
+  const d=parseIsoDate(st.startDate)||new Date();
+  d.setDate(d.getDate()+deltaDays);
+  st.startDate=dateInputValue_(d);
+  st.data=null; st.error=null;
+  renderLeaderCard();
+}
+function leaderCardToday_(){
+  const st=leaderCardEnsureState_();
+  st.startDate=leaderCardTodayIso_();
+  st.data=null; st.error=null;
+  renderLeaderCard();
+}
+function leaderCardSessionLabel_(s){return s==='CHIEU'?'CHIỀU':'SÁNG';}
+const LEADER_CARD_KEYS_=['hung','duong','loi','thang'];
+function leaderCardTimeSub_(day,sessionKey){
+  const items=[];
+  LEADER_CARD_KEYS_.forEach(k=>(day.sessions[sessionKey][k]||[]).forEach(m=>items.push(m)));
+  const withTime=items.find(m=>m.gioBatDau);
+  if(!withTime) return '';
+  return withTime.gioKetThuc?`${esc(withTime.gioBatDau)} - ${esc(withTime.gioKetThuc)}`:esc(withTime.gioBatDau);
+}
+function leaderCardItemHtml_(m){
+  return `<div class="lc-item" onclick='openDetail(${jss(m.meetingId)})'>
+    <div class="lc-item-title">${esc(m.noiDung)}</div>
+    ${m.diaDiem?`<div class="lc-item-place">${esc(m.diaDiem)}</div>`:''}
+    ${Number(m.fileCount)>0?`<span class="lc-item-badge">${String(m.fileCount).padStart(2,'0')} TL</span>`:''}
+  </div>`;
+}
+function leaderCardCellHtml_(list){
+  if(!list||!list.length) return '<span class="lc-empty">—</span>';
+  return list.map(leaderCardItemHtml_).join('');
+}
+function leaderCardHtml_(st){
+  const rangeText=(()=>{
+    const d0=parseIsoDate(st.startDate);
+    if(!d0) return '';
+    const d2=new Date(d0); d2.setDate(d2.getDate()+2);
+    return dateVNShort(dateInputValue_(d0))+' – '+dateVNShort(dateInputValue_(d2));
+  })();
+  const toolbar=`
+    <div class="lc-toolbar">
+      <button class="btn sm ghost" onclick="leaderCardShift_(-3)">◀ 3 ngày trước</button>
+      <button class="btn sm ghost" onclick="leaderCardToday_()">Hôm nay</button>
+      <button class="btn sm ghost" onclick="leaderCardShift_(3)">3 ngày sau ▶</button>
+      <span class="lc-range">${esc(rangeText)}</span>
+      <button class="btn sm ghost" onclick="renderLeaderCard()" style="margin-left:auto">↻ Tải lại</button>
+    </div>`;
+  if(st.loading){
+    return `<div class="panel"><div class="panel-b">${toolbar}<div class="loading"><div class="spin"></div><span>Đang tải...</span></div></div></div>`;
+  }
+  if(st.error){
+    return `<div class="panel"><div class="panel-b">${toolbar}<div class="msg err">${esc(st.error)}</div></div></div>`;
+  }
+  const days=(st.data&&st.data.days)||[];
+  const leaders=(st.data&&st.data.leaders)||LEADER_CARD_KEYS_.map(k=>({key:k,label:'Đ/c '+k}));
+  const rows=days.map((day,di)=>{
+    const altClass=di%2===1?' lc-day-alt':'';
+    return ['SANG','CHIEU'].map((sk,si)=>{
+      const dateCell=si===0?`<td class="lc-cell-date" rowspan="2">
+          <div class="lc-date-main">${esc(dateVNShort(day.date))}</div>
+          <div class="lc-date-sub">${esc(day.thu)}</div>
+        </td>`:'';
+      const timeSub=leaderCardTimeSub_(day,sk);
+      const sessionCell=`<td class="lc-cell-session">
+          <div class="lc-session-main">${leaderCardSessionLabel_(sk)}</div>
+          ${timeSub?`<div class="lc-session-sub">${timeSub}</div>`:''}
+        </td>`;
+      const leaderCells=leaders.map(ld=>`<td>${leaderCardCellHtml_(day.sessions[sk][ld.key])}</td>`).join('');
+      return `<tr class="${altClass.trim()}">${dateCell}${sessionCell}${leaderCells}</tr>`;
+    }).join('');
+  }).join('');
+  const headCells=leaders.map(ld=>`<th>${esc(ld.label)}</th>`).join('');
+  return `<div class="panel"><div class="panel-b">
+    ${toolbar}
+    <div class="lc-card">
+      <div class="lc-card-head">
+        <div class="lc-org">CHI CỤC HẢI QUAN KHU VỰC VIII</div>
+        <div class="lc-title">LỊCH CÔNG TÁC LÃNH ĐẠO CHI CỤC</div>
+        <div class="lc-sub">${esc(rangeText)}</div>
+      </div>
+      <table class="lc-table">
+        <thead><tr><th>NGÀY</th><th>BUỔI</th>${headCells}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="lc-legend"><span>— : không có lịch</span><span>Chạm vào lịch để xem chi tiết</span></div>
+    </div>
+  </div></div>`;
 }
 
 // ===== DASHBOARD =====
@@ -5827,7 +5974,7 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', async function(){
       try{
-        const resetKey = 'lct_sw_reset_v148';
+        const resetKey = 'lct_sw_reset_v149';
         if(localStorage.getItem(resetKey) !== '1'){
           const regs = await navigator.serviceWorker.getRegistrations();
           for(const r of regs){ try{ await r.unregister(); }catch(_){} }
@@ -5838,7 +5985,7 @@ document.addEventListener('touchend', handleDelegatedMeetingAction_, {capture:tr
           localStorage.setItem(resetKey,'1');
         }
       }catch(e){ console.warn('Không reset được service worker/cache cũ:', e); }
-      navigator.serviceWorker.register('./service-worker.js?v=148').then(function(reg){
+      navigator.serviceWorker.register('./service-worker.js?v=149').then(function(reg){
         try { reg.update(); } catch(e) {}
       }).catch(function(err){
         console.warn('Không đăng ký được service worker PWA:', err);

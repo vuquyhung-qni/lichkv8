@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lichkv8-v148-perf-security-patch';
+const CACHE_NAME = 'lichkv8-v149-leader-schedule-card';
 const STATIC_ASSETS = [
   './',
   './index.html',
